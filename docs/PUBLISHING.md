@@ -2,8 +2,8 @@
 
 Status (2026-11-05): **published.** Public repository
 https://github.com/ifelse-codes/praman exists under the owner GitHub identity
-(masked noreply email; squashed snapshot of three commits); CI is green on Ubuntu and
-macOS (run 42018863948) and includes the documented judge first-use route; the static
+(masked noreply email; squashed public snapshot — see the repository history); CI is
+green on Ubuntu and macOS (run 42018863948) and includes the documented judge first-use route; the static
 project page is live at https://ifelse-codes.github.io/praman/. The remaining steps are
 the video and the Devpost submission. Do not publish raw evidence or the external
 archive.

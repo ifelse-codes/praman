@@ -9,7 +9,7 @@ general simulator and not a sandbox.
 ## Current state
 
 - **History:** the private working history ends at `cc83be3`; the **public repository**
-  is a squashed snapshot of three commits (HEAD `a84788e`) under the owner identity,
+  is a squashed public snapshot under the owner identity (see the repository history),
   with CI green and judge access enabled.
 - **Checks:** `npm run build` and `npm run lint` pass; `npm run lint:tests` passes;
   the **full suite passes 190 tests / 28 files** in a single-worker run on the

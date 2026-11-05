@@ -48,8 +48,7 @@ Submission snapshot. Same-host verified; not published.
   dispatch smoke tests; `npm run lint:tests` typechecks the test suite.
 - First-use route: 12/12 expected CLI and MCP outcomes.
 - PII-free tracked files; MIT license; `npm audit`: 0 known vulnerabilities.
-- Public repository published at github.com/ifelse-codes/praman (MIT; squashed
-  snapshot of three commits under the owner identity). CI green on Ubuntu and macOS
+- Public repository published at github.com/ifelse-codes/praman (MIT; squashed public snapshot under the owner identity). CI green on Ubuntu and macOS
   (run 42018863948; 174 passed + 16 environment-guarded skips per runner) and the
   Linux job also runs the documented first-use judge route. Static project page
   deployed at ifelse-codes.github.io/praman/.
