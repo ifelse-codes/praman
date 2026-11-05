@@ -1,0 +1,166 @@
+import { z } from 'zod';
+import type { Page } from 'playwright';
+import type { Verdict } from '../eval/eval.js';
+import { identityDeclarationSchema, type IdentitySnapshot } from '../eval/identity.js';
+import { sceneFramingSchema } from './framing.js';
+import { shortCompositionSchema, validateShortComposition } from './composition.js';
+
+const stepSchema = z.discriminatedUnion('action', [
+  z.object({ action: z.literal('goto'), path: z.string().startsWith('/'), note: z.string().min(1) }).strict(),
+  z.object({ action: z.literal('waitForURL'), path: z.string().startsWith('/'), note: z.string().min(1) }).strict(),
+  z.object({ action: z.literal('click'), selector: z.string().min(1), note: z.string().min(1) }).strict(),
+  z.object({ action: z.literal('hover'), selector: z.string().min(1), note: z.string().min(1) }).strict(),
+  z.object({ action: z.literal('waitFor'), selector: z.string().min(1), note: z.string().min(1) }).strict(),
+  z.object({ action: z.literal('fill'), selector: z.string().min(1), value: z.string(), note: z.string().min(1) }).strict(),
+  z.object({ action: z.literal('press'), selector: z.string().min(1), key: z.string().min(1), note: z.string().min(1) }).strict(),
+  z.object({ action: z.literal('upload'), selector: z.string().min(1), path: z.string().min(1), completionSelector: z.string().min(1).optional(), note: z.string().min(1) }).strict(),
+]);
+const checkpoint = z.number().int().nonnegative().optional();
+const urlPattern = z.string().min(1).refine(value => { try { new RegExp(value); return true; } catch { return false; } }, 'Invalid URL regular expression');
+const checkSchema = z.discriminatedUnion('kind', [
+  z.object({ id: z.string().min(1), kind: z.literal('text'), selector: z.string().min(1), equals: z.string(), afterStep: checkpoint }).strict(),
+  z.object({ id: z.string().min(1), kind: z.literal('value'), selector: z.string().min(1), equals: z.string(), afterStep: checkpoint }).strict(),
+  z.object({ id: z.string().min(1), kind: z.literal('visible'), selector: z.string().min(1), equals: z.boolean(), beforeEquals: z.boolean().optional(), afterStep: checkpoint }).strict(),
+  z.object({ id: z.string().min(1), kind: z.literal('attribute'), selector: z.string().min(1), name: z.string().min(1), equals: z.string().nullable(), afterStep: checkpoint }).strict(),
+  z.object({ id: z.string().min(1), kind: z.literal('class'), selector: z.string().min(1), token: z.string().min(1).regex(/^\S+$/), equals: z.boolean(), afterStep: checkpoint }).strict(),
+  z.object({ id: z.string().min(1), kind: z.literal('state'), selector: z.string().min(1), state: z.enum(['hidden', 'enabled', 'checked']), equals: z.boolean(), afterStep: checkpoint }).strict(),
+  z.object({ id: z.string().min(1), kind: z.literal('json'), path: z.string().startsWith('/'), field: z.array(z.union([z.string(), z.number().int().nonnegative()])), equals: z.union([z.string(), z.number(), z.boolean(), z.null()]), afterStep: checkpoint }).strict(),
+  z.object({ id: z.string().min(1), kind: z.literal('pageErrors'), equals: z.literal(0), afterStep: checkpoint }).strict(),
+  z.object({ id: z.string().min(1), kind: z.literal('image'), selector: z.string().min(1), equals: z.literal(true), afterStep: checkpoint }).strict(),
+  z.object({
+    id: z.string().min(1), kind: z.literal('network'),
+    match: z.object({ urlPattern, method: z.string().regex(/^[A-Z]+$/).optional(), status: z.number().int().min(100).max(599).optional() }).strict(),
+    window: z.object({ fromStep: z.number().int().nonnegative(), throughStep: z.number().int().nonnegative(), settleMs: z.number().int().min(0).max(10000) }).strict(),
+    equals: z.number().int().nonnegative(), afterStep: z.never().optional(),
+  }).strict(),
+]);
+const httpUrl = z.string().url().refine(value => ['http:', 'https:'].includes(new URL(value).protocol), 'Use an HTTP(S) app URL');
+const narrationText = z.string().min(1).refine(value => value.trim().length > 0, 'Narration must contain non-whitespace text');
+
+const storyBeatSchema = z.object({
+  step: z.number().int().nonnegative(), at: z.enum(['before', 'after']).default('after'),
+  text: narrationText, selector: z.string().min(1).optional(),
+  shortText: narrationText.optional(),
+  framing: sceneFramingSchema.optional(),
+}).strict();
+const codeExcerptSchema = z.object({
+  file: z.string().min(1), side: z.enum(['before', 'after']), from: z.number().int().positive(),
+  to: z.number().int().positive(), label: z.string().min(1),
+}).strict().refine(value => value.to >= value.from && value.to - value.from < 12, 'Choose at most twelve consecutive source lines');
+const codeFocusSchema = z.object({
+  file: z.string().min(1), side: z.enum(['before', 'after']),
+  from: z.number().int().positive(), to: z.number().int().positive(),
+}).strict().refine(value => value.to >= value.from, 'Code focus must be a consecutive source range');
+export const codeStorySchema = z.object({
+  title: z.string().min(1).optional(), text: narrationText, shortText: narrationText.optional(),
+  excerpts: z.array(codeExcerptSchema).min(1).max(8).optional(),
+  beats: z.array(z.object({ text: narrationText, shortText: narrationText.optional(), focus: codeFocusSchema.optional(), framing: sceneFramingSchema.optional() }).strict()).min(1).optional(),
+}).strict();
+export type CodeStory = z.infer<typeof codeStorySchema>;
+const walkthroughSchema = z.object({
+  startStep: z.number().int().nonnegative(),
+  before: z.array(storyBeatSchema).min(1).optional(), after: z.array(storyBeatSchema).min(1),
+  code: codeStorySchema.optional(),
+  short: shortCompositionSchema.optional(),
+}).strict();
+
+export const changeSpecSchema = z.object({
+  title: z.string().min(1),
+  mode: z.enum(['acceptance', 'repair', 'comparison']),
+  baselineKind: z.enum(['historical', 'synthetic', 'unattested']).optional(),
+  change: z.string().min(1),
+  beforeUrl: httpUrl.optional(),
+  afterUrl: httpUrl,
+  steps: z.array(stepSchema).min(1),
+  checks: z.array(checkSchema).min(1),
+  regressionCheck: z.string().min(1).optional(),
+  repeats: z.number().int().min(2).max(10).default(2),
+  diffPath: z.string().min(1).optional(),
+  walkthrough: walkthroughSchema.optional(),
+  identity: identityDeclarationSchema.optional(),
+}).strict().superRefine((spec, ctx) => {
+  const ids = spec.checks.map(check => check.id);
+  if (new Set(ids).size !== ids.length) ctx.addIssue({ code: 'custom', message: 'Check ids must be unique', path: ['checks'] });
+  if (spec.mode === 'acceptance') {
+    if (spec.beforeUrl || spec.regressionCheck || spec.baselineKind || spec.checks.some(check => check.kind === 'visible' && check.beforeEquals !== undefined)) ctx.addIssue({ code: 'custom', message: 'Acceptance is current-only; omit baseline, regression and beforeEquals fields.' });
+  } else {
+    if (!spec.beforeUrl || !spec.baselineKind) ctx.addIssue({ code: 'custom', message: 'Paired modes require beforeUrl and an explicit baselineKind.' });
+    if (spec.mode === 'repair' && (spec.baselineKind !== 'historical' || !spec.regressionCheck || !ids.includes(spec.regressionCheck))) ctx.addIssue({ code: 'custom', message: 'Repair requires a historical baseline and a declared regressionCheck.' });
+    if (spec.mode === 'comparison' && spec.regressionCheck !== undefined) ctx.addIssue({ code: 'custom', message: 'Comparison does not claim a named regression repair; omit regressionCheck.' });
+  }
+  for (const [i, step] of spec.steps.entries()) {
+    if ((step.action === 'goto' || step.action === 'waitForURL') && [spec.afterUrl, ...(spec.beforeUrl ? [spec.beforeUrl] : [])].some(url => new URL(step.path, url).origin !== new URL(url).origin)) ctx.addIssue({ code: 'custom', message: 'Navigation must remain on the app origin', path: ['steps', i] });
+  }
+  for (const [i, check] of spec.checks.entries()) {
+    if (check.kind === 'json' && [spec.afterUrl, ...(spec.beforeUrl ? [spec.beforeUrl] : [])].some(url => new URL(check.path, url).origin !== new URL(url).origin)) ctx.addIssue({ code: 'custom', message: 'JSON checks must remain on the app origin', path: ['checks', i] });
+    if (check.kind === 'network' && (check.window.fromStep > check.window.throughStep || check.window.throughStep >= spec.steps.length)) ctx.addIssue({ code: 'custom', path: ['checks', i, 'window'], message: 'Network windows require ordered existing step indexes.' });
+    if (check.afterStep !== undefined && (check.afterStep >= spec.steps.length || check.kind === 'pageErrors')) ctx.addIssue({ code: 'custom', path: ['checks', i, 'afterStep'], message: 'Checkpoints require an existing step; runtime errors must be checked at the end' });
+  }
+  if (spec.walkthrough) {
+    try { validateShortComposition(spec.walkthrough, spec.mode); }
+    catch (error) { ctx.addIssue({ code: 'custom', path: ['walkthrough', 'short'], message: error instanceof Error ? error.message : String(error) }); }
+    if (spec.mode === 'acceptance' && (spec.walkthrough.before || spec.walkthrough.code || spec.diffPath)) ctx.addIssue({ code: 'custom', message: 'Acceptance stories show current requirements and outcomes, not baseline/fix narration.' });
+    if (spec.mode !== 'acceptance' && !spec.walkthrough.before) ctx.addIssue({ code: 'custom', message: 'Paired stories require baseline beats.' });
+    if (spec.mode === 'repair' && !spec.walkthrough.code) ctx.addIssue({ code: 'custom', message: 'Repair stories require a code explanation.' });
+    if (spec.walkthrough.startStep >= spec.steps.length) ctx.addIssue({ code: 'custom', path: ['walkthrough', 'startStep'], message: 'Presentation must start at an existing workflow step' });
+    for (const version of ['before', 'after'] as const) {
+      for (const [i, beat] of (spec.walkthrough[version] ?? []).entries()) {
+        if (beat.step < spec.walkthrough.startStep || beat.step >= spec.steps.length) ctx.addIssue({ code: 'custom', path: ['walkthrough', version, i, 'step'], message: 'A story beat must belong to the presented workflow' });
+      }
+    }
+    if (spec.walkthrough.code?.excerpts && !spec.diffPath) ctx.addIssue({ code: 'custom', path: ['walkthrough', 'code'], message: 'Code excerpts require an actual supplied diff' });
+    for (const [i, beat] of (spec.walkthrough.code?.beats ?? []).entries()) {
+      if (beat.focus && !spec.walkthrough.code?.excerpts?.some(excerpt => excerpt.file === beat.focus!.file
+        && excerpt.side === beat.focus!.side && excerpt.from <= beat.focus!.from && excerpt.to >= beat.focus!.to)) {
+        ctx.addIssue({ code: 'custom', path: ['walkthrough', 'code', 'beats', i, 'focus'], message: 'Every focused code line must belong to one displayed source excerpt' });
+      }
+    }
+  }
+});
+
+export type ChangeSpec = z.infer<typeof changeSpecSchema>;
+export type WorkflowStep = ChangeSpec['steps'][number];
+export interface CheckEvidence {
+  id: string;
+  verdict: Verdict;
+  expected: unknown;
+  observed?: unknown;
+  evidence: string;
+  screenshot?: string;
+  afterStep?: number;
+}
+export interface ScenarioRun {
+  url: string;
+  verdict: Verdict;
+  checks: CheckEvidence[];
+  screenshots: string[];
+  error?: string;
+  failedStep?: number;
+  completedSteps?: number;
+  video?: string;
+  recordingStartedAt?: number;
+  recordingEndedAt?: number;
+  initialStorageState?: { path: string; sha256: string };
+  identityBefore?: IdentitySnapshot;
+  identityAfter?: IdentitySnapshot;
+}
+export interface ChangeProof {
+  mode: ChangeSpec['mode'];
+  baselineKind?: ChangeSpec['baselineKind'];
+  specHash: string;
+  verifiedAt: string;
+  scope: string;
+  verdict: Verdict;
+  reason: string;
+  before?: ScenarioRun;
+  after: ScenarioRun[];
+}
+export interface ScenarioOptions {
+  record?: boolean;
+  version?: 'before' | 'current';
+  storageState?: string;
+  expectedIdentity?: IdentitySnapshot;
+  beforeStep?: (page: Page, step: WorkflowStep, index: number) => Promise<void>;
+  afterStep?: (page: Page, step: WorkflowStep, index: number) => Promise<void>;
+  afterChecks?: (page: Page, checks: CheckEvidence[]) => Promise<void>;
+}

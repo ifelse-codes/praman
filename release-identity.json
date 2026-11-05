@@ -1,0 +1,10 @@
+{
+  "product": "praman",
+  "version": "0.1.0",
+  "candidate": "local deterministic source archive (not published)",
+  "procedure": "python3 scripts/source-release.py <fresh-path>",
+  "note": "This file is deliberately excluded from the source candidate so the same commit reproduces the same archive bytes.",
+  "sha256": "0cbcdd84dfb84b9730e987d76d4e100c915052f2ffcb69e68fadbba16da34bd3",
+  "members": 99,
+  "builtFromCommit": "9b6f9db"
+}

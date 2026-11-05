@@ -1,0 +1,26 @@
+name: Windows experimental build
+
+# Manual only until a Windows runner has been validated. This job checks install,
+# typecheck and build; it does not run the browser/command suites and is non-blocking.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows-build:
+    name: windows experimental (non-blocking)
+    runs-on: windows-latest
+    timeout-minutes: 20
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run lint:tests
+      - run: npm run build

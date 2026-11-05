@@ -1,0 +1,213 @@
+#!/usr/bin/env node
+import { Command, Option } from 'commander';
+import { demonstrateChange } from './core/demonstrate.js';
+import { loadChangeSpec } from './case/loadChange.js';
+import path from 'node:path';
+import { reconstructWorkflow } from './case/reconstruct.js';
+import { replayWorkflow } from './core/workflow.js';
+import { readFileSync } from 'node:fs';
+import { startService } from './gateway/service.js';
+import { replayService } from './gateway/replay.js';
+import { manageEnvironment } from './environments/manager.js';
+import { safeFeedbackValue } from './review/feedback.js';
+import { proveCommands } from './eval/command.js';
+import { demonstrateCommands } from './core/commandDemonstrate.js';
+import { proveChange } from './eval/change.js';
+import { formatSummary } from './review/diagnostics.js';
+import { reviewCoverage } from './review/coverage.js';
+import { runCampaign } from './core/campaign.js';
+import { startDurableCampaign, resumeDurableCampaign } from './core/durableCampaign.js';
+import { runAgentCampaign } from './core/agentCampaign.js';
+import { previewChange, previewCommands } from './core/preview.js';
+
+async function withCampaignStop<T>(operation: (signal: AbortSignal) => Promise<T>) {
+  const controller = new AbortController();
+  const stop = () => controller.abort();
+  process.on('SIGINT', stop); process.on('SIGTERM', stop);
+  try { return await operation(controller.signal); }
+  finally { process.off('SIGINT', stop); process.off('SIGTERM', stop); }
+}
+
+const program = new Command();
+program.name('praman').description('Evidence-driven verification for AI-generated software').version('0.1.0');
+
+const environment = program.command('environment').description('Provision and exercise owned, isolated kind or Docker environments');
+environment.command('create').argument('<declaration>').option('--base <dir>', 'managed environment storage', './.praman/environments')
+  .action(async (specPath, opts) => {
+    const result = await manageEnvironment('create', { specPath, baseDir: opts.base });
+    console.log(JSON.stringify(result, null, 2));
+    if (result.verdict !== 'passed') process.exitCode = 2;
+  });
+for (const action of ['observe', 'workload', 'fault', 'recover', 'reset', 'verify', 'demonstrate', 'destroy'] as const) {
+  environment.command(action).argument('<id>').argument('[workload]', 'declared workload name')
+    .option('--base <dir>', 'managed environment storage', './.praman/environments')
+    .action(async (id, workload, opts) => {
+      const result = await manageEnvironment(action, { id, workload, baseDir: opts.base });
+      console.log(JSON.stringify(result, null, 2));
+      if (result.verdict !== 'passed') process.exitCode = result.verdict === 'failed' ? 1 : 2;
+    });
+}
+
+program.command('command-verify').description('Verify declared acceptance, historical repair or baseline comparison using trusted local commands')
+  .argument('<declaration>').option('-o, --out <dir>', 'private proof directory (must be fresh)', './.praman/command-proof')
+  .option('--summary', 'print only outcome, indexed failures, private evidence and next action')
+  .action(async (declaration, opts) => {
+    const result = await proveCommands(declaration, opts.out);
+    console.log(opts.summary ? formatSummary(result) : JSON.stringify(result, null, 2));
+    if (result.verdict !== 'passed') process.exitCode = result.verdict === 'failed' ? 1 : 2;
+  });
+
+program.command('command-demonstrate').description('Verify declared command mode, then record a matching narrated walkthrough with live replays')
+  .argument('<plan>', 'JSON recording plan referencing a command declaration')
+  .option('-o, --out <dir>', 'private proof and video directory (must not exist)', './.praman/command-video')
+  .option('--summary', 'print only outcome, indexed failures, private evidence and next action')
+  .addOption(new Option('--cut <cut>', 'authored presentation composition').choices(['full', 'short']).default('full'))
+  .action(async (plan, opts) => {
+    const result = await demonstrateCommands(plan, opts.out, opts.cut);
+    console.log(opts.summary ? formatSummary(result) : JSON.stringify(result, null, 2));
+    if (result.verdict !== 'passed' || !result.demoVideo) process.exitCode = result.verdict === 'failed' ? 1 : 2;
+  });
+
+program.command('preview').description('Execute and inspect a browser story without speech, movies or proof')
+  .argument('<scenario>').requiredOption('-o, --out <dir>', 'fresh private preview directory')
+  .addOption(new Option('--cut <cut>', 'authored presentation composition').choices(['full', 'short']).default('full'))
+  .action(async (scenario, opts) => {
+    const result = await previewChange(scenario, opts.out, opts.cut);
+    console.log(JSON.stringify(result, null, 2));
+    if (result.status !== 'passed') process.exitCode = 2;
+  });
+
+program.command('command-preview').description('Execute and inspect terminal/source scenes without speech, movies or proof')
+  .argument('<plan>').requiredOption('-o, --out <dir>', 'fresh private preview directory')
+  .addOption(new Option('--cut <cut>', 'authored presentation composition').choices(['full', 'short']).default('full'))
+  .action(async (plan, opts) => {
+    const result = await previewCommands(plan, opts.out, opts.cut);
+    console.log(JSON.stringify(result, null, 2));
+    if (result.status !== 'passed') process.exitCode = 2;
+  });
+
+program.command('scenario-verify').description('Verify browser acceptance, historical repair or comparison without recording')
+  .argument('<scenario>', 'JSON scenario with explicit mode and running application URL(s)')
+  .option('-o, --out <dir>', 'private proof directory (must be fresh)', './.praman/scenario-proof')
+  .option('--summary', 'print only outcome, indexed failures, private evidence and next action')
+  .action(async (scenario, opts) => {
+    const spec = loadChangeSpec(scenario);
+    const result = safeFeedbackValue(await proveChange(spec, path.resolve(opts.out)), spec);
+    console.log(opts.summary ? formatSummary(result) : JSON.stringify(result, null, 2));
+    if (result.verdict !== 'passed') process.exitCode = result.verdict === 'failed' ? 1 : 2;
+  });
+
+program.command('demonstrate')
+  .description('Verify the declared mode, then record a matching authored live walkthrough')
+  .argument('<scenario>', 'JSON scenario with running application URL(s) and a mode-appropriate story')
+  .option('-o, --out <dir>', 'private proof and demo output directory', './.praman/change-report')
+  .option('--summary', 'print only outcome, indexed failures, private evidence and next action')
+  .addOption(new Option('--cut <cut>', 'authored presentation composition').choices(['full', 'short']).default('full'))
+  .action(async (scenario, opts) => {
+    const spec = loadChangeSpec(scenario);
+    if (!opts.summary) console.log(`PRAMAN: verifying ${spec.mode} before any demo recording...`);
+    const res = safeFeedbackValue(await demonstrateChange(spec, path.resolve(opts.out), undefined, opts.cut), spec);
+    if (opts.summary) console.log(formatSummary(res));
+    else {
+    console.log('Proof:', res.proof.verdict, '—', res.proof.reason);
+    console.log('Outcome:', res.verdict);
+    console.log('Report:', res.report);
+    console.log('Feedback:', JSON.stringify(res.feedback, null, 2));
+    console.log('Diagnostics:', JSON.stringify(res.diagnostics));
+    console.log('Feedback artifact:', res.feedbackPath);
+    console.log('Live walkthrough:', res.demoVideo ?? '(blocked or unavailable)');
+    if (res.recordingError) console.error('Recording error:', res.recordingError);
+    }
+    if (res.verdict !== 'passed' || !res.demoVideo) process.exitCode = res.verdict === 'insufficient_evidence' ? 2 : 1;
+  });
+
+program.command('mcp')
+  .description('Start PRAMAN MCP server')
+  .action(async () => {
+    const { startMcp } = await import('./mcp/server.js');
+    await startMcp();
+  });
+
+program.command('service-replay').description('Replay declared HTTP simulator checks (not application or historical repair proof)')
+  .argument('<declaration>', 'JSON authored replay declaration')
+  .requiredOption('-o, --out <dir>', 'fresh private evidence directory')
+  .action(async (file, opts) => {
+    const result = await replayService(file, opts.out);
+    console.log(JSON.stringify(result, null, 2));
+    if (result.verdict !== 'passed') process.exitCode = result.verdict === 'failed' ? 1 : 2;
+  });
+
+program.command('workflow-replay').description('Execute a trusted application command with explicit state reset against an isolated declared dependency')
+  .argument('<declaration>').requiredOption('-o, --out <dir>', 'fresh private evidence directory')
+  .action(async (file, opts) => {
+    const result = await replayWorkflow(file, opts.out);
+    console.log(JSON.stringify(result, null, 2));
+    if (result.verdict !== 'passed') process.exitCode = result.verdict === 'failed' ? 1 : 2;
+  });
+
+program.command('coverage-review').description('Review declared command/HTTP workflow coverage and model-only candidate stimuli; not whole-app proof')
+  .argument('<declaration>').requiredOption('-o, --out <dir>', 'fresh private coverage directory')
+  .action(async (file, opts) => {
+    const result = await reviewCoverage(file, opts.out);
+    console.log(JSON.stringify(result, null, 2));
+    if (result.verdict !== 'passed') process.exitCode = result.verdict === 'failed' ? 1 : 2;
+  });
+
+program.command('workflow-campaign').description('Run count- or duration-bounded isolated command/HTTP campaigns, drain active workflows and combine evidence; not a sandbox')
+  .argument('<declaration>').requiredOption('-o, --out <dir>', 'fresh private campaign directory')
+  .option('--durable', 'persist a count-based isolated queue; orderly interruption can be resumed locally')
+  .action(async (file, opts) => {
+    const result = opts.durable ? await withCampaignStop(signal => startDurableCampaign(file, opts.out, signal)) : await runCampaign(file, opts.out);
+    console.log(JSON.stringify(result, null, 2));
+    if (result.verdict !== 'passed') process.exitCode = result.verdict === 'failed' ? 1 : 2;
+  });
+
+program.command('campaign-resume').description('Resume pending local durable jobs without rerunning completed or uncertain work')
+  .argument('<directory>', 'existing durable session directory')
+  .action(async directory => {
+    const result = await withCampaignStop(signal => resumeDurableCampaign(directory, signal));
+    console.log(JSON.stringify(result, null, 2));
+    if (result.verdict !== 'passed') process.exitCode = result.verdict === 'failed' ? 1 : 2;
+  });
+
+program.command('agent-campaign').description('Run bounded parallel agents selecting only trusted command/HTTP workflows with independent authored expectations')
+  .argument('<declaration>').requiredOption('-o, --out <dir>', 'fresh private agent campaign directory')
+  .action(async (file, opts) => {
+    const result = await withCampaignStop(signal => runAgentCampaign(file, opts.out, signal));
+    console.log(JSON.stringify(result, null, 2));
+    if (result.verdict !== 'passed') process.exitCode = result.verdict === 'failed' ? 1 : 2;
+  });
+
+program.command('service').description('Run a declared stateful HTTP test service (not application proof)')
+  .argument('<declaration>', 'JSON service declaration')
+  .option('--port <port>', 'loopback port', '9000')
+  .option('--restore <file>', 'restore a matching service snapshot before listening')
+  .option('--save <file>', 'save service state on SIGINT/SIGTERM before closing')
+  .action((file, opts) => {
+    const port = Number(opts.port);
+    if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error('Invalid service port');
+    const service = startService({
+      port,
+      declaration: JSON.parse(readFileSync(file, 'utf8')),
+      restore: opts.restore ? JSON.parse(readFileSync(opts.restore, 'utf8')) : undefined,
+    });
+    service.server.on('listening', () => console.log(JSON.stringify({ simulated: true, address: service.server.address() })));
+    service.server.on('error', error => { console.error(error.message); process.exitCode = 1; });
+    const stop = () => {
+      try { if (opts.save) service.save(opts.save); }
+      catch (error) { console.error(error); process.exitCode = 1; }
+      service.server.close();
+    };
+    process.once('SIGINT', stop);
+    process.once('SIGTERM', stop);
+  });
+
+program.command('case-from-trace').description('Reconstruct an executable workflow from complete PRAMAN workflow capture; legacy spans are insufficient')
+  .argument('<tracePath>').argument('<name>').requiredOption('-o, --out <dir>', 'fresh private case directory')
+  .action((tracePath, name, opts) => {
+    const result = reconstructWorkflow(tracePath, opts.out, name);
+    console.log(JSON.stringify(result, null, 2));
+    if (result.verdict !== 'passed') process.exitCode = 2;
+  });
+
+program.parse();

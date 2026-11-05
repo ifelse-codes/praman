@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // Root tsconfig scopes rootDir to src for emit; test typechecking includes tests/, so widen it here.
+    "rootDir": ".",
+    "noEmit": true,
+    // Tests run on the Node >=22.5 floor (see package.json engines); Promise.withResolvers is ES2024.
+    "lib": ["ES2024"],
+    "types": ["node"]
+  },
+  "include": ["src/**/*.ts", "tests/**/*.ts"]
+}

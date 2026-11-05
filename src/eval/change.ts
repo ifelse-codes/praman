@@ -1,0 +1,278 @@
+import { createHash } from 'node:crypto';
+import { setTimeout as delay } from 'node:timers/promises';
+import { mkdirSync, writeFileSync, existsSync, readFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+import { chromium, type Browser, type Request } from 'playwright';
+import { changeSpecSchema, type ChangeSpec, type ChangeProof, type ScenarioRun, type ScenarioOptions, type CheckEvidence } from '../case/change.js';
+import type { Verdict } from './eval.js';
+import { z } from 'zod';
+import { saveFeedback, type FeedbackContext } from '../review/feedback.js';
+import { captureIdentity, identityComplete, identityScope, sameIdentity } from './identity.js';
+
+const imageObservation = z.object({ src: z.string().nullable(), currentSrc: z.string(), complete: z.boolean(), width: z.number(), height: z.number() });
+
+export function hashSpec(spec: ChangeSpec): string {
+  return createHash('sha256').update(JSON.stringify(changeSpecSchema.parse(spec))).digest('hex');
+}
+
+/** Include actual runner/browser files and authored local scenario inputs, never inferred imports. */
+export function captureScenarioIdentity(spec: ChangeSpec) {
+  return captureIdentity({
+    files: [...(spec.identity?.files ?? []), ...spec.steps.filter(step => step.action === 'upload').map(step => ({ role: 'input' as const, path: step.path })), ...(spec.diffPath ? [{ role: 'input' as const, path: spec.diffPath }] : [])],
+    tools: spec.identity?.tools ?? [],
+  }, { cwd: process.cwd(), browser: chromium.executablePath(), harness: import.meta.url });
+}
+export function assessProof(spec: ChangeSpec, before: ScenarioRun | undefined, after: ScenarioRun[]): { verdict: Verdict; reason: string } {
+  const declared = new Set(spec.checks.map(check => check.id));
+  const runs = [...(before ? [before] : []), ...after];
+  if (!declared.size || after.length !== spec.repeats || (spec.mode === 'acceptance' ? before !== undefined : !before || before.url !== spec.beforeUrl) || after.some(run => run.url !== spec.afterUrl)) {
+    return { verdict: 'insufficient_evidence', reason: 'Missing acceptance checks, version evidence, or repeated current-version runs.' };
+  }
+  for (const run of runs) {
+    if (!sameIdentity(run.identityBefore, run.identityAfter) || !sameIdentity(runs[0]?.identityBefore, run.identityBefore)) {
+      return { verdict: 'insufficient_evidence', reason: 'Declared browser execution identity is unavailable or changed between verification boundaries.' };
+    }
+    if (run.error || run.checks.length !== declared.size || new Set(run.checks.map(check => check.id)).size !== declared.size
+      || run.checks.some(check => !declared.has(check.id) || !['passed', 'failed'].includes(check.verdict)
+        || !check.screenshot || !existsSync(check.screenshot) || !Object.hasOwn(check, 'observed')) || !['passed', 'failed'].includes(run.verdict)) {
+      return { verdict: 'insufficient_evidence', reason: 'An action/check was unavailable, unexecuted, or lacks observed evidence.' };
+    }
+  }
+  if (after.some(run => run.verdict !== 'passed' || run.checks.some(check => check.verdict !== 'passed'))) {
+    return { verdict: 'failed', reason: 'The current version fails a declared requirement.' };
+  }
+  if (spec.mode === 'acceptance') return { verdict: 'passed', reason: `Declared current requirements passed in ${spec.repeats} isolated runs. No baseline or repair claim.` };
+  if (spec.mode === 'comparison') return { verdict: 'passed', reason: `Complete ${spec.baselineKind} baseline comparison; repeated current requirements passed. Baseline need not fail; no historical repair claim.` };
+  if (!before || spec.baselineKind !== 'historical') return { verdict: 'insufficient_evidence', reason: 'Repair requires a caller-declared historical baseline.' };
+  const regression = before.checks.find(check => check.id === spec.regressionCheck);
+  if (regression?.verdict !== 'failed') return { verdict: 'insufficient_evidence', reason: 'The named regression was not reproduced on the previous version.' };
+  if (before.checks.some(check => check.id !== spec.regressionCheck && check.verdict !== 'passed')) {
+    return { verdict: 'insufficient_evidence', reason: 'Previous-version evidence contains failures beyond the named regression.' };
+  }
+  return { verdict: 'passed', reason: `Previous regression reproduced; all declared checks passed in ${spec.repeats} isolated current-version runs. Recording may now begin.` };
+}
+
+export async function executeScenario(spec: ChangeSpec, url: string, outDir: string, options: ScenarioOptions = {}): Promise<ScenarioRun> {
+  mkdirSync(outDir, { recursive: true, mode: 0o700 });
+  const identityBefore = captureScenarioIdentity(spec);
+  const result: ScenarioRun = { url, verdict: 'not_executed', checks: [], screenshots: [], completedSteps: 0, identityBefore };
+  let browser: Browser | undefined;
+  try {
+    if (!identityComplete(identityBefore) || options.expectedIdentity && !sameIdentity(options.expectedIdentity, identityBefore)) throw new Error('Declared browser execution identity is unavailable or changed before replay.');
+    // Explicit launch selects the binary whose bytes are recorded, not Playwright's implicit headless-shell choice.
+    browser = await chromium.launch({ headless: true, executablePath: identityBefore.entries.find(entry => entry.role === 'browser')!.path! });
+    if (options.storageState) result.initialStorageState = { path: resolve(options.storageState), sha256: createHash('sha256').update(readFileSync(options.storageState)).digest('hex') };
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 }, serviceWorkers: spec.checks.some(check => check.kind === 'network') ? 'block' : 'allow',
+      ...(options.storageState ? { storageState: options.storageState } : {}),
+      ...(options.record ? { recordVideo: { dir: outDir, size: { width: 1280, height: 720 } } } : {}) });
+    if (options.record) result.recordingStartedAt = Date.now();
+    const page = await ctx.newPage();
+    page.setDefaultTimeout(3000);
+    const errors: string[] = [];
+    page.on('pageerror', error => errors.push(error.message));
+    type NetworkRow = { url: string; method: string; resource: string; started: number; status?: number; statusAt?: number; error?: string; failedAt?: number; body?: string };
+    const network: NetworkRow[] = [];
+    const requests = new Map<Request, NetworkRow>();
+    const windows = new Map<string, { start: number; end?: number }>();
+    let overflow = false;
+    const responseBodies: Promise<void>[] = [];
+    ctx.on('request', request => {
+      if (network.length >= 10000) { overflow = true; return; }
+      const row: NetworkRow = { url: request.url(), method: request.method(), resource: request.resourceType(), started: performance.now() };
+      network.push(row);
+      requests.set(request, row);
+    });
+    ctx.on('response', response => {
+      const row = requests.get(response.request());
+      if (!row) return;
+      row.status = response.status();
+      row.statusAt = performance.now();
+      if (!response.ok() && new URL(response.url()).pathname === '/_next/image') {
+        responseBodies.push(response.text().then(body => { row.body = body.slice(0, 2048); }, error => { row.body = `Unavailable: ${error}`; }));
+      }
+    });
+    ctx.on('requestfailed', request => {
+      const row = requests.get(request);
+      if (row) { row.error = request.failure()?.errorText; row.failedAt = performance.now(); }
+    });
+    const origin = new URL(url).origin;
+    await page.route('**/*', route => {
+      const request = route.request();
+      if (request.isNavigationRequest() && request.frame() === page.mainFrame() && new URL(request.url()).origin !== origin) return route.abort();
+      return route.continue();
+    });
+    async function runChecks(checks: ChangeSpec['checks']) {
+      for (const check of checks) {
+        const expected = check.kind === 'visible' && options.version === 'before' && check.beforeEquals !== undefined ? check.beforeEquals : check.equals;
+        const row: CheckEvidence = { id: check.id, verdict: 'not_executed', expected, evidence: '', ...(check.afterStep === undefined ? {} : { afterStep: check.afterStep }) };
+        try {
+          if (check.kind === 'network') {
+            row.afterStep = check.window.throughStep;
+            const window = windows.get(check.id);
+            if (!window || window.end === undefined || overflow || page.isClosed()) throw new Error('Network observation window unavailable or capture exceeded 10000 requests.');
+            const pattern = new RegExp(check.match.urlPattern);
+            const candidates = network.filter(request => request.started >= window.start && request.started <= window.end!
+              && pattern.test(request.url) && (check.match.method === undefined || request.method === check.match.method));
+            const known = (request: NetworkRow) => request.statusAt !== undefined && request.statusAt <= window.end!;
+            const matched = candidates.filter(request => check.match.status === undefined || known(request) && request.status === check.match.status);
+            row.evidence = JSON.stringify({ window, match: check.match, requests: candidates.map(request => ({
+              url: request.url, method: request.method, started: request.started,
+              ...(known(request) ? { status: request.status } : {}),
+              ...(request.failedAt !== undefined && request.failedAt <= window.end! ? { error: request.error } : {}),
+            })) });
+            if (check.match.status !== undefined && candidates.some(request => !known(request) && !(request.failedAt !== undefined && request.failedAt <= window.end!))) throw new Error(`Status unavailable at observation deadline; ${row.evidence}`);
+            row.observed = matched.length;
+          } else if (check.kind === 'pageErrors') {
+            row.observed = errors.length;
+          } else if (check.kind === 'json') {
+            const target = new URL(check.path, url);
+            if (target.origin !== origin) throw new Error('JSON check left the app origin');
+            const response = await ctx.request.get(target.href, { timeout: 5000, maxRedirects: 0 });
+            if (!response.ok()) throw new Error(`JSON endpoint returned HTTP ${response.status()}`);
+            let value: unknown = await response.json();
+            for (const part of check.field) {
+              if (value === null || typeof value !== 'object' || !Object.hasOwn(value, part)) throw new Error(`Missing JSON field ${check.field.join('.')}`);
+              value = Reflect.get(value, part);
+            }
+            row.observed = value;
+          } else {
+            const locator = page.locator(check.selector);
+            if (check.kind === 'visible') {
+              const until = Date.now() + 1500;
+              do {
+                row.observed = await locator.isVisible();
+                if (row.observed === expected || Date.now() >= until) break;
+                await page.waitForTimeout(50);
+              } while (true);
+            } else if (check.kind === 'image') {
+              await locator.waitFor({ state: 'visible', timeout: 5000 });
+              const until = Date.now() + 5000;
+              let image;
+              do {
+                image = imageObservation.parse(await locator.evaluate(element => {
+                  if (element.tagName !== 'IMG') throw new Error('Image check requires an actual img element');
+                  return { src: element.getAttribute('src'), currentSrc: element.currentSrc, complete: element.complete, width: element.naturalWidth, height: element.naturalHeight };
+                }));
+                row.observed = image.complete && image.width > 0 && image.height > 0;
+                if (row.observed || image.complete || Date.now() >= until) break;
+                await page.waitForTimeout(100);
+              } while (true);
+              row.evidence = JSON.stringify(image);
+            }
+            else {
+              await locator.waitFor({ state: 'attached', timeout: 1500 });
+              // Wait for asynchronous UI updates, but retain an actual mismatch on the old version.
+              const until = Date.now() + 1500;
+              do {
+                if (check.kind === 'attribute') row.observed = await locator.getAttribute(check.name);
+                else if (check.kind === 'class') row.observed = await locator.evaluate((element, token) => element.classList.contains(token), check.token);
+                else if (check.kind === 'state') row.observed = check.state === 'hidden' ? await locator.isHidden()
+                  : check.state === 'enabled' ? await locator.isEnabled() : await locator.isChecked();
+                else row.observed = check.kind === 'value' ? await locator.inputValue() : await locator.innerText();
+                if (row.observed === check.equals || Date.now() >= until) break;
+                await page.waitForTimeout(50);
+              } while (true);
+            }
+          }
+          row.verdict = row.observed === expected ? 'passed' : 'failed';
+          row.evidence = `Expected ${JSON.stringify(expected)}; observed ${JSON.stringify(row.observed)}; ${row.evidence}`
+            + (check.kind === 'pageErrors' ? `; runtime errors: ${JSON.stringify(errors)}` : '');
+        } catch (error) {
+          row.verdict = 'insufficient_evidence';
+          row.evidence = error instanceof Error ? error.message : String(error);
+        }
+        const screenshot = join(outDir, `check-${result.checks.length + 1}.png`);
+        await page.screenshot({ path: screenshot, animations: 'disabled' });
+        row.screenshot = screenshot;
+        result.screenshots.push(screenshot);
+        result.checks.push(row);
+      }
+    }
+    try {
+      const initial = await page.goto(url, { waitUntil: 'networkidle', timeout: 10000 });
+      if (!initial?.ok()) throw new Error(`App navigation returned ${initial?.status() ?? 'no response'}`);
+      for (const [i, step] of spec.steps.entries()) {
+        result.failedStep = i;
+        await options.beforeStep?.(page, step, i);
+        for (const check of spec.checks) if (check.kind === 'network' && check.window.fromStep === i) windows.set(check.id, { start: performance.now() });
+        if (step.action === 'goto') {
+          const next = new URL(step.path, url);
+          if (next.origin !== origin) throw new Error('Workflow navigation left the app origin');
+          const response = await page.goto(next.href, { waitUntil: 'networkidle', timeout: 10000 });
+          if (!response?.ok()) throw new Error(`Step ${i + 1} navigation failed`);
+        } else if (step.action === 'waitForURL') {
+          await page.waitForURL(new URL(step.path, url).href, { timeout: 15_000 });
+        } else {
+          const locator = page.locator(step.selector);
+          if (step.action === 'click') await locator.click();
+          else if (step.action === 'hover') await locator.hover();
+          else if (step.action === 'fill') await locator.fill(step.value);
+          else if (step.action === 'upload') {
+            await locator.setInputFiles(step.path);
+            if (step.completionSelector) await page.locator(step.completionSelector).waitFor({ state: 'visible', timeout: 15_000 });
+          }
+          else if (step.action === 'waitFor') await locator.waitFor({ state: 'visible', timeout: 15_000 });
+          else await locator.press(step.key);
+        }
+        const actionEnded = performance.now();
+        const closing = spec.checks.filter(check => check.kind === 'network' && check.window.throughStep === i);
+        for (const check of closing) if (check.kind === 'network') windows.get(check.id)!.end = actionEnded + check.window.settleMs;
+        const settleMs = Math.max(0, ...closing.map(check => check.kind === 'network' ? check.window.settleMs : 0));
+        if (settleMs) await delay(settleMs);
+        await runChecks(spec.checks.filter(check => check.kind === 'network' ? check.window.throughStep === i : check.afterStep === i));
+        await options.afterStep?.(page, step, i);
+        result.completedSteps = i + 1;
+        delete result.failedStep;
+      }
+      await runChecks(spec.checks.filter(check => check.kind !== 'network' && check.afterStep === undefined));
+      if (errors.length && !spec.checks.some(check => check.kind === 'pageErrors')) throw new Error(`Unasserted app runtime errors: ${errors.join('; ')}`);
+      result.verdict = result.checks.some(check => check.verdict === 'insufficient_evidence') ? 'insufficient_evidence'
+        : result.checks.some(check => check.verdict === 'failed') ? 'failed' : result.checks.length ? 'passed' : 'not_executed';
+      const errorCount = errors.length;
+      await options.afterChecks?.(page, result.checks);
+      if (errors.length !== errorCount) throw new Error(`Additional runtime errors during recording: ${errors.slice(errorCount).join('; ')}`);
+    } catch (error) {
+      result.verdict = 'insufficient_evidence';
+      result.error = error instanceof Error ? error.message : String(error);
+    }
+    const videoHandle = page.video();
+    if (options.record) result.recordingEndedAt = Date.now();
+    await Promise.all(responseBodies);
+    writeFileSync(join(outDir, 'network.json'), JSON.stringify(network, null, 2), { mode: 0o600 });
+    await ctx.close();
+    if (videoHandle) result.video = await videoHandle.path();
+  } catch (error) {
+    result.verdict = 'insufficient_evidence';
+    result.error = error instanceof Error ? error.message : String(error);
+  } finally {
+    await browser?.close();
+    result.identityAfter = captureScenarioIdentity(spec);
+    if (!sameIdentity(identityBefore, result.identityAfter)) {
+      result.verdict = 'insufficient_evidence';
+      result.error ??= 'Declared browser execution identity changed or became unavailable during execution.';
+    }
+  }
+  writeFileSync(join(outDir, 'result.json'), JSON.stringify(result, null, 2), { mode: 0o600 });
+  return result;
+}
+
+export async function proveChange(input: ChangeSpec, outDir: string, context?: FeedbackContext) {
+  const spec = changeSpecSchema.parse(input);
+  mkdirSync(outDir, { recursive: true, mode: 0o700 });
+  if (existsSync(join(outDir, 'scenario.json')) || existsSync(join(outDir, 'proof.json'))) throw new Error('Proof output directory already contains a run; choose a fresh directory.');
+  writeFileSync(join(outDir, 'scenario.json'), JSON.stringify(spec, null, 2), { mode: 0o600 });
+  async function run(url: string, directory: string, version: 'before' | 'current'): Promise<ScenarioRun> {
+    try { return await executeScenario(spec, url, directory, { version }); }
+    catch (error) {
+      return { url, verdict: 'insufficient_evidence', checks: [], screenshots: [], error: error instanceof Error ? error.message : String(error) };
+    }
+  }
+  const before = spec.mode === 'acceptance' ? undefined : await run(spec.beforeUrl!, join(outDir, 'before'), 'before');
+  const after: ScenarioRun[] = [];
+  for (let i = 0; i < spec.repeats; i++) after.push(await run(spec.afterUrl, join(outDir, `after-${i + 1}`), 'current'));
+  const proof: ChangeProof = { mode: spec.mode, baselineKind: spec.baselineKind, specHash: hashSpec(spec), verifiedAt: new Date().toISOString(),
+    scope: `Only the declared scenario and requirements; not whole-application correctness. URLs identify targets, not source/build provenance. Baseline kind is caller-declared, not independently authenticated history. ${identityScope}`,
+    ...assessProof(spec, before, after), ...(before ? { before } : {}), after };
+  writeFileSync(join(outDir, 'proof.json'), JSON.stringify(proof, null, 2), { mode: 0o600 });
+  return { verdict: proof.verdict, proof, ...saveFeedback(spec, proof, outDir, context) };
+}

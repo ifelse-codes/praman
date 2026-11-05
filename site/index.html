@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRAMAN — evidence before you ship</title>
+<style>
+:root{--ink:#122033;--muted:#5b6b7f;--line:#e3e8ef;--bg:#f6f8fb;--card:#fff;--blue:#0b5fff;--green:#0f7b4f;--amber:#9a5b00;--red:#b3261e}
+*{box-sizing:border-box}html,body{margin:0;padding:0}
+body{font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased}
+a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+header{background:linear-gradient(130deg,#062a63,#0b5fff 60%,#1f7aff);color:#fff;padding:56px 0 46px}
+header .kicker{text-transform:uppercase;letter-spacing:.14em;font-size:12px;color:#cfe0ff;margin:0 0 10px}
+header h1{font-size:46px;line-height:1.1;margin:0 0 10px;letter-spacing:-1px}
+header h1 span{opacity:.65;font-weight:400}
+header p.lead{font-size:19px;max-width:760px;margin:0;color:#e8f1ff}
+header .tags{margin-top:22px;display:flex;gap:8px;flex-wrap:wrap}
+.tag{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.35);border-radius:999px;padding:4px 12px;font-size:12.5px;font-weight:600}
+section{padding:44px 0}section h2{font-size:13px;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);margin:0 0 14px}
+section h3{font-size:26px;margin:0 0 10px;letter-spacing:-.4px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.grid2{display:grid;grid-template-columns:1.15fr .85fr;gap:18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px}
+.card h4{margin:0 0 6px;font-size:16px}.card p{margin:0;color:var(--muted);font-size:14.5px}
+.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-top:8px}
+.stat{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.stat .v{font-size:26px;font-weight:750;letter-spacing:-.6px}.stat .k{font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-top:2px}
+.stat.g .v{color:var(--green)}.stat.b .v{color:var(--blue)}
+pre{background:#0d1726;color:#e6edf7;border-radius:12px;padding:18px 20px;overflow:auto;font-size:13.5px;line-height:1.55;margin:0}
+pre .c{color:#7d93b2}
+.steps{list-style:none;padding:0;margin:0;counter-reset:s}.steps li{position:relative;padding:0 0 14px 38px;color:var(--muted);font-size:14.5px}
+.steps li:before{counter-increment:s;content:counter(s);position:absolute;left:0;top:-2px;width:26px;height:26px;border-radius:50%;background:#e7efff;color:var(--blue);font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center}
+.steps b{color:var(--ink)}
+.video{background:#0d1726;border-radius:14px;padding:26px;color:#cfe0ff;display:flex;gap:18px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.video .icon{width:46px;height:46px;border-radius:50%;background:#1f7aff;display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;flex:none}
+.video b{color:#fff;font-size:16px}.video p{margin:2px 0 0;font-size:13.5px;color:#a9c1e0}
+.limits li{margin:6px 0;color:var(--muted);font-size:14.5px}.limits b{color:var(--ink)}
+.note{background:#fff8e6;border:1px solid #f2d99b;border-radius:12px;padding:12px 16px;font-size:13.5px;color:#6b4a00}
+footer{border-top:1px solid var(--line);padding:24px 0 40px;color:var(--muted);font-size:12.5px;display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap}
+@media(max-width:900px){.grid3{grid-template-columns:1fr}.grid2{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}header h1{font-size:34px}}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+<p class="kicker">Kiroween 2026 · Category: Frankenstein</p>
+<h1>PRAMAN <span>/ प्रमाण — evidence</span></h1>
+<p class="lead">AI writes the code. PRAMAN checks that it actually works — running authored browser and command checks against real software, applying strict proof gates, and returning evidence instead of a confident summary.</p>
+<div class="tags"><span class="tag">CLI + stdio MCP</span><span class="tag">real Chromium &amp; processes</span><span class="tag">honest verdicts</span><span class="tag">MIT</span></div>
+</div></header>
+
+<section><div class="wrap">
+<h2>The problem</h2>
+<h3>Writing code is no longer the bottleneck. Proving it works is.</h3>
+<p style="color:var(--muted);max-width:780px;margin:0">A clean build, a passing unit test and a confident AI summary can all hide a broken screen, a wrong value, or a fix that only removes the symptom. Agents need somewhere to exercise the software and a way to bring back evidence.</p>
+</div></section>
+
+<section style="padding-top:0"><div class="wrap">
+<div class="grid3">
+<div class="card"><h4>The agent writes</h4><p>Claude Code, Codex, OpenCode, Cursor or Kiro implements and repairs the software, using its own tools and models.</p></div>
+<div class="card"><h4>PRAMAN executes</h4><p>Authored browser scenarios and trusted command declarations run in fresh sessions against the real app, with declared requirements checked.</p></div>
+<div class="card"><h4>Evidence comes back</h4><p>Passed, failed or insufficient evidence — with proof/spec hashes, screenshots, outputs and a report an agent can act on.</p></div>
+</div></div></section>
+
+<section><div class="wrap">
+<h2>What was verified</h2>
+<div class="stats">
+<div class="stat g"><div class="v">190 / 28</div><div class="k">tests / files</div></div>
+<div class="stat g"><div class="v">12 / 12</div><div class="k">CLI + MCP outcomes</div></div>
+<div class="stat b"><div class="v">14</div><div class="k">MCP tools</div></div>
+<div class="stat b"><div class="v">16</div><div class="k">CLI commands</div></div>
+<div class="stat"><div class="v">6</div><div class="k">archived walkthroughs</div></div>
+</div>
+<p style="color:var(--muted);font-size:14px;margin:14px 0 0">Verified on the recorded host: macOS arm64, Node 26. Build, source and test typecheck, the full suite and the public first-use route all pass. The verification refused a real upstream Headlamp crash (<a href="https://github.com/ifelse-codes/praman">issue #8175</a>) and proved the repair with before/current evidence.</p>
+</div></section>
+
+<section style="background:#fff;border-top:1px solid var(--line);border-bottom:1px solid var(--line)"><div class="wrap">
+<div class="grid2">
+<div>
+<h2>Run it</h2>
+<h3>Source, one command at a time</h3>
+<pre><span class="c"># from the public repository</span>
+npm ci
+npm run build
+npx playwright install chromium
+node examples/first-use/run.mjs
+
+<span class="c"># then point it at your own project</span>
+node dist/cli.js scenario-verify scenario.json -o .praman/run
+node dist/cli.js command-verify commands.json -o .praman/run
+</pre>
+</div>
+<div>
+<h2>Interfaces</h2>
+<ol class="steps">
+<li><b>Browser verification</b> — authored steps and checks in real Chromium, 2–10 fresh repeats, screenshots and network evidence.</li>
+<li><b>Command verification</b> — trusted executables with explicit exit, output and bounded artifact expectations.</li>
+<li><b>Three modes</b> — acceptance, historical repair and explicit comparison. Missing evidence is never green.</li>
+<li><b>MCP server</b> — the same engines over stdio, so a coding agent can ask for evidence.</li>
+</ol>
+</div>
+</div></div></section>
+
+<section><div class="wrap">
+<h2>Watch the walkthrough</h2>
+<div class="video"><div style="display:flex;gap:16px;align-items:center"><div class="icon">▶</div><div><b>Under 3 minutes: the trust gap, PRAMAN in action, and a real repair</b><p>Public YouTube link goes here: <span style="color:#fff">DEMO_VIDEO_URL</span></p></div></div><div style="font-size:12.5px;color:#a9c1e0">Kiroween submission · demo video</div></div>
+<div class="note" style="margin-top:14px"><b>Repository:</b> <a href="https://github.com/ifelse-codes/praman">github.com/ifelse-codes/praman</a>. The demo video link is a placeholder until recording and upload are complete.</div>
+</div></section>
+
+<section style="background:#fff;border-top:1px solid var(--line)"><div class="wrap">
+<h2>How Kiro was used</h2>
+<div class="grid2"><div>
+<p style="margin:0;color:var(--muted)">Kiro was genuinely used, but narrowly. One bounded Kiro IDE session (86 minutes, recorded spec session, real tool calls) worked on a Headlamp dry-run feature before the monthly usage limit ended it. An AI coding assistant completed the remaining work and built PRAMAN's core — the write-up says exactly that, and does not claim Kiro built the product.</p>
+</div><div>
+<ul class="limits" style="margin:0">
+<li><b>Spec-first session</b> — Kiro spec artifacts and spec-session mapping are recorded.</li>
+<li><b>Honest attribution</b> — mixed authorship disclosed; PRAMAN core is not Kiro-authored.</li>
+<li><b>Repo artifacts</b> — <span style="font-family:monospace">/.kiro</span> specs, steering, hook and custom agent are tracked in the repository.</li>
+</ul>
+</div></div>
+</div></section>
+
+<section><div class="wrap">
+<h2>Limits — what this is not</h2>
+<ul class="limits">
+<li><b>Not a sandbox.</b> Trusted commands and browser actions run with your user's authority; PRAMAN does not contain hostile code.</li>
+<li><b>Not autonomous test design.</b> Checks are authored; PRAMAN verifies declared requirements, not whole-application correctness.</li>
+<li><b>Not validated off this host.</b> Same-host evidence only so far; CI is configured and independent-machine validation is still pending.</li>
+<li><b>No hosted service.</b> It runs from source; there is no public endpoint and no published package.</li>
+</ul>
+</div></section>
+
+<footer><div class="wrap" style="display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;width:100%"><span>PRAMAN · प्रमाण · MIT license · Kiroween 2026 (Frankenstein)</span><span>Static page by DeepSeek · no hosted execution</span></div></footer>
+</body>
+</html>
