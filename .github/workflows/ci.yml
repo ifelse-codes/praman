@@ -45,11 +45,9 @@ jobs:
         if: runner.os == 'macOS'
         run: npx playwright install chromium
       - name: Test
-        # The suite runs real Chromium, ffmpeg and subprocesses. Bound parallelism:
-        # macOS runners starved at two workers and hit per-test ceilings.
-        env:
-          CI_WORKERS: ${{ runner.os == 'macOS' && '1' || '2' }}
-        run: npm test -- --maxWorkers=$CI_WORKERS
+        # Real Chromium/ffmpeg/subprocess suites share the runner; single-worker keeps
+        # campaign timing deterministic (parallel runs produced host-dependent flake).
+        run: npm test -- --maxWorkers=1
       - name: First-use judge route (Linux)
         if: runner.os == 'Linux'
         # Proves the documented TESTING.md route on a clean CI runner.
