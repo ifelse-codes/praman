@@ -13,10 +13,11 @@ validation have not occurred. Follow [first use](first-use.md) to use the curren
 
 ### Current candidate (2026-11-05, post-cleanup)
 
-The current candidate was rebuilt from the cleaned checkout. Its SHA-256 and member
-count are recorded in [`release-identity.json`](../release-identity.json), which is
-deliberately **not** included in the candidate (so rebuilding from the same commit
-reproduces the same bytes).
+The current candidate is rebuilt from the cleaned checkout with the deterministic
+procedure below. [`release-identity.json`](../release-identity.json) documents the
+procedure and is deliberately **not** included in the candidate, so packaging the same
+tree reproduces the same archive bytes; no universal hash is asserted because
+documentation can change between builds.
 
 It contains source, tests, product docs, the first-use example, the CI workflow and
 the deterministic packaging script; it excludes `.praman`, node_modules, dist,
@@ -27,7 +28,7 @@ not a download URL and not published.
 CI is added as `.github/workflows/ci.yml` (Ubuntu + macOS, Node 22): lint,
 test-typecheck, build, Chromium and the full suite (two workers). Locally the suite
 passes **190 tests / 28 files** in a single-worker run, and the public repository's
-CI is green on Ubuntu and macOS (run 42014191366; each runner: 174 passed, 16
+CI is green on Ubuntu and macOS (run 42016072422; each runner: 174 passed, 16
 environment-guarded skips). The static project page deploys from the same repository.
 
 The earlier remediated candidate and its receipts were moved to the external archive

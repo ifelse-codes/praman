@@ -3,7 +3,7 @@
 Status (2026-11-05): **published.** Public repository
 https://github.com/ifelse-codes/praman exists under the owner GitHub identity
 (masked noreply email, single squashed commit); CI is green on Ubuntu and macOS
-(run 42014191366); the static project page is live at
+(run 42016072422); the static project page is live at
 https://ifelse-codes.github.io/praman/. The remaining steps are the video and the
 Devpost submission. Do not publish raw evidence or the external archive.
 
@@ -57,9 +57,10 @@ shasum -a 256 /tmp/praman-source-final.tar.gz
 tar -tzf /tmp/praman-source-final.tar.gz | wc -l
 ```
 
-Update `release-identity.json` with the new SHA-256, member count and commit id.
-That file is not included in the candidate, so the same commit reproduces the same
-hash. Re-scan the extracted candidate for personal data before sharing it.
+If you want to record a per-build identity, note the SHA-256 and member count in a
+private release note; `release-identity.json` is procedural and excluded from the
+candidate so no stale hash is published. Re-scan the extracted candidate for personal
+data before sharing it.
 
 ## 5. Submission artifacts
 

@@ -22,7 +22,7 @@ general simulator and not a sandbox.
 - **First use:** `node examples/first-use/run.mjs` → **12/12** expected CLI/MCP
   outcomes (pass / mismatch / unavailable for command and browser), exit codes 0/1/2.
 - **CI:** green on **Ubuntu and macOS** (Node 22) — run
-  https://github.com/ifelse-codes/praman/actions/runs/42014191366. Each runner
+  https://github.com/ifelse-codes/praman/actions/runs/42016072422. Each runner
   reports 27/28 files and 174 passed / 16 skipped of 190 tests; the skips are the
   environment-guarded media/speech suites (no ffmpeg/ffprobe on the runners).
 - **Interfaces:** 16 CLI commands, 14 `praman_*` MCP tools over stdio.
@@ -34,9 +34,10 @@ general simulator and not a sandbox.
 - **Submission copy:** truthful Kiro account (`docs/kiro-usage.md`), ≤3-minute video
   script (`docs/video-script.md`) and submission-ready Devpost draft with the public
   repository URL filled in and a `<DEMO_VIDEO_URL>` placeholder (`docs/devpost-draft.md`).
-- **Release candidate:** rebuilt and sanitized; SHA-256 and member count are pinned in
-  [release-identity.json](../release-identity.json) and reproduce from the same commit;
-  the procedure is in [release validation](release-validation.md).
+- **Release candidate:** rebuilt and sanitized. Packaging is deterministic and the
+  procedure is in [release validation](release-validation.md);
+  [release-identity.json](../release-identity.json) documents the per-build procedure
+  and is excluded from the archive itself.
 - **Submission assets:** captured official rules ([kiroween-rules.md](kiroween-rules.md)),
   truthful Kiro account ([kiro-usage.md](kiro-usage.md)), ≤3-minute video script
   ([video-script.md](video-script.md)), submission-ready Devpost copy

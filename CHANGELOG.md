@@ -50,7 +50,7 @@ Submission snapshot. Same-host verified; not published.
 - PII-free tracked files; MIT license; `npm audit`: 0 known vulnerabilities.
 - Public repository published at github.com/ifelse-codes/praman (MIT, single squashed
   commit under the owner identity); CI green on Ubuntu and macOS
-  (run 42014191366; 174 passed + 16 environment-guarded skips per runner);
+  (run 42016072422; 174 passed + 16 environment-guarded skips per runner);
   static project page deployed at ifelse-codes.github.io/praman/.
 - Submission assets: captured official Kiroween 2026 rules, truthful Kiro usage
   account, <=3 minute video script, submission-ready Devpost copy, blog/social drafts,
