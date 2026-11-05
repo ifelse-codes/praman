@@ -2,8 +2,8 @@
 
 **Status:** final copy for the Kiroween submission. No Devpost submission has been
 made; the assistant never operated the Devpost form, so verify the saved form state
-before publishing. Two clearly marked placeholders must be replaced with real public
-URLs: `https://github.com/ifelse-codes/praman` and `<DEMO_VIDEO_URL>`.
+before publishing. The repository URL is filled in. One placeholder remains:
+`<DEMO_VIDEO_URL>`.
 
 Repo references for maintainers: [Kiro usage write-up](kiro-usage.md),
 [video storyboard](video-script.md), [project status](STATUS.md),
@@ -17,7 +17,7 @@ public URL placeholder for anything readers must open.
 | Project name | Praman |
 | Full product name | PRAMAN (प्रमाण) — "evidence" |
 | Elevator pitch | AI writes the code. Praman checks that it actually works — testing it in realistic environments, finding what breaks, and showing you the evidence before you ship. |
-| Category | **Frankenstein** — stitches browser automation, command execution, authored property/HTTP checks, an MCP server, a CLI and an evidence report into one verification platform. |
+| Category | **Frankenstein** — stitches browser automation, trusted command execution, authored HTTP/state checks, a stdio MCP server, a CLI, a static project page and an evidence report into one verification platform. |
 | Built with | TypeScript, Node.js, Playwright, Zod, Model Context Protocol SDK, Commander, Sharp, node:sqlite, Chromium, FFmpeg, Kiro |
 | Public repository | https://github.com/ifelse-codes/praman (MIT license) |
 | Judge access / testing | https://github.com/ifelse-codes/praman/blob/main/TESTING.md (test build, Codespaces, expected 12/12) |
@@ -102,7 +102,7 @@ The Headlamp run now passes five acceptance checks across three fresh sessions, 
 
 ### What was verified — and what wasn’t
 
-Verified on the recorded same-host environment:
+Verified on the recorded host and in Ubuntu/macOS CI:
 
 - Authored browser verification with real headless Chromium, repeated fresh sessions, screenshots, network and page-error observations.
 - Authored command verification with trusted executables, explicit exit/stdout/artifact expectations, bounded repeats and resolved executable/input identities.
@@ -126,7 +126,7 @@ Explicit limits:
 
 ### What’s next
 
-The environment layer is now part of the product: declaration-selected Docker/kind lifecycles can provision real dependencies, exercise workloads, inject controlled failures, reset and tear down owned resources. That is the direction I described, and it is documented, but it is not yet on the public first-use route and has not been validated outside the same host.
+The environment layer is now part of the product: declaration-selected Docker/kind lifecycles can provision real dependencies, exercise workloads, inject controlled failures, reset and tear down owned resources. That is the direction I described, and it is documented, and it is not part of the verified public first-use route; independent-human validation is still pending.
 
 The next steps are hardening and independent validation: repeat the verified flow on another machine and OS with someone who did not build it, publish a clean source candidate, and keep widening real-target evidence without letting a demo dictate the product’s architecture.
 

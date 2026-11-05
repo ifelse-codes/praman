@@ -71,7 +71,7 @@ footer{border-top:1px solid var(--line);padding:24px 0 40px;color:var(--muted);f
 <div class="stat b"><div class="v">16</div><div class="k">CLI commands</div></div>
 <div class="stat"><div class="v">6</div><div class="k">archived walkthroughs</div></div>
 </div>
-<p style="color:var(--muted);font-size:14px;margin:14px 0 0">Verified on the recorded host: macOS arm64, Node 26. Build, source and test typecheck, the full suite and the public first-use route all pass. The verification refused a real upstream Headlamp crash (<a href="https://github.com/ifelse-codes/praman">issue #8175</a>) and proved the repair with before/current evidence.</p>
+<p style="color:var(--muted);font-size:14px;margin:14px 0 0">Verified on the recorded host: macOS arm64, Node 26. Build, source and test typecheck, the full suite and the public first-use route all pass. The verification reproduced a real upstream Headlamp crash (<a href="https://github.com/kubernetes-sigs/headlamp/issues/8175">issue #8175</a>) and proved the repair with before/current evidence.</p>
 </div></section>
 
 <section style="background:#fff;border-top:1px solid var(--line);border-bottom:1px solid var(--line)"><div class="wrap">
@@ -103,8 +103,8 @@ node dist/cli.js command-verify commands.json -o .praman/run
 
 <section><div class="wrap">
 <h2>Watch the walkthrough</h2>
-<div class="video"><div style="display:flex;gap:16px;align-items:center"><div class="icon">▶</div><div><b>Under 3 minutes: the trust gap, PRAMAN in action, and a real repair</b><p>Public YouTube link goes here: <span style="color:#fff">DEMO_VIDEO_URL</span></p></div></div><div style="font-size:12.5px;color:#a9c1e0">Kiroween submission · demo video</div></div>
-<div class="note" style="margin-top:14px"><b>Repository:</b> <a href="https://github.com/ifelse-codes/praman">github.com/ifelse-codes/praman</a>. The demo video link is a placeholder until recording and upload are complete.</div>
+<div class="video"><div style="display:flex;gap:16px;align-items:center"><div class="icon">▶</div><div><b>Under 3 minutes: the trust gap, PRAMAN in action, and a real repair</b><p>The demo video link will be added here when the recording is published.</p></div></div><div style="font-size:12.5px;color:#a9c1e0">Kiroween submission · demo video</div></div>
+<div class="note" style="margin-top:14px"><b>Repository:</b> <a href="https://github.com/ifelse-codes/praman">github.com/ifelse-codes/praman</a>. <b>Judge testing:</b> open the repository in Codespaces or follow <a href="https://github.com/ifelse-codes/praman/blob/main/TESTING.md">TESTING.md</a> — expected exit 0 with 12/12 CLI and MCP outcomes.</div>
 </div></section>
 
 <section style="background:#fff;border-top:1px solid var(--line)"><div class="wrap">
@@ -125,7 +125,7 @@ node dist/cli.js command-verify commands.json -o .praman/run
 <ul class="limits">
 <li><b>Not a sandbox.</b> Trusted commands and browser actions run with your user's authority; PRAMAN does not contain hostile code.</li>
 <li><b>Not autonomous test design.</b> Checks are authored; PRAMAN verifies declared requirements, not whole-application correctness.</li>
-<li><b>Not validated off this host.</b> Same-host evidence only so far; CI is configured and independent-machine validation is still pending.</li>
+<li><b>Not human-validated yet.</b> Verified on macOS and in Ubuntu/macOS CI; an independent person has not yet run the guide.</li>
 <li><b>No hosted service.</b> It runs from source; there is no public endpoint and no published package.</li>
 </ul>
 </div></section>

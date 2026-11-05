@@ -7,9 +7,10 @@ hermetic toolchain validation; independent-human validation is still pending.
 
 ## Choose the current source
 
-The scoped MVP is complete within the documented same-host boundary. Known
-dependency/license blockers are resolved; publication and independent-machine/OS/user
-validation have not occurred. Follow [first use](first-use.md) to use the current source.
+The scoped MVP is complete and published: public repository with MIT license, green
+CI on Ubuntu and macOS, and judge access through the documented test build. Known
+dependency/license blockers are resolved. Independent-human validation has not
+occurred. Follow [first use](first-use.md) to use the current source.
 
 ### Current candidate (2026-11-05, post-cleanup)
 
@@ -26,10 +27,12 @@ personal email or host path in its text files. The file is a local build artifac
 not a download URL and not published.
 
 CI is added as `.github/workflows/ci.yml` (Ubuntu + macOS, Node 22): lint,
-test-typecheck, build, Chromium and the full suite (two workers). Locally the suite
-passes **190 tests / 28 files** in a single-worker run, and the public repository's
-CI is green on Ubuntu and macOS (run 42016072422; each runner: 174 passed, 16
-environment-guarded skips). The static project page deploys from the same repository.
+test-typecheck, build, Chromium, the full suite (two Linux workers, one macOS worker)
+and the documented first-use route on Linux. Locally the suite passes **190 tests /
+28 files** in a single-worker run; the public repository's CI is green on Ubuntu and
+macOS (run 42018863948; each runner: 174 passed, 16 environment-guarded skips). An
+independent fresh clone of public HEAD `a84788e` reproduced lint, build, 190/190 tests
+and 12/12 first-use outcomes. The static project page deploys from the same repository.
 
 The earlier remediated candidate and its receipts were moved to the external archive
 (see [the cleanup note](ARCHIVE.md)); its recorded SHA-256 was

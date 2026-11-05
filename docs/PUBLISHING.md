@@ -2,10 +2,11 @@
 
 Status (2026-11-05): **published.** Public repository
 https://github.com/ifelse-codes/praman exists under the owner GitHub identity
-(masked noreply email, single squashed commit); CI is green on Ubuntu and macOS
-(run 42016072422); the static project page is live at
-https://ifelse-codes.github.io/praman/. The remaining steps are the video and the
-Devpost submission. Do not publish raw evidence or the external archive.
+(masked noreply email; squashed snapshot of three commits); CI is green on Ubuntu and
+macOS (run 42018863948) and includes the documented judge first-use route; the static
+project page is live at https://ifelse-codes.github.io/praman/. The remaining steps are
+the video and the Devpost submission. Do not publish raw evidence or the external
+archive.
 
 ## 1. Decide Git author identity
 
@@ -15,8 +16,8 @@ author field. The release commits `b0814cd` and later use the neutral identity
 
 Choose one:
 
-- **Recommended — publish a single squashed commit from the current tree**, keeping
-  the original local history private:
+- **Recommended — a squashed public snapshot from the current tree** (already done
+  for this repository; the local private history stays private):
 
   ```sh
   cd /path/to/praman
@@ -45,7 +46,7 @@ Choose one:
 ## 3. Run CI and record the result
 
 The workflow runs on push and pull request: Ubuntu + macOS, Node 22, typecheck,
-test-typecheck, build, Chromium, full suite (two workers). Do not claim a remote CI
+test-typecheck, build, Chromium, full suite (two Linux workers / one macOS worker). Do not claim a remote CI
 result until the run is green; local evidence is a single-worker full-suite pass
 (190 tests / 28 files).
 

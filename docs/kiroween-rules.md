@@ -75,7 +75,7 @@ public repository as the test build, a one-click Codespaces route and explicit
 | Requirement | Status |
 | --- | --- |
 | Category: Frankenstein | Declared in the Devpost draft |
-| Public repo + detectable MIT license | **Pending owner publication** |
+| Public repo + detectable MIT license | Published: github.com/ifelse-codes/praman (MIT) |
 | /.kiro at root, not ignored | Present and tracked |
 | Text description | Draft ready ([devpost-draft.md](devpost-draft.md)) |
 | Video <=3 min on YouTube | Script ready ([video-script.md](video-script.md)); recording pending |

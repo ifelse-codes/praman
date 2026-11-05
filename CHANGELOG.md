@@ -48,10 +48,16 @@ Submission snapshot. Same-host verified; not published.
   dispatch smoke tests; `npm run lint:tests` typechecks the test suite.
 - First-use route: 12/12 expected CLI and MCP outcomes.
 - PII-free tracked files; MIT license; `npm audit`: 0 known vulnerabilities.
-- Public repository published at github.com/ifelse-codes/praman (MIT, single squashed
-  commit under the owner identity); CI green on Ubuntu and macOS
-  (run 42016072422; 174 passed + 16 environment-guarded skips per runner);
-  static project page deployed at ifelse-codes.github.io/praman/.
+- Public repository published at github.com/ifelse-codes/praman (MIT; squashed
+  snapshot of three commits under the owner identity). CI green on Ubuntu and macOS
+  (run 42018863948; 174 passed + 16 environment-guarded skips per runner) and the
+  Linux job also runs the documented first-use judge route. Static project page
+  deployed at ifelse-codes.github.io/praman/.
+- Judge access for evaluation: TESTING.md, a Codespaces devcontainer and a Linux CI
+  first-use step with the expected 12/12 outcomes.
+- Final independent fresh-clone verification of public HEAD a84788e: npm ci, lint,
+  lint:tests, build, 190/190 tests, 12/12 first-use outcomes; deterministic 101-member
+  candidate identity recorded in private archive metadata.
 - Submission assets: captured official Kiroween 2026 rules, truthful Kiro usage
   account, <=3 minute video script, submission-ready Devpost copy, blog/social drafts,
   static project page, platform matrix, push-ready repository script and npm pack
@@ -59,5 +65,6 @@ Submission snapshot. Same-host verified; not published.
 - Independent fresh-clone verification of the release-hardening commit: `npm ci`,
   lint, test-typecheck, build, 190 tests / 28 files, 12/12 first-use outcomes,
   14 MCP tools, no personal data in tracked files.
-- Limits: same host only, no sandbox, authored checks (not autonomous discovery),
-  optional surfaces frozen, raw historical evidence not in the repository.
+- Limits: no sandbox, authored checks (not autonomous discovery), independent-human
+  validation pending, optional surfaces frozen, raw historical evidence not in the
+  repository.

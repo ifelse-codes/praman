@@ -7,7 +7,7 @@ Core loop: Build → Experience → Stimulate → Test → Observe → Review �
 Principles:
 - Never turn missing evidence into a green tick.
 - Distinguish "passed", "not executed", "insufficient evidence".
-- Define business invariants (no duplicate charge, non-negative inventory, completed order has payment).
+- Verify declared requirements from the target project; PRAMAN core carries no application business rules.
 - Reuse existing browser automation, infra, observability; do not rebuild a browser engine or LLM.
 
 Video quality is a product contract, not optional demo polish. Read

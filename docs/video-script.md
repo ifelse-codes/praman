@@ -139,7 +139,7 @@ autonomous discovery* · *Same-host validation · no published package yet*.
 
 **Narration:** "Limits, honestly. PRAMAN is not a sandbox — commands run with your
 user's authority. The checks are authored, not discovered automatically.
-Validation is same-host only, and there's no published package yet. The demo is
+Validation covers the recorded host and Ubuntu/macOS CI; there is no published package. The demo is
 evidence of the checks it shows, not proof of whole-application correctness."
 
 ### 2:50–3:00 — Closing

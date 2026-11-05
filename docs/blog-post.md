@@ -31,7 +31,7 @@ An AI coding assistant completed the remaining work. PRAMAN's core engine, CLI, 
 
 ## Limits
 
-PRAMAN is **not a sandbox**: trusted commands and browser actions run with your user's authority. Checks are **authored, not discovered automatically** — PRAMAN verifies declared requirements, not whole-application correctness. Validation is **same-host only** (macOS arm64, Node 26); another machine, OS or independent user has not been validated. There is **no hosted service and no published package** — you run it from source, and raw evidence stays private.
+PRAMAN is **not a sandbox**: trusted commands and browser actions run with your user's authority. Checks are **authored, not discovered automatically** — PRAMAN verifies declared requirements, not whole-application correctness. Validation covers the recorded macOS arm64 host and Ubuntu/macOS CI; an independent person has not yet run the guide. There is **no hosted execution service and no published package** — you run it from source, and raw evidence stays private.
 
 ## Try it
 

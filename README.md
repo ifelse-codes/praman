@@ -35,8 +35,9 @@ route on Linux. No private credentials are required.
 | macOS (CI) | 22 | Tested in CI: full suite |
 | Windows | any | Untested / unsupported (manual build workflow only) |
 
-Node **>= 22.12** is required (Vite/Rolldown toolchain floor; runtime also needs
-`node:sqlite`). See [docs/PLATFORMS.md](docs/PLATFORMS.md).
+Node **>= 22.13 within 22.x, or >= 24** is required (`node:sqlite` is unflagged from
+22.13; the locked Vite/Rolldown toolchain requires >=22.12 and Vitest does not support
+Node 23). See [docs/PLATFORMS.md](docs/PLATFORMS.md).
 
 ### Deferred capabilities
 
@@ -46,12 +47,13 @@ deferred and not claimed. Optional product surfaces (previews, campaigns, manage
 environments) are implemented and tested but frozen for this release window; the
 verified core is authored browser/command verification with evidence.
 
-**Current state: scoped MVP complete on the tested host.** Authored command/browser
-verification, CLI/MCP feedback and source installation are verified; see
-[current project status](docs/STATUS.md) and
-[release evidence and limits](docs/release-validation.md). Another-machine/OS/outside-user
-trial remains unverified; nothing is published. Raw historical evidence is not part of
-this repository.
+**Current state: scoped MVP complete and published.** Authored command/browser
+verification, CLI/MCP feedback and source installation are verified on the recorded
+host and in CI (Ubuntu + macOS); judges can run the documented test-build route from a
+public clone ([TESTING.md](TESTING.md)). See [current project status](docs/STATUS.md)
+and [release evidence and limits](docs/release-validation.md). Independent-human
+validation has not been performed; raw historical evidence is not part of this
+repository.
 
 Future contributors and coding agents: read [AGENTS.md](AGENTS.md) for the standing
 requirement to keep dogfooding fixtures, target-specific logic and temporary campaign
@@ -119,7 +121,7 @@ using its original runner **before upgrading**, then recreate from a migrated
 declaration. Do not hand-edit ownership state to adopt old resources.
 
 ## Category
-Frankenstein — stitches browser automation (Playwright), property-based testing (fast-check), load testing (autocannon), an MCP server, a CLI and an evidence report into one coherent verification platform.
+Frankenstein — stitches browser automation (Playwright), trusted command execution, a stdio MCP server, a CLI, a static project page and an evidence report into one coherent verification platform.
 
 ## Quick start
 

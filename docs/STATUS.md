@@ -8,10 +8,9 @@ general simulator and not a sandbox.
 
 ## Current state
 
-- **Committed baseline:** `b0814cd` — "Product: evidence-driven verification toolkit
-  after 2026-11-05 cleanup", followed by release-hardening commits (CI, tests, Kiro
-  account, video script, Devpost copy, publishing checklist and a reproducible
-  candidate identity). The tree is clean at the latest release commit.
+- **History:** the private working history ends at `cc83be3`; the **public repository**
+  is a squashed snapshot of three commits (HEAD `a84788e`) under the owner identity,
+  with CI green and judge access enabled.
 - **Checks:** `npm run build` and `npm run lint` pass; `npm run lint:tests` passes;
   the **full suite passes 190 tests / 28 files** in a single-worker run on the
   recorded (loaded) host, including the new dispatch smoke tests. Parallel local runs
@@ -22,9 +21,13 @@ general simulator and not a sandbox.
 - **First use:** `node examples/first-use/run.mjs` → **12/12** expected CLI/MCP
   outcomes (pass / mismatch / unavailable for command and browser), exit codes 0/1/2.
 - **CI:** green on **Ubuntu and macOS** (Node 22) — run
-  https://github.com/ifelse-codes/praman/actions/runs/42016072422. Each runner
+  https://github.com/ifelse-codes/praman/actions/runs/42018863948. Each runner
   reports 27/28 files and 174 passed / 16 skipped of 190 tests; the skips are the
   environment-guarded media/speech suites (no ffmpeg/ffprobe on the runners).
+- **Final verification:** an independent fresh clone of public HEAD `a84788e` passed
+  `npm ci`, lint, lint:tests, build, the full suite (190/190) and the judge route
+  (12/12). A deterministic candidate (101 members) built three times with identical
+  SHA-256; the identity record is private archive metadata, not part of the repository.
 - **Interfaces:** 16 CLI commands, 14 `praman_*` MCP tools over stdio.
 - **Official rules:** captured from the live Kiroween 2026 rules page on 2026-11-05
   ([rules digest](kiroween-rules.md)). Submission deadline Dec 4, 2026 2:00 pm PT.
@@ -46,7 +49,7 @@ general simulator and not a sandbox.
   ([blog-post.md](blog-post.md), [social-post.md](social-post.md)), static project page
   (`site/`) and a push-ready publishing checklist ([PUBLISHING.md](PUBLISHING.md)).
 - **Public repository:** https://github.com/ifelse-codes/praman (public, MIT,
-  single squashed commit under the owner GitHub identity with a masked noreply email).
+  squashed snapshot of three commits under the owner GitHub identity with a masked noreply email).
 - **Project page:** https://ifelse-codes.github.io/praman/ (static, no hosted execution).
 - Not submitted: no demo video, no Devpost submission, no independent-human validation.
 

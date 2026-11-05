@@ -1,6 +1,6 @@
 # Tech Steering
 
-- Language: TypeScript (ESM), Node >= 22.12 (recorded same-host test: Node 26; Vite/Rolldown toolchain floor).
+- Language: TypeScript (ESM), Node >= 22.13 within 22.x or >= 24 (recorded test: Node 26; node:sqlite unflagged from 22.13; Vitest excludes Node 23).
 - CLI: commander. MCP: @modelcontextprotocol/sdk over stdio.
 - Browser automation: Playwright (headless Chromium, exact binary recorded).
 - Schemas: zod (strict, explicit modes and limits).

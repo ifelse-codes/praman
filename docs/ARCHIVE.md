@@ -30,7 +30,7 @@ does not exist here.
 ## Why not keep it in the repository
 
 - Publication would leak personal data and private infrastructure state.
-- Raw evidence is large (5.7 GB, 133k files) and unrelated to using the product.
+- Raw evidence is large (about 200 MB and roughly 1,600 files in the retained archive) and unrelated to using the product.
 - Historical process logs and stale drafts describe superseded plans and can
   mislead reviewers; the current product documentation is README, first-use,
   static-browser acceptance, release validation, video guidelines and this
