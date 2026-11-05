@@ -68,7 +68,7 @@ img,svg{display:block;max-width:100%}
 .btn-ghost:hover{border-color:var(--violet-hairline);color:var(--violet-bright)}
 .hero-trust{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted)}
 
-/* Product board — surgical hairlines, dot pulses, no imagery. */
+/* Product board — surgical hairlines, dot pulses, replay lane. */
 .board{display:grid;grid-template-columns:1fr 336px;gap:1px;background:var(--line);border:1px solid var(--line-strong);border-radius:12px;overflow:hidden;margin-top:66px;text-align:left;
   box-shadow:0 50px 140px -50px rgba(0,0,0,0.95),0 0 0 1px rgba(255,255,255,0.02) inset}
 .board-main{background:#0D0D11;padding:18px 20px 0;display:flex;flex-direction:column;min-width:0}
@@ -76,20 +76,30 @@ img,svg{display:block;max-width:100%}
 .board-head .dia{color:var(--violet);font-size:8px}
 .pipeline{width:100%;height:auto;display:block;margin:2px 0 0}
 .spine{stroke:rgba(255,255,255,0.10);stroke-width:1}
-.spine-draw{stroke:rgba(139,124,246,0.55);stroke-width:1;stroke-dasharray:1;stroke-dashoffset:1;animation:draw 4.2s cubic-bezier(.22,.61,.36,1) infinite}
-.d1{animation-delay:.05s}.d2{animation-delay:1.05s}.d3{animation-delay:2.05s}
-@keyframes draw{0%{stroke-dashoffset:1}30%{stroke-dashoffset:0}86%{stroke-dashoffset:0}100%{stroke-dashoffset:1}}
-.pulse{fill:var(--violet);opacity:0;animation:travel 4.2s linear infinite}
-.p1{animation-delay:0s}.p2{animation-delay:1.4s}.p3{animation-delay:2.8s}
-@keyframes travel{0%{transform:translateX(0);opacity:0}6%{opacity:1}88%{opacity:1}100%{transform:translateX(620px);opacity:0}}
+.spine-draw{stroke:rgba(139,124,246,0.55);stroke-width:1;stroke-dasharray:1;stroke-dashoffset:1;animation:draw 4.6s cubic-bezier(.22,.61,.36,1) infinite}
+.d1{animation-delay:.05s}.d2{animation-delay:1.15s}.d3{animation-delay:2.25s}
+@keyframes draw{0%{stroke-dashoffset:1}26%{stroke-dashoffset:0}82%{stroke-dashoffset:0}100%{stroke-dashoffset:1}}
+.pulse{fill:var(--violet);opacity:0;animation:travel 4.6s linear infinite}
+.p1{animation-delay:0s}.p2{animation-delay:1.5s}.p3{animation-delay:3s}
+@keyframes travel{0%{transform:translateX(0);opacity:0}6%{opacity:1}86%{opacity:1}100%{transform:translateX(500px);opacity:0}}
+.lane{stroke:rgba(255,255,255,0.12);stroke-width:1;stroke-dasharray:3 6}
+.lane-pulse{fill:var(--violet);opacity:0;animation:laneTravel 4.6s linear 3.4s infinite}
+@keyframes laneTravel{0%{transform:translateX(0);opacity:0}4%{opacity:1}14%{opacity:1}16%{transform:translateX(680px);opacity:0}100%{transform:translateX(680px);opacity:0}}
 .node circle{fill:none;stroke:rgba(255,255,255,0.20);stroke-width:1}
 .node .core{fill:var(--violet);stroke:none}
-.node{animation:node-live 4.2s ease-in-out infinite}
-@keyframes node-live{0%,100%{opacity:.75}12%,26%{opacity:1}}
+.node{animation:node-live 4.6s ease-in-out infinite}
+@keyframes node-live{0%,100%{opacity:.75}10%,24%{opacity:1}}
 .nl{font-family:var(--font-mono);font-size:11px;letter-spacing:.18em;fill:var(--text-body);text-anchor:middle}
 .ns{font-family:var(--font-mono);font-size:9px;letter-spacing:.06em;fill:var(--text-muted);text-anchor:middle}
-.gate-line{stroke:var(--violet-hairline);stroke-width:1}
-.gate-text{font-family:var(--font-mono);font-size:10px;letter-spacing:.2em;fill:var(--violet-bright);text-anchor:middle}
+.gate-box rect{fill:rgba(139,124,246,0.08);stroke:var(--violet-hairline);stroke-width:1}
+.gate-a{font-family:var(--font-mono);font-size:11px;letter-spacing:.2em;fill:var(--violet-bright);text-anchor:middle}
+.gate-b{font-family:var(--font-mono);font-size:8.5px;letter-spacing:.08em;fill:var(--text-muted);text-anchor:middle}
+.lane-label{font-family:var(--font-mono);font-size:8.5px;letter-spacing:.2em;fill:var(--text-muted)}
+.lane-label.end{text-anchor:end}
+.contracts{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border-top:1px solid var(--line);margin-top:2px}
+.contract{background:#0D0D11;padding:12px 14px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.ck{font-family:var(--font-mono);font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--violet)}
+.cv{font-size:12px;line-height:1.5;color:var(--text-muted);letter-spacing:-0.005em}
 .board-foot{display:flex;gap:6px;flex-wrap:wrap;padding:12px 0 16px;border-top:1px solid var(--line);margin-top:auto}
 .board-foot span{font-family:var(--font-mono);font-size:9px;letter-spacing:.13em;text-transform:uppercase;color:var(--text-muted);
   border:1px solid var(--line);border-radius:100px;padding:3px 10px;background:rgba(255,255,255,0.012)}
@@ -104,7 +114,7 @@ img,svg{display:block;max-width:100%}
 .rv{font-family:var(--font-mono);font-size:11.5px;line-height:1.5;color:var(--text-heading);overflow-wrap:anywhere}
 .rv.before{color:var(--text-muted);position:relative;display:inline-block;width:fit-content}
 .rv.before::after{content:"";position:absolute;left:0;top:52%;height:1px;width:100%;background:var(--violet);transform:scaleX(0);transform-origin:left;
-  animation:strike 4.2s cubic-bezier(.22,.61,.36,1) infinite}
+  animation:strike 4.6s cubic-bezier(.22,.61,.36,1) infinite}
 @keyframes strike{0%,14%{transform:scaleX(0)}30%,100%{transform:scaleX(1)}}
 .rv.after{color:var(--violet-bright)}
 .verdict-inline{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.18em;color:var(--violet-bright);border:1px solid var(--violet-hairline);
@@ -120,17 +130,15 @@ img,svg{display:block;max-width:100%}
   .board{grid-template-columns:1fr;margin-top:46px}
   .board-head{font-size:8px;letter-spacing:.12em}
   .board-head span:last-child{display:none}
-  .nl,.ns,.gate-line,.gate-text{display:none}
+  .nl,.ns,.gate-box,.lane-label{display:none}
+  .contracts{grid-template-columns:1fr}
   .receipt{border-top:1px solid var(--line);padding:16px 18px}
-  .nl{font-size:12px}
-  .ns{font-size:10px}
 }
 @media (prefers-reduced-motion:reduce){
   .hero-badge,.hero h1,.hero-sub,.hero-actions,.hero-trust,.board{animation:none;opacity:1;transform:none}
   .hero-bg{animation:none}
   .spine-draw{animation:none;stroke-dashoffset:0}
-  .pulse,.node{animation:none}
-  .pulse{opacity:0}
+  .pulse,.lane-pulse,.node{animation:none;opacity:0}
   .rv.before::after{animation:none;transform:scaleX(1)}
 }
 nav{position:sticky;top:0;z-index:100;background:rgba(10,10,12,0.78);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
@@ -260,26 +268,38 @@ html.js .reveal.visible{opacity:1;transform:none}
           <span><span class="dia">◆</span> Proof pipeline · declared checks</span>
           <span>Evidence, not assertion</span>
         </div>
-        <svg class="pipeline" viewBox="0 0 760 300" role="img" aria-label="Declare, execute and prove: a violet evidence pulse travels through three hairline stages into a passed proof gate">
-          <line class="spine" x1="70" y1="170" x2="690" y2="170" pathLength="1"></line>
-          <line class="spine-draw d1" x1="70" y1="170" x2="290" y2="170" pathLength="1"></line>
-          <line class="spine-draw d2" x1="290" y1="170" x2="510" y2="170" pathLength="1"></line>
-          <line class="spine-draw d3" x1="510" y1="170" x2="690" y2="170" pathLength="1"></line>
-          <circle class="pulse p1" cx="70" cy="170" r="3.4"></circle>
-          <circle class="pulse p2" cx="70" cy="170" r="3.4"></circle>
-          <circle class="pulse p3" cx="70" cy="170" r="3.4"></circle>
-          <g class="node"><circle cx="290" cy="170" r="20"></circle><circle class="core" cx="290" cy="170" r="3.2"></circle></g>
-          <g class="node"><circle cx="510" cy="170" r="20"></circle><circle class="core" cx="510" cy="170" r="3.2"></circle></g>
-          <g class="node"><circle cx="690" cy="170" r="20"></circle><circle class="core" cx="690" cy="170" r="3.2"></circle></g>
-          <text class="nl" x="290" y="118">01 — DECLARE</text>
-          <text class="ns" x="290" y="216">authored checks</text>
-          <text class="nl" x="510" y="118">02 — EXECUTE</text>
-          <text class="ns" x="510" y="216">real browser, commands</text>
-          <text class="nl" x="690" y="118">03 — PROVE</text>
-          <text class="ns" x="690" y="216">strict gate</text>
-          <line class="gate-line" x1="600" y1="250" x2="760" y2="250"></line>
-          <text class="gate-text" x="680" y="276">PASSED · 12 / 12</text>
+        <svg class="pipeline" viewBox="0 0 760 330" role="img" aria-label="Declare, execute and prove: a violet evidence pulse travels through three hairline stages into a passed proof gate, then a replay lane confirms the recorded proof matched">
+          <line class="spine" x1="60" y1="150" x2="560" y2="150" pathLength="1"></line>
+          <line class="spine-draw d1" x1="60" y1="150" x2="226" y2="150" pathLength="1"></line>
+          <line class="spine-draw d2" x1="226" y1="150" x2="393" y2="150" pathLength="1"></line>
+          <line class="spine-draw d3" x1="393" y1="150" x2="560" y2="150" pathLength="1"></line>
+          <circle class="pulse p1" cx="60" cy="150" r="3.2"></circle>
+          <circle class="pulse p2" cx="60" cy="150" r="3.2"></circle>
+          <circle class="pulse p3" cx="60" cy="150" r="3.2"></circle>
+          <g class="node"><circle cx="180" cy="150" r="20"></circle><circle class="core" cx="180" cy="150" r="3"></circle></g>
+          <g class="node"><circle cx="370" cy="150" r="20"></circle><circle class="core" cx="370" cy="150" r="3"></circle></g>
+          <g class="node"><circle cx="560" cy="150" r="20"></circle><circle class="core" cx="560" cy="150" r="3"></circle></g>
+          <text class="nl" x="180" y="96">01 — DECLARE</text>
+          <text class="ns" x="180" y="198">authored scenario · command</text>
+          <text class="nl" x="370" y="96">02 — EXECUTE</text>
+          <text class="ns" x="370" y="198">real browser · trusted process</text>
+          <text class="nl" x="560" y="96">03 — PROVE</text>
+          <text class="ns" x="560" y="198">checks · evidence · identity</text>
+          <g class="gate-box">
+            <rect x="600" y="128" width="148" height="44" rx="8"></rect>
+            <text class="gate-a" x="674" y="147">PASSED</text>
+            <text class="gate-b" x="674" y="162">12 / 12 outcomes</text>
+          </g>
+          <line class="lane" x1="60" y1="247" x2="740" y2="247"></line>
+          <circle class="lane-pulse" cx="60" cy="247" r="2.6"></circle>
+          <text class="lane-label" x="60" y="273">REPLAY MATCHED PROOF</text>
+          <text class="lane-label end" x="740" y="273">NO MUTATION</text>
         </svg>
+        <div class="contracts">
+          <div class="contract"><span class="ck">◆ declare</span><span class="cv">scenario.json · commands.json</span></div>
+          <div class="contract"><span class="ck">◆ execute</span><span class="cv">Chromium · trusted process · 2–10 repeats</span></div>
+          <div class="contract"><span class="ck">◆ prove</span><span class="cv">strict gate · indexed evidence · replay</span></div>
+        </div>
         <div class="board-foot">
           <span>proof.json</span><span>REPORT.md</span><span>feedback.json</span><span>replay matched</span>
         </div>
