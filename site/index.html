@@ -36,6 +36,62 @@ img,svg{display:block;max-width:100%}
 #mandala .m-inner{transform-origin:400px 400px;animation:spin 300s linear infinite reverse}
 @keyframes spin{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){#mandala svg *{animation:none!important}}
+/* Hero film — documented run, dot-matrix verdict. */
+.hero-sub .w{display:inline-block;opacity:0;transform:translateY(8px);animation:word-in .55s cubic-bezier(.22,.61,.36,1) forwards}
+@keyframes word-in{to{opacity:1;transform:none}}
+.film{background:var(--bg-card);border:1px solid var(--line);border-radius:6px;max-width:780px;margin:0 auto;text-align:left;overflow:hidden}
+.film-head{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 18px;border-bottom:1px solid var(--line);font-family:var(--font-mono);font-size:10px;text-transform:uppercase;letter-spacing:.18em;color:var(--text-muted)}
+.film-label{display:flex;align-items:center;gap:8px}
+.film-label .dia{color:var(--violet);font-size:8px}
+.film-slash{color:var(--line-strong)}
+.film-tools{display:flex;align-items:center;gap:14px}
+.film-timer{font-variant-numeric:tabular-nums;color:var(--text-body);letter-spacing:.08em}
+.film-replay{background:none;border:1px solid var(--line);border-radius:4px;color:var(--text-muted);font:inherit;font-size:10px;letter-spacing:.14em;text-transform:uppercase;padding:3px 8px;cursor:pointer;transition:border-color .3s,color .3s}
+.film-replay:hover{border-color:var(--violet-hairline);color:var(--violet)}
+.film-replay[disabled]{opacity:.4;cursor:default}
+.film-body{display:grid;grid-template-columns:1.55fr .9fr;min-height:246px}
+.film-term{padding:18px 20px;min-width:0}
+.term-line{font-family:var(--font-mono);font-size:11.5px;line-height:1.95;color:var(--text-body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:22px}
+.term-line .prompt{color:var(--violet)}
+.term-hidden{display:none}
+.term-line.term-show{display:block}
+.caret{display:inline-block;width:7px;margin-left:2px;color:var(--violet);animation:blink 1s steps(1,end) infinite}
+@keyframes blink{50%{opacity:0}}
+.term-rows{margin-top:12px;display:flex;flex-direction:column;gap:3px}
+.row{display:grid;grid-template-columns:58px 40px 1fr auto;gap:10px;font-family:var(--font-mono);font-size:10px;line-height:1.7;letter-spacing:.04em;color:var(--text-muted);opacity:0;transform:translateY(4px);animation:row-in .3s ease forwards}
+.row .v{color:var(--text-body)}
+.row .v.ok{color:var(--violet-bright)}
+.row .v.no{color:var(--text-muted)}
+@keyframes row-in{to{opacity:1;transform:none}}
+.film-verdict{border-left:1px solid var(--line);padding:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}
+.film-verdict canvas{width:176px;height:132px}
+.film-count{font-family:var(--font-mono);font-size:clamp(1.5rem,3vw,2rem);line-height:1;color:var(--text-heading);letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.film-total{font-size:.55em;color:var(--text-muted);letter-spacing:0}
+.film-status{font-family:var(--font-mono);font-size:10px;text-transform:uppercase;letter-spacing:.22em;color:var(--text-muted)}
+.film-status.passed{color:var(--violet-bright)}
+.film-foot{border-top:1px solid var(--line);padding:12px 18px;display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.film-notes{display:flex;flex-direction:column;gap:4px;min-width:0}
+.film-note{font-family:var(--font-mono);font-size:10.5px;line-height:1.7;color:var(--text-muted)}
+.film-note-dim{color:var(--text-muted);opacity:.8}
+.film-note a{color:var(--violet-bright)}
+.film-note a:hover{text-decoration:underline}
+.film-copy{align-self:center;white-space:nowrap}
+@media (max-width:820px){
+  .film-head{gap:10px}
+  .film-stage{display:none}
+  .film-slash{display:none}
+  .film-tools{gap:8px}
+  .film-replay{font-size:9px;padding:2px 6px}
+  .film-timer{font-size:9.5px}
+  .film-body{grid-template-columns:1fr}
+  .film-verdict{border-left:0;border-top:1px solid var(--line);flex-direction:row;justify-content:flex-start;gap:16px;padding:14px 20px}
+  .film-verdict canvas{width:132px;height:99px}
+  .film-count{font-size:1.5rem}
+  .film-term{padding:16px 18px}
+  .term-line{font-size:10.5px}
+  .row{grid-template-columns:50px 34px 1fr auto;font-size:9.5px;gap:8px}
+}
+@media (prefers-reduced-motion:reduce){.hero-sub .w{animation:none;opacity:1;transform:none}.caret{animation:none;display:none}.row{animation:none;opacity:1;transform:none}}
 nav{position:sticky;top:0;z-index:100;background:rgba(10,10,12,0.72);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
 .nav-inner{max-width:var(--max-w);margin:0 auto;padding:0 var(--pad);height:56px;display:flex;align-items:center;justify-content:space-between;gap:24px}
 .nav-logo{font-family:var(--font-mono);font-size:14px;font-weight:500;color:var(--text-heading);letter-spacing:-0.02em}
@@ -57,18 +113,8 @@ section{position:relative;z-index:1}
 .hero{padding:120px 0 104px;text-align:center}
 .hero h1{font-size:clamp(2.4rem,5.5vw,4.2rem);font-weight:600;color:var(--text-heading);letter-spacing:-0.035em;line-height:1.08;margin:0 auto 20px;max-width:18ch}
 .hero h1 em{font-style:normal;color:var(--violet-bright)}
-.hero-sub{font-size:16px;line-height:1.6;max-width:52ch;margin:0 auto 44px}
-.install-block{background:var(--bg-card);border:1px solid var(--line);border-radius:6px;padding:24px;max-width:640px;margin:0 auto}
-.install-label{font-family:var(--font-mono);font-size:11px;text-transform:uppercase;letter-spacing:0.22em;color:var(--text-muted);margin-bottom:12px}
-.install-cmd{display:flex;align-items:center;gap:12px;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:12px 14px;transition:border-color .3s}
-.install-cmd:hover{border-color:var(--violet-hairline)}
-.install-cmd code{font-family:var(--font-mono);font-size:12px;line-height:1.7;color:var(--violet);flex:1;text-align:left;overflow-wrap:anywhere}
-.install-cmd code span{display:block}
 .copy-btn{background:none;border:0;color:var(--text-muted);font-family:var(--font-mono);font-size:10px;text-transform:uppercase;letter-spacing:0.14em;padding:4px 6px;cursor:pointer;border-radius:4px;transition:color .3s}
 .copy-btn:hover{color:var(--violet)}
-.hero-alt{font-family:var(--font-mono);font-size:11px;line-height:1.7;color:var(--text-muted);margin-top:14px}
-.hero-alt a{color:var(--violet-bright)}
-.hero-alt a:hover{text-decoration:underline}/* Sections */
 .split{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:6px;overflow:hidden;margin-top:40px}
 .cell{background:var(--bg-card);padding:28px}
 .cell.muted{background:var(--bg-recessed)}
@@ -158,17 +204,43 @@ html.js .reveal.visible{opacity:1;transform:none}
   <div class="container">
     <div class="eyebrow">Evidence-driven verification</div>
     <h1>The agent writes. <em>The evidence decides.</em></h1>
-    <p class="hero-sub">PRAMAN runs authored browser and command checks against real software, applies strict proof gates, and returns honest, evidence-backed verdicts. It is not another coding agent.</p>
-    <div class="install-block">
-      <div class="install-label">Run the test build</div>
-      <div class="install-cmd">
-        <code id="install-cmd"><span>git clone https://github.com/ifelse-codes/praman &amp;&amp; cd praman</span><span>npm ci &amp;&amp; npm run build &amp;&amp; node examples/first-use/run.mjs</span></code>
-        <button class="copy-btn" type="button" data-copy="install-cmd">copy</button>
+    <p class="hero-sub" id="hero-sub">PRAMAN runs authored browser and command checks against real software, applies strict proof gates, and returns honest, evidence-backed verdicts. It is not another coding agent.</p>
+
+    <div class="film" id="film">
+      <div class="film-head">
+        <div class="film-label"><span class="dia">◆</span> Test build <span class="film-slash">/</span> <span class="film-stage">documented run</span></div>
+        <div class="film-tools">
+          <span class="film-timer" id="film-timer">0.0s</span>
+          <button class="film-replay" id="film-replay" type="button" aria-label="Replay the documented run">↻ replay</button>
+        </div>
       </div>
+      <div class="film-body">
+        <div class="film-term">
+          <div class="term-line"><span class="prompt">$</span> <span class="typed" id="typed-1">git clone https://github.com/ifelse-codes/praman</span></div>
+          <div class="term-line" id="line-2"><span class="prompt">$</span> <span class="typed" id="typed-2">cd praman &amp;&amp; npm ci &amp;&amp; npm run build</span></div>
+          <div class="term-line" id="line-3"><span class="prompt">$</span> <span class="typed" id="typed-3">node examples/first-use/run.mjs</span></div>
+          <div class="term-rows" id="rows" aria-hidden="true"></div>
+        </div>
+        <div class="film-verdict">
+          <canvas id="dots" width="176" height="132" aria-hidden="true"></canvas>
+          <div class="film-count"><span id="count">0</span><span class="film-total">/12</span></div>
+          <div class="film-status" id="status" aria-live="polite">ready</div>
+        </div>
+      </div>
+      <div class="film-foot">
+        <div class="film-notes">
+          <div class="film-note" id="film-note">Replay of the documented first-use run. Expected exit 0 · 12 of 12 CLI and MCP outcomes.</div>
+          <div class="film-note film-note-dim">No hosted service — run it yourself from <a href="https://github.com/ifelse-codes/praman/blob/main/TESTING.md">TESTING.md</a>.</div>
+        </div>
+        <button class="copy-btn film-copy" type="button" id="film-copy" data-copy="film-src" hidden>copy commands</button>
+      </div>
+      <pre id="film-src" hidden>git clone https://github.com/ifelse-codes/praman
+cd praman && npm ci && npm run build
+node examples/first-use/run.mjs</pre>
     </div>
-    <div class="hero-alt">Expected: exit 0 with <a href="https://github.com/ifelse-codes/praman/blob/main/TESTING.md">12 of 12 CLI and MCP outcomes</a>. No hosted service; it runs on your machine or a Codespace.</div>
   </div>
-</section><section class="band" id="how">
+</section>
+<section class="band" id="how">
   <div class="container">
     <div class="eyebrow">The problem</div>
     <h2 class="lead">A green build is not evidence. <em>Evidence is evidence.</em></h2>
@@ -377,6 +449,240 @@ tooltipText = kubeObject.getName()</code>
     entries.forEach(function(entry){ if (entry.isIntersecting) { entry.target.classList.add("visible"); io.unobserve(entry.target); } });
   }, { rootMargin: "0px 0px -8% 0px", threshold: 0.08 });
   items.forEach(function(el){ io.observe(el); });
+})();
+</script>
+<script>
+(function(){
+  var film = document.getElementById("film");
+  if (!film) return;
+  var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var typed1 = document.getElementById("typed-1");
+  var typed2 = document.getElementById("typed-2");
+  var typed3 = document.getElementById("typed-3");
+  var line2 = document.getElementById("line-2");
+  var line3 = document.getElementById("line-3");
+  var rowsEl = document.getElementById("rows");
+  var countEl = document.getElementById("count");
+  var statusEl = document.getElementById("status");
+  var timerEl = document.getElementById("film-timer");
+  var noteEl = document.getElementById("film-note");
+  var replayBtn = document.getElementById("film-replay");
+  var copyBtn = document.getElementById("film-copy");
+  var canvas = document.getElementById("dots");
+  var ctx = canvas ? canvas.getContext("2d") : null;
+  var DPR = Math.min(2, window.devicePixelRatio || 1);
+  var CW = 176, CH = 132;
+  if (canvas && ctx) { canvas.width = CW * DPR; canvas.height = CH * DPR; ctx.setTransform(DPR, 0, 0, DPR, 0, 0); }
+
+  var COMMANDS = [
+    "git clone https://github.com/ifelse-codes/praman",
+    "cd praman && npm ci && npm run build",
+    "node examples/first-use/run.mjs"
+  ];
+  var ROWS = [
+    ["command", "cli", "pass", "✓ passed", "ok"],
+    ["command", "mcp", "pass", "✓ passed", "ok"],
+    ["command", "cli", "mismatch", "× failed", "no"],
+    ["command", "mcp", "mismatch", "× failed", "no"],
+    ["command", "cli", "unavailable", "— insufficient", "no"],
+    ["command", "mcp", "unavailable", "— insufficient", "no"],
+    ["browser", "cli", "pass", "✓ passed", "ok"],
+    ["browser", "mcp", "pass", "✓ passed", "ok"],
+    ["browser", "cli", "mismatch", "× failed", "no"],
+    ["browser", "mcp", "mismatch", "× failed", "no"],
+    ["browser", "cli", "unavailable", "— insufficient", "no"],
+    ["browser", "mcp", "unavailable", "— insufficient", "no"]
+  ];
+
+  // JS mode: hide the static fallback lines and clear typed text before the first frame.
+  if (line2) line2.classList.add("term-hidden");
+  if (line3) line3.classList.add("term-hidden");
+  [typed1, typed2, typed3].forEach(function(el){ if (el) el.textContent = ""; });
+
+  var timers = [], timerInt = null, raf = null, running = false;
+  var count = 0, t0 = 0, litAt = new Array(12).fill(0);
+  var caret = document.createElement("span");
+  caret.className = "caret"; caret.textContent = "▌"; caret.setAttribute("aria-hidden", "true");
+
+  function later(fn, ms) { timers.push(window.setTimeout(fn, ms)); }
+  function clearAll() {
+    timers.forEach(function(t){ window.clearTimeout(t); }); timers = [];
+    if (timerInt) { window.clearInterval(timerInt); timerInt = null; }
+    if (raf) { window.cancelAnimationFrame(raf); raf = null; }
+  }
+
+  function draw() {
+    if (!ctx) return;
+    var now = performance.now();
+    ctx.clearRect(0, 0, CW, CH);
+    var cols = 4, rowsN = 3, gapX = 40, gapY = 40;
+    var startX = (CW - (cols - 1) * gapX) / 2;
+    var startY = (CH - (rowsN - 1) * gapY) / 2;
+    for (var i = 0; i < 12; i++) {
+      var x = startX + (i % cols) * gapX;
+      var y = startY + Math.floor(i / cols) * gapY;
+      var active = i < count;
+      var pulse = active ? Math.max(0, 1 - (now - litAt[i]) / 700) : 0;
+      if (active) {
+        if (pulse > 0) {
+          ctx.beginPath(); ctx.arc(x, y, 6 + pulse * 8, 0, Math.PI * 2);
+          ctx.strokeStyle = "rgba(139,124,246," + (pulse * 0.35).toFixed(3) + ")";
+          ctx.lineWidth = 1; ctx.stroke();
+        }
+        ctx.beginPath(); ctx.arc(x, y, 4.2, 0, Math.PI * 2);
+        ctx.fillStyle = "#8B7CF6"; ctx.fill();
+      } else {
+        ctx.beginPath(); ctx.arc(x, y, 3.6, 0, Math.PI * 2);
+        ctx.strokeStyle = "rgba(255,255,255,0.14)"; ctx.lineWidth = 1; ctx.stroke();
+      }
+    }
+  }
+  function loop() {
+    raf = null; draw();
+    var now = performance.now(), pulsing = false;
+    for (var i = 0; i < count; i++) { if (now - litAt[i] < 700) pulsing = true; }
+    if (pulsing && !reduce) raf = window.requestAnimationFrame(loop);
+  }
+  function kick() { if (!raf && !reduce) raf = window.requestAnimationFrame(loop); }
+
+  function updateCount() { if (countEl) countEl.textContent = String(count); }
+  function setStatus(text, passed) {
+    if (!statusEl) return;
+    statusEl.textContent = text;
+    statusEl.classList.toggle("passed", !!passed);
+  }
+  function updateTimer() {
+    if (!timerEl) return;
+    timerEl.textContent = ((performance.now() - t0) / 1000).toFixed(1) + "s";
+  }
+
+  function typeInto(el, text, speed, done) {
+    var i = 0;
+    function step() {
+      if (i >= text.length) { if (done) done(); return; }
+      el.textContent = text.slice(0, i + 1); i += 1;
+      later(step, speed);
+    }
+    step();
+  }
+  function showLine(n) {
+    var el = document.getElementById("line-" + n);
+    if (el) { el.classList.remove("term-hidden"); el.classList.add("term-show"); }
+    return el;
+  }
+
+  function addRow(row) {
+    var d = document.createElement("div");
+    d.className = "row";
+    d.innerHTML = "<span>" + row[0] + "</span><span>" + row[1] + "</span><span>" + row[2] + "</span><span class=\"v " + row[4] + "\">" + row[3] + "</span>";
+    if (rowsEl) rowsEl.appendChild(d);
+  }
+
+  function finish() {
+    setStatus("passed · exit 0", true);
+    if (noteEl) noteEl.textContent = "Observed 12/12 outcomes · exit 0 — replay of the documented run, not a live verification.";
+    if (copyBtn) copyBtn.hidden = false;
+    if (replayBtn) replayBtn.disabled = false;
+    if (timerInt) { window.clearInterval(timerInt); timerInt = null; }
+    running = false;
+    draw();
+  }
+
+  function revealRows() {
+    if (rowsEl) rowsEl.innerHTML = "";
+    count = 0; updateCount();
+    setStatus("running", false);
+    ROWS.forEach(function(row, i) {
+      later(function() {
+        addRow(row);
+        litAt[i] = performance.now();
+        count = i + 1; updateCount(); kick();
+        if (i === ROWS.length - 1) later(finish, 260);
+      }, i * 115);
+    });
+  }
+
+  function resetUI() {
+    [typed1, typed2, typed3].forEach(function(el){ if (el) el.textContent = ""; });
+    if (line2) { line2.classList.remove("term-show"); line2.classList.add("term-hidden"); }
+    if (line3) { line3.classList.remove("term-show"); line3.classList.add("term-hidden"); }
+    if (rowsEl) rowsEl.innerHTML = "";
+    count = 0; updateCount();
+    setStatus("ready", false);
+    if (noteEl) noteEl.textContent = "Replay of the documented first-use run. Expected exit 0 · 12 of 12 CLI and MCP outcomes.";
+    if (copyBtn) copyBtn.hidden = true;
+    if (replayBtn) replayBtn.disabled = true;
+    if (timerEl) timerEl.textContent = "0.0s";
+    litAt = new Array(12).fill(0); draw();
+  }
+
+  function run() {
+    resetUI();
+    running = true;
+    t0 = performance.now();
+    timerInt = window.setInterval(updateTimer, 100);
+    if (typed1) typed1.appendChild(caret);
+    typeInto(typed1, COMMANDS[0], 13, function() {
+      later(function() {
+        showLine(2);
+        if (typed2) typed2.appendChild(caret);
+        typeInto(typed2, COMMANDS[1], 12, function() {
+          later(function() {
+            showLine(3);
+            if (typed3) typed3.appendChild(caret);
+            typeInto(typed3, COMMANDS[2], 12, function() {
+              later(function() { if (caret.parentNode) caret.parentNode.removeChild(caret); revealRows(); }, 260);
+            });
+          }, 160);
+        });
+      }, 220);
+    });
+  }
+
+  function finishImmediate() {
+    clearAll();
+    resetUI();
+    if (typed1) typed1.textContent = COMMANDS[0];
+    showLine(2); if (typed2) typed2.textContent = COMMANDS[1];
+    showLine(3); if (typed3) typed3.textContent = COMMANDS[2];
+    if (rowsEl) rowsEl.innerHTML = "";
+    ROWS.forEach(function(row, i){ addRow(row); litAt[i] = 0; });
+    count = 12; updateCount(); draw();
+    if (timerEl) timerEl.textContent = "—";
+    if (copyBtn) copyBtn.hidden = false;
+    if (replayBtn) replayBtn.disabled = false;
+    setStatus("passed · exit 0", true);
+    if (noteEl) noteEl.textContent = "Observed 12/12 outcomes · exit 0 — replay of the documented run, not a live verification.";
+  }
+
+  if (replayBtn) replayBtn.addEventListener("click", function(){ if (running) return; if (reduce) { finishImmediate(); } else { run(); } });
+
+  // Word stagger for the sub-copy (skip under reduced motion).
+  var sub = document.getElementById("hero-sub");
+  if (sub && !reduce) {
+    var words = sub.textContent.trim().split(/\s+/);
+    sub.textContent = "";
+    words.forEach(function(word, i){
+      var span = document.createElement("span");
+      span.className = "w"; span.textContent = word;
+      span.style.animationDelay = (i * 18) + "ms";
+      sub.appendChild(span);
+      if (i < words.length - 1) sub.appendChild(document.createTextNode(" "));
+    });
+  }
+
+  if (reduce) { finishImmediate(); return; }
+
+  var started = false;
+  function startOnce(){ if (started) return; started = true; run(); }
+  if ("IntersectionObserver" in window) {
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(entry){ if (entry.isIntersecting) { io.unobserve(entry.target); startOnce(); } });
+    }, { threshold: 0.35 });
+    io.observe(film);
+  } else {
+    startOnce();
+  }
 })();
 </script>
 </body>
