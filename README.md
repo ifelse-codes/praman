@@ -53,7 +53,8 @@ host and in CI (Ubuntu + macOS); judges can run the documented test-build route 
 public clone ([TESTING.md](TESTING.md)). See [current project status](docs/STATUS.md)
 and [release evidence and limits](docs/release-validation.md). Independent-human
 validation has not been performed; raw historical evidence is not part of this
-repository.
+repository. See the [current roadmap](docs/ROADMAP.md) for shipped, frozen, deferred and
+next steps.
 
 Future contributors and coding agents: read [AGENTS.md](AGENTS.md) for the standing
 requirement to keep dogfooding fixtures, target-specific logic and temporary campaign

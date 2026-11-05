@@ -69,6 +69,8 @@ source, tests, product docs and the first-use example.
   deliberately not part of this repository or any release. See
   [the cleanup note](ARCHIVE.md).
 
+The shipped/frozen/deferred view is in [ROADMAP.md](ROADMAP.md).
+
 ## Remaining before release / submission
 
 1. **Video and submission (owner):** record and upload the ≤3-minute video; replace
