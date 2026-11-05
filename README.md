@@ -19,6 +19,33 @@ movies, receipts and historical documents are preserved in an external archive
 outside this repository, described in [the cleanup note](docs/ARCHIVE.md).
 This is not general-purpose simulation or exhaustive test design.
 
+### Judge access and testing
+
+The public repository is the **test build** for judging. [TESTING.md](TESTING.md) gives
+one-click GitHub Codespaces and local instructions; the expected result is exit code 0
+with **12/12** CLI and MCP outcomes (about 25 seconds after setup). CI runs the same
+route on Linux. No private credentials are required.
+
+### Platform support
+
+| Platform | Node | Status |
+| --- | --- | --- |
+| macOS arm64 | 26 (recorded) | Tested: full suite, first-use 12/12 |
+| Ubuntu (CI) | 22 | Tested in CI: full suite and first-use route |
+| macOS (CI) | 22 | Tested in CI: full suite |
+| Windows | any | Untested / unsupported (manual build workflow only) |
+
+Node **>= 22.12** is required (Vite/Rolldown toolchain floor; runtime also needs
+`node:sqlite`). See [docs/PLATFORMS.md](docs/PLATFORMS.md).
+
+### Deferred capabilities
+
+Stateful dependency simulation, autonomous discovery, native desktop automation,
+cross-host/distributed campaigns and machine-level Kubernetes campaigns are explicitly
+deferred and not claimed. Optional product surfaces (previews, campaigns, managed
+environments) are implemented and tested but frozen for this release window; the
+verified core is authored browser/command verification with evidence.
+
 **Current state: scoped MVP complete on the tested host.** Authored command/browser
 verification, CLI/MCP feedback and source installation are verified; see
 [current project status](docs/STATUS.md) and

@@ -14,14 +14,15 @@ FILES = (
     "tsconfig.test.json",
     "vitest.config.ts",
     "README.md",
+    "TESTING.md",
     "CHANGELOG.md",
     "AGENTS.md",
     "LICENSE",
     ".gitignore",
     "scripts/source-release.py",
 )
-TREES = ("src", "tests", "docs", "examples/first-use", ".github", "site")
-ALLOWED = {".ts", ".md", ".mjs", ".yml", ".yaml", ".html"}
+TREES = ("src", "tests", "docs", "examples/first-use", ".github", "site", ".devcontainer")
+ALLOWED = {".ts", ".md", ".mjs", ".yml", ".yaml", ".html", ".json"}
 
 
 def main():

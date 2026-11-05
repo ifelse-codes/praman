@@ -9,24 +9,23 @@
 - [x] Managed kind/Docker environment lifecycle
 - [x] Declared HTTP service, workflow replay and coverage review
 - [x] Bounded count/duration/durable/agent campaigns
-- [x] CLI + stdio MCP server
+- [x] CLI + stdio MCP server (16 commands, 14 tools)
 - [x] First-use guide and public negative-control runner (12 outcomes)
-- [x] Source candidate, MIT license, zero known audit findings
+- [x] Source candidate packaging, MIT license, zero known audit findings
 - [x] `/.kiro` specs, steering, hook and agent kept current
-- [x] Committed product baseline (`b0814cd`) after the 2026-11-05 cleanup
-- [x] Rebuilt and sanitized the release candidate (91 members, SHA-256 recorded)
-- [x] Truthful Kiro usage account (`docs/kiro-usage.md`)
-- [x] CI workflow (Ubuntu + macOS) and dispatch smoke tests
-- [x] Submission video script and submission-ready Devpost draft
-- [x] Official Kiroween 2026 rules captured (`docs/kiroween-rules.md`)
-- [x] Blog + social drafts, static project page, platform matrix, publishing checklist
-- [x] Reproducible release identity (`release-identity.json`) and push-ready script
+- [x] Cleanup completed and committed; public repository published with MIT license
+- [x] CI green on Ubuntu and macOS; CI also runs the documented first-use route on Linux
+- [x] Judge access: TESTING.md, one-click Codespaces devcontainer, expected 12/12 outcomes
+- [x] Official Kiroween 2026 rules captured, including the judge-access (testing) clause
+- [x] Truthful Kiro usage account; further Kiro sessions are quota-blocked
+- [x] Submission video script, Devpost draft, blog/social drafts, static project page
+- [x] Platform matrix and explicit deferred-capability list
+- [x] Node floor aligned with the locked toolchain (>=22.12) and documented
+- [x] Release identity is procedural and excluded from the candidate (no stale hash)
 
-## Remaining
-- [ ] Create the public repository (decide Git author identity first)
-- [ ] Confirm CI green on public GitHub (Ubuntu + macOS)
-- [ ] Record and publish the <=3 min demo video; replace Devpost placeholders
-- [ ] Kiro usage is quota-blocked (authenticated CLI attempt failed 2026-11-05);
-      resolve plan/credits if more usage is wanted
-- [ ] Independent machine/OS/user validation
-- [ ] Submit by Nov 26-27; deadline Dec 4, 2026
+## Remaining (owner-executed)
+- [ ] Record and upload the <=3 min demo video; replace <DEMO_VIDEO_URL> in the Devpost draft
+- [ ] Save and submit the Devpost form (target Nov 26-27; deadline Dec 4, 2026)
+- [ ] Kiro: quota-blocked; resolve plan/credits only if a stronger usage story is wanted
+- [ ] Independent-human first-use validation (CI covers two operating systems)
+- [ ] Private-archive retention decision after the submission is final

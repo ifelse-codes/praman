@@ -50,3 +50,7 @@ jobs:
         env:
           CI_WORKERS: ${{ runner.os == 'macOS' && '1' || '2' }}
         run: npm test -- --maxWorkers=$CI_WORKERS
+      - name: First-use judge route (Linux)
+        if: runner.os == 'Linux'
+        # Proves the documented TESTING.md route on a clean CI runner.
+        run: node examples/first-use/run.mjs /tmp/praman-first-use-ci

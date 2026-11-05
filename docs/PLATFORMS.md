@@ -11,7 +11,7 @@
 
 ## Runtime requirements
 
-- Node.js **>= 22.5** (`node:sqlite` is used for durable campaigns; declared in
+- Node.js **>= 22.12** (runtime needs `node:sqlite`; the locked Vite/Rolldown build and test toolchain requires `^20.19 || >=22.12`; declared in
   package.json engines).
 - Headless Chromium installed through Playwright (`npx playwright install chromium`).
 - ffmpeg/ffprobe on PATH for movie/media assertions; core command and browser

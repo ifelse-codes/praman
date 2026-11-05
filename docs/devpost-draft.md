@@ -20,6 +20,7 @@ public URL placeholder for anything readers must open.
 | Category | **Frankenstein** — stitches browser automation, command execution, authored property/HTTP checks, an MCP server, a CLI and an evidence report into one verification platform. |
 | Built with | TypeScript, Node.js, Playwright, Zod, Model Context Protocol SDK, Commander, Sharp, node:sqlite, Chromium, FFmpeg, Kiro |
 | Public repository | https://github.com/ifelse-codes/praman (MIT license) |
+| Judge access / testing | https://github.com/ifelse-codes/praman/blob/main/TESTING.md (test build, Codespaces, expected 12/12) |
 | Project page | https://ifelse-codes.github.io/praman/ (static, no hosted execution) |
 | Demo video (≤3:00, public) | <DEMO_VIDEO_URL> |
 | Kiro usage write-up | `docs/kiro-usage.md` in the public repository |
@@ -30,7 +31,10 @@ Checked against the live Kiroween 2026 rules page; see
 [the rules digest](kiroween-rules.md). Required: public GitHub repository with a
 visible open-source license, `/.kiro` at the root and not ignored, this text
 description, a demonstration video **under 3 minutes** uploaded publicly to YouTube,
-and the Kiro usage write-up. **No hosted app URL is required.** Category: Frankenstein.
+and the Kiro usage write-up. **Judging access:** the public repository is the test
+build; [TESTING.md](../TESTING.md) gives one-click Codespaces and local instructions with
+the expected 12/12 outcomes. Paste the same instructions into the Devpost testing field.
+Category: Frankenstein.
 Judging is 20% each for Potential Impact, Technological Implementation (Kiro depth),
 Design, Innovation/Idea and Presentation.
 

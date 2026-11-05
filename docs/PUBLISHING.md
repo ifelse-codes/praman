@@ -72,7 +72,9 @@ data before sharing it.
 5. Confirm the submission against the captured official rules
    ([kiroween-rules.md](kiroween-rules.md)): public repo + visible MIT license,
    `/.kiro` at root (not ignored), text description, <=3 min public YouTube video,
-   Kiro usage write-up, category Frankenstein. No hosted app URL is required.
+   Kiro usage write-up, category Frankenstein, and **judge access** (website, functioning
+   demo or test build). PRAMAN uses the public repository as the test build with
+   [TESTING.md](../TESTING.md) and Codespaces; verify that route from a logged-out browser.
 6. Optional: enable GitHub Pages for the static project page in `site/` after the
    repository exists (never host PRAMAN execution).
 7. Verify all links from a logged-out browser.

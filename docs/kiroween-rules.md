@@ -52,8 +52,13 @@ function as depicted in the video and/or described in the text.
 10. Conditional bonus categories (Kiro Crew App, Best Startup, Best Student) have
     their own evidence requirements.
 
-**There is no hosted-app-URL requirement.** The repository must contain run
-instructions; a static project page is optional.
+**Judging access is required.** The Testing section says: "Access must be provided to an
+Entrant's working Project for judging and testing by providing a link to a website,
+functioning demo, or a test build. If the Entrant's website is private, the Entrant must
+include login credentials and testing instructions... Failure to provide access to the
+Project for testing when requested may result in disqualification." PRAMAN provides the
+public repository as the test build, a one-click Codespaces route and explicit
+[testing instructions](../TESTING.md) from the repository root.
 
 ## Judging criteria (equally weighted, 20% each)
 
@@ -76,7 +81,7 @@ instructions; a static project page is optional.
 | Video <=3 min on YouTube | Script ready ([video-script.md](video-script.md)); recording pending |
 | Kiro usage write-up | Ready ([kiro-usage.md](kiro-usage.md)); genuinely narrow |
 | Blog / social bonus | Drafts being prepared |
-| Hosted URL | Not required |
+| Judge access (website/demo/test build) | Public repo test build + Codespaces + [TESTING.md](../TESTING.md) |
 
 **Biggest risk:** Technological Implementation is 20% and Kiro-centric; the truthful
 evidence is one real IDE session plus one authenticated CLI attempt blocked by the

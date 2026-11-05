@@ -29,8 +29,9 @@ general simulator and not a sandbox.
 - **Official rules:** captured from the live Kiroween 2026 rules page on 2026-11-05
   ([rules digest](kiroween-rules.md)). Submission deadline Dec 4, 2026 2:00 pm PT.
   Required: public repo + visible OSS license, `/.kiro` at root, text description,
-  demo video under 3 minutes on public YouTube, Kiro usage write-up. **No hosted app
-  URL is required**; the repo must contain run instructions.
+  demo video under 3 minutes on public YouTube, Kiro usage write-up, and **judge access**
+  (a link to a website, functioning demo or test build; failure may disqualify). PRAMAN
+  provides the public repository as the test build, Codespaces and [testing instructions](../TESTING.md).
 - **Submission copy:** truthful Kiro account (`docs/kiro-usage.md`), ≤3-minute video
   script (`docs/video-script.md`) and submission-ready Devpost draft with the public
   repository URL filled in and a `<DEMO_VIDEO_URL>` placeholder (`docs/devpost-draft.md`).

@@ -1,0 +1,11 @@
+{
+  "name": "PRAMAN test build",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:22-bookworm",
+  "postCreateCommand": "npm ci && npm run build && npx playwright install --with-deps chromium",
+  "forwardPorts": [],
+  "customizations": {
+    "vscode": {
+      "extensions": []
+    }
+  }
+}
