@@ -36,62 +36,35 @@ img,svg{display:block;max-width:100%}
 #mandala .m-inner{transform-origin:400px 400px;animation:spin 300s linear infinite reverse}
 @keyframes spin{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){#mandala svg *{animation:none!important}}
-/* Hero film — documented run, dot-matrix verdict. */
+/* Hero film — fixed-size dot-matrix film. */
 .hero-sub .w{display:inline-block;opacity:0;transform:translateY(8px);animation:word-in .55s cubic-bezier(.22,.61,.36,1) forwards}
 @keyframes word-in{to{opacity:1;transform:none}}
-.film{background:var(--bg-card);border:1px solid var(--line);border-radius:6px;max-width:780px;margin:0 auto;text-align:left;overflow:hidden}
-.film-head{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 18px;border-bottom:1px solid var(--line);font-family:var(--font-mono);font-size:10px;text-transform:uppercase;letter-spacing:.18em;color:var(--text-muted)}
-.film-label{display:flex;align-items:center;gap:8px}
-.film-label .dia{color:var(--violet);font-size:8px}
-.film-slash{color:var(--line-strong)}
-.film-tools{display:flex;align-items:center;gap:14px}
-.film-timer{font-variant-numeric:tabular-nums;color:var(--text-body);letter-spacing:.08em}
-.film-replay{background:none;border:1px solid var(--line);border-radius:4px;color:var(--text-muted);font:inherit;font-size:10px;letter-spacing:.14em;text-transform:uppercase;padding:3px 8px;cursor:pointer;transition:border-color .3s,color .3s}
+.hero-film{position:relative;max-width:900px;margin:0 auto;aspect-ratio:16/6.2;background:var(--bg-card);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.hero-film canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.film-ui{position:absolute;inset:0;pointer-events:none}
+.film-top{position:absolute;top:14px;left:20px;right:20px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-family:var(--font-mono);font-size:9.5px;text-transform:uppercase;letter-spacing:.2em;color:var(--text-muted)}
+.film-mark .dia{color:var(--violet);font-size:8px}
+.film-scene{color:var(--text-muted);font-variant-numeric:tabular-nums}
+.film-caption{position:absolute;left:20px;right:20px;bottom:40px;font-family:var(--font-body);font-size:clamp(1.05rem,2.1vw,1.6rem);font-weight:500;line-height:1.25;letter-spacing:-.02em;color:var(--text-heading);max-width:30ch;transition:opacity .45s cubic-bezier(.22,.61,.36,1)}
+.film-caption.fading{opacity:0}
+.film-bottom{position:absolute;left:20px;right:20px;bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-family:var(--font-mono);font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--text-muted)}
+.film-meta{color:var(--text-muted)}
+.film-replay{pointer-events:auto;background:none;border:1px solid var(--line);border-radius:4px;color:var(--text-muted);font:inherit;font-size:9px;letter-spacing:.14em;text-transform:uppercase;padding:3px 8px;cursor:pointer;transition:border-color .3s,color .3s}
 .film-replay:hover{border-color:var(--violet-hairline);color:var(--violet)}
-.film-replay[disabled]{opacity:.4;cursor:default}
-.film-body{display:grid;grid-template-columns:1.55fr .9fr;min-height:246px}
-.film-term{padding:18px 20px;min-width:0}
-.term-line{font-family:var(--font-mono);font-size:11.5px;line-height:1.95;color:var(--text-body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:22px}
-.term-line .prompt{color:var(--violet)}
-.term-hidden{display:none}
-.term-line.term-show{display:block}
-.caret{display:inline-block;width:7px;margin-left:2px;color:var(--violet);animation:blink 1s steps(1,end) infinite}
-@keyframes blink{50%{opacity:0}}
-.term-rows{margin-top:12px;display:flex;flex-direction:column;gap:3px}
-.row{display:grid;grid-template-columns:58px 40px 1fr auto;gap:10px;font-family:var(--font-mono);font-size:10px;line-height:1.7;letter-spacing:.04em;color:var(--text-muted);opacity:0;transform:translateY(4px);animation:row-in .3s ease forwards}
-.row .v{color:var(--text-body)}
-.row .v.ok{color:var(--violet-bright)}
-.row .v.no{color:var(--text-muted)}
-@keyframes row-in{to{opacity:1;transform:none}}
-.film-verdict{border-left:1px solid var(--line);padding:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}
-.film-verdict canvas{width:176px;height:132px}
-.film-count{font-family:var(--font-mono);font-size:clamp(1.5rem,3vw,2rem);line-height:1;color:var(--text-heading);letter-spacing:-.03em;font-variant-numeric:tabular-nums}
-.film-total{font-size:.55em;color:var(--text-muted);letter-spacing:0}
-.film-status{font-family:var(--font-mono);font-size:10px;text-transform:uppercase;letter-spacing:.22em;color:var(--text-muted)}
-.film-status.passed{color:var(--violet-bright)}
-.film-foot{border-top:1px solid var(--line);padding:12px 18px;display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap}
-.film-notes{display:flex;flex-direction:column;gap:4px;min-width:0}
-.film-note{font-family:var(--font-mono);font-size:10.5px;line-height:1.7;color:var(--text-muted)}
-.film-note-dim{color:var(--text-muted);opacity:.8}
-.film-note a{color:var(--violet-bright)}
-.film-note a:hover{text-decoration:underline}
-.film-copy{align-self:center;white-space:nowrap}
+.hero-key{font-family:var(--font-mono);font-size:11px;line-height:1.8;color:var(--text-muted);margin-top:18px}
+.hero-key a{color:var(--violet-bright)}
+.hero-key a:hover{text-decoration:underline}
 @media (max-width:820px){
-  .film-head{gap:10px}
-  .film-stage{display:none}
-  .film-slash{display:none}
-  .film-tools{gap:8px}
-  .film-replay{font-size:9px;padding:2px 6px}
-  .film-timer{font-size:9.5px}
-  .film-body{grid-template-columns:1fr}
-  .film-verdict{border-left:0;border-top:1px solid var(--line);flex-direction:row;justify-content:flex-start;gap:16px;padding:14px 20px}
-  .film-verdict canvas{width:132px;height:99px}
-  .film-count{font-size:1.5rem}
-  .film-term{padding:16px 18px}
-  .term-line{font-size:10.5px}
-  .row{grid-template-columns:50px 34px 1fr auto;font-size:9.5px;gap:8px}
+  .hero-film{aspect-ratio:10/9}
+  .film-top{top:12px;left:16px;right:16px;font-size:8.5px;letter-spacing:.14em}
+  .film-caption{left:16px;right:16px;bottom:44px;font-size:1rem;max-width:22ch}
+  .film-bottom{left:16px;right:16px;bottom:12px;font-size:8px;letter-spacing:.1em}
+  .film-meta{display:none}
 }
-@media (prefers-reduced-motion:reduce){.hero-sub .w{animation:none;opacity:1;transform:none}.caret{animation:none;display:none}.row{animation:none;opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){
+  .hero-sub .w{animation:none;opacity:1;transform:none}
+  .film-caption{transition:none}
+}
 nav{position:sticky;top:0;z-index:100;background:rgba(10,10,12,0.72);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
 .nav-inner{max-width:var(--max-w);margin:0 auto;padding:0 var(--pad);height:56px;display:flex;align-items:center;justify-content:space-between;gap:24px}
 .nav-logo{font-family:var(--font-mono);font-size:14px;font-weight:500;color:var(--text-heading);letter-spacing:-0.02em}
@@ -206,38 +179,21 @@ html.js .reveal.visible{opacity:1;transform:none}
     <h1>The agent writes. <em>The evidence decides.</em></h1>
     <p class="hero-sub" id="hero-sub">PRAMAN runs authored browser and command checks against real software, applies strict proof gates, and returns honest, evidence-backed verdicts. It is not another coding agent.</p>
 
-    <div class="film" id="film">
-      <div class="film-head">
-        <div class="film-label"><span class="dia">◆</span> Test build <span class="film-slash">/</span> <span class="film-stage">documented run</span></div>
-        <div class="film-tools">
-          <span class="film-timer" id="film-timer">0.0s</span>
-          <button class="film-replay" id="film-replay" type="button" aria-label="Replay the documented run">↻ replay</button>
+    <div class="hero-film" id="hero-film">
+      <canvas id="film-canvas" aria-hidden="true"></canvas>
+      <div class="film-ui">
+        <div class="film-top">
+          <span class="film-mark"><span class="dia">◆</span> PRAMAN / EVIDENCE ENGINE</span>
+          <span class="film-scene" id="film-scene">SCENE 01 — FIELD</span>
+        </div>
+        <div class="film-caption" id="film-caption">Evidence, not assertion.</div>
+        <div class="film-bottom">
+          <span class="film-meta">DOCUMENTED TEST BUILD · 12 / 12 CLI + MCP OUTCOMES</span>
+          <button class="film-replay" id="film-replay" type="button" aria-label="Replay the film">↻ replay</button>
         </div>
       </div>
-      <div class="film-body">
-        <div class="film-term">
-          <div class="term-line"><span class="prompt">$</span> <span class="typed" id="typed-1">git clone https://github.com/ifelse-codes/praman</span></div>
-          <div class="term-line" id="line-2"><span class="prompt">$</span> <span class="typed" id="typed-2">cd praman &amp;&amp; npm ci &amp;&amp; npm run build</span></div>
-          <div class="term-line" id="line-3"><span class="prompt">$</span> <span class="typed" id="typed-3">node examples/first-use/run.mjs</span></div>
-          <div class="term-rows" id="rows" aria-hidden="true"></div>
-        </div>
-        <div class="film-verdict">
-          <canvas id="dots" width="176" height="132" aria-hidden="true"></canvas>
-          <div class="film-count"><span id="count">0</span><span class="film-total">/12</span></div>
-          <div class="film-status" id="status" aria-live="polite">ready</div>
-        </div>
-      </div>
-      <div class="film-foot">
-        <div class="film-notes">
-          <div class="film-note" id="film-note">Replay of the documented first-use run. Expected exit 0 · 12 of 12 CLI and MCP outcomes.</div>
-          <div class="film-note film-note-dim">No hosted service — run it yourself from <a href="https://github.com/ifelse-codes/praman/blob/main/TESTING.md">TESTING.md</a>.</div>
-        </div>
-        <button class="copy-btn film-copy" type="button" id="film-copy" data-copy="film-src" hidden>copy commands</button>
-      </div>
-      <pre id="film-src" hidden>git clone https://github.com/ifelse-codes/praman
-cd praman && npm ci && npm run build
-node examples/first-use/run.mjs</pre>
     </div>
+    <div class="hero-key">Declared checks, real software, honest verdicts.<br><a href="https://github.com/ifelse-codes/praman/blob/main/TESTING.md">Run the documented test build</a> — no hosted service, no credentials.</div>
   </div>
 </section>
 <section class="band" id="how">
@@ -453,216 +409,224 @@ tooltipText = kubeObject.getName()</code>
 </script>
 <script>
 (function(){
-  var film = document.getElementById("film");
+  var film = document.getElementById("hero-film");
   if (!film) return;
-  var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  var typed1 = document.getElementById("typed-1");
-  var typed2 = document.getElementById("typed-2");
-  var typed3 = document.getElementById("typed-3");
-  var line2 = document.getElementById("line-2");
-  var line3 = document.getElementById("line-3");
-  var rowsEl = document.getElementById("rows");
-  var countEl = document.getElementById("count");
-  var statusEl = document.getElementById("status");
-  var timerEl = document.getElementById("film-timer");
-  var noteEl = document.getElementById("film-note");
-  var replayBtn = document.getElementById("film-replay");
-  var copyBtn = document.getElementById("film-copy");
-  var canvas = document.getElementById("dots");
+  var canvas = document.getElementById("film-canvas");
   var ctx = canvas ? canvas.getContext("2d") : null;
-  var DPR = Math.min(2, window.devicePixelRatio || 1);
-  var CW = 176, CH = 132;
-  if (canvas && ctx) { canvas.width = CW * DPR; canvas.height = CH * DPR; ctx.setTransform(DPR, 0, 0, DPR, 0, 0); }
+  var captionEl = document.getElementById("film-caption");
+  var sceneEl = document.getElementById("film-scene");
+  var replayBtn = document.getElementById("film-replay");
+  var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  var COMMANDS = [
-    "git clone https://github.com/ifelse-codes/praman",
-    "cd praman && npm ci && npm run build",
-    "node examples/first-use/run.mjs"
+  var SCENES = [
+    { name: "FIELD",    cap: "Evidence, not assertion.",                 mask: null,    dur: 1800 },
+    { name: "EVIDENCE", cap: "The name means evidence.",                 mask: "text",  dur: 3200 },
+    { name: "CHECKS",   cap: "Declared checks against real software.",   mask: "ring",  dur: 2800 },
+    { name: "PROOF",    cap: "Proof, or it did not happen.",             mask: "check", dur: 3400 }
   ];
-  var ROWS = [
-    ["command", "cli", "pass", "✓ passed", "ok"],
-    ["command", "mcp", "pass", "✓ passed", "ok"],
-    ["command", "cli", "mismatch", "× failed", "no"],
-    ["command", "mcp", "mismatch", "× failed", "no"],
-    ["command", "cli", "unavailable", "— insufficient", "no"],
-    ["command", "mcp", "unavailable", "— insufficient", "no"],
-    ["browser", "cli", "pass", "✓ passed", "ok"],
-    ["browser", "mcp", "pass", "✓ passed", "ok"],
-    ["browser", "cli", "mismatch", "× failed", "no"],
-    ["browser", "mcp", "mismatch", "× failed", "no"],
-    ["browser", "cli", "unavailable", "— insufficient", "no"],
-    ["browser", "mcp", "unavailable", "— insufficient", "no"]
-  ];
+  var HOLD = 1500;
 
-  // JS mode: hide the static fallback lines and clear typed text before the first frame.
-  if (line2) line2.classList.add("term-hidden");
-  if (line3) line3.classList.add("term-hidden");
-  [typed1, typed2, typed3].forEach(function(el){ if (el) el.textContent = ""; });
+  var W = 0, H = 0, DPR = 1, cols = 0, rows = 0, ox = 0, oy = 0, spacing = 12;
+  var cx = null, cy = null, noise = null, phase = null;
+  var masks = {};
+  var start = 0, raf = null, shownScene = -1, capTimer = null, running = false;
 
-  var timers = [], timerInt = null, raf = null, running = false;
-  var count = 0, t0 = 0, litAt = new Array(12).fill(0);
-  var caret = document.createElement("span");
-  caret.className = "caret"; caret.textContent = "▌"; caret.setAttribute("aria-hidden", "true");
+  function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
+  function smooth(x) { x = clamp(x, 0, 1); return x * x * (3 - 2 * x); }
+  function hash(n) { var x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); }
 
-  function later(fn, ms) { timers.push(window.setTimeout(fn, ms)); }
-  function clearAll() {
-    timers.forEach(function(t){ window.clearTimeout(t); }); timers = [];
-    if (timerInt) { window.clearInterval(timerInt); timerInt = null; }
-    if (raf) { window.cancelAnimationFrame(raf); raf = null; }
-  }
-
-  function draw() {
-    if (!ctx) return;
-    var now = performance.now();
-    ctx.clearRect(0, 0, CW, CH);
-    var cols = 4, rowsN = 3, gapX = 40, gapY = 40;
-    var startX = (CW - (cols - 1) * gapX) / 2;
-    var startY = (CH - (rowsN - 1) * gapY) / 2;
-    for (var i = 0; i < 12; i++) {
-      var x = startX + (i % cols) * gapX;
-      var y = startY + Math.floor(i / cols) * gapY;
-      var active = i < count;
-      var pulse = active ? Math.max(0, 1 - (now - litAt[i]) / 700) : 0;
-      if (active) {
-        if (pulse > 0) {
-          ctx.beginPath(); ctx.arc(x, y, 6 + pulse * 8, 0, Math.PI * 2);
-          ctx.strokeStyle = "rgba(139,124,246," + (pulse * 0.35).toFixed(3) + ")";
-          ctx.lineWidth = 1; ctx.stroke();
-        }
-        ctx.beginPath(); ctx.arc(x, y, 4.2, 0, Math.PI * 2);
-        ctx.fillStyle = "#8B7CF6"; ctx.fill();
-      } else {
-        ctx.beginPath(); ctx.arc(x, y, 3.6, 0, Math.PI * 2);
-        ctx.strokeStyle = "rgba(255,255,255,0.14)"; ctx.lineWidth = 1; ctx.stroke();
+  function buildDots() {
+    var n = cols * rows;
+    cx = new Float32Array(n); cy = new Float32Array(n);
+    noise = new Float32Array(n); phase = new Float32Array(n);
+    for (var r = 0; r < rows; r++) {
+      for (var c = 0; c < cols; c++) {
+        var i = r * cols + c;
+        cx[i] = ox + c * spacing;
+        cy[i] = oy + r * spacing;
+        noise[i] = 0.15 + hash(i) * 0.85;
+        phase[i] = hash(i * 7 + 3) * Math.PI * 2;
       }
     }
   }
-  function loop() {
-    raf = null; draw();
-    var now = performance.now(), pulsing = false;
-    for (var i = 0; i < count; i++) { if (now - litAt[i] < 700) pulsing = true; }
-    if (pulsing && !reduce) raf = window.requestAnimationFrame(loop);
-  }
-  function kick() { if (!raf && !reduce) raf = window.requestAnimationFrame(loop); }
 
-  function updateCount() { if (countEl) countEl.textContent = String(count); }
-  function setStatus(text, passed) {
-    if (!statusEl) return;
-    statusEl.textContent = text;
-    statusEl.classList.toggle("passed", !!passed);
-  }
-  function updateTimer() {
-    if (!timerEl) return;
-    timerEl.textContent = ((performance.now() - t0) / 1000).toFixed(1) + "s";
-  }
-
-  function typeInto(el, text, speed, done) {
-    var i = 0;
-    function step() {
-      if (i >= text.length) { if (done) done(); return; }
-      el.textContent = text.slice(0, i + 1); i += 1;
-      later(step, speed);
+  var MS = 4;
+  function makeMask(draw) {
+    var mw = cols * MS, mh = rows * MS;
+    var mc = document.createElement("canvas");
+    mc.width = mw; mc.height = mh;
+    var m = mc.getContext("2d");
+    m.clearRect(0, 0, mw, mh);
+    m.fillStyle = "#fff"; m.strokeStyle = "#fff";
+    draw(m, mw, mh);
+    var data = m.getImageData(0, 0, mw, mh).data;
+    var arr = new Float32Array(cols * rows);
+    for (var r = 0; r < rows; r++) {
+      for (var c = 0; c < cols; c++) {
+        var px = Math.floor(c * MS + MS / 2);
+        var py = Math.floor(r * MS + MS / 2);
+        var idx = (py * mw + px) * 4;
+        arr[r * cols + c] = data[idx + 3] / 255;
+      }
     }
-    step();
-  }
-  function showLine(n) {
-    var el = document.getElementById("line-" + n);
-    if (el) { el.classList.remove("term-hidden"); el.classList.add("term-show"); }
-    return el;
+    return arr;
   }
 
-  function addRow(row) {
-    var d = document.createElement("div");
-    d.className = "row";
-    d.innerHTML = "<span>" + row[0] + "</span><span>" + row[1] + "</span><span>" + row[2] + "</span><span class=\"v " + row[4] + "\">" + row[3] + "</span>";
-    if (rowsEl) rowsEl.appendChild(d);
+  function drawTextMask(m, w, h) {
+    var fs = Math.round(h * 0.46);
+    m.font = "600 " + fs + "px \"Geist Mono\", ui-monospace, monospace";
+    var tw = m.measureText("EVIDENCE").width;
+    if (tw > w * 0.8) { fs = Math.max(6, Math.floor(fs * w * 0.8 / tw)); m.font = "600 " + fs + "px \"Geist Mono\", ui-monospace, monospace"; }
+    m.textAlign = "center"; m.textBaseline = "middle";
+    m.fillText("EVIDENCE", w / 2, h / 2 + fs * 0.05);
+  }
+  function drawRingMask(m, w, h) {
+    var cxx = w / 2, cyy = h / 2, R = Math.min(w, h) * 0.40;
+    m.lineWidth = MS * 1.15;
+    m.beginPath(); m.arc(cxx, cyy, R, 0, Math.PI * 2); m.stroke();
+    m.lineWidth = MS * 0.9;
+    m.beginPath(); m.arc(cxx, cyy, R * 0.64, 0, Math.PI * 2); m.stroke();
+    for (var d = 0; d < 12; d++) {
+      var a2 = d * Math.PI * 2 / 12;
+      m.beginPath();
+      m.arc(cxx + Math.cos(a2) * R * 1.18, cyy + Math.sin(a2) * R * 1.18, MS * 0.8, 0, Math.PI * 2);
+      m.fill();
+    }
+  }
+  function drawCheckMask(m, w, h) {
+    var cxx = w / 2, cyy = h / 2, R = Math.min(w, h) * 0.40;
+    m.lineWidth = MS * 1.1;
+    m.beginPath(); m.arc(cxx, cyy, R, 0, Math.PI * 2); m.stroke();
+    m.lineWidth = MS * 1.8;
+    m.lineCap = "round"; m.lineJoin = "round";
+    m.beginPath();
+    m.moveTo(cxx - R * 0.52, cyy + R * 0.02);
+    m.lineTo(cxx - R * 0.12, cyy + R * 0.40);
+    m.lineTo(cxx + R * 0.58, cyy - R * 0.40);
+    m.stroke();
   }
 
-  function finish() {
-    setStatus("passed · exit 0", true);
-    if (noteEl) noteEl.textContent = "Observed 12/12 outcomes · exit 0 — replay of the documented run, not a live verification.";
-    if (copyBtn) copyBtn.hidden = false;
-    if (replayBtn) replayBtn.disabled = false;
-    if (timerInt) { window.clearInterval(timerInt); timerInt = null; }
-    running = false;
-    draw();
+  function buildMasks() {
+    masks = { text: makeMask(drawTextMask), ring: makeMask(drawRingMask), check: makeMask(drawCheckMask) };
   }
 
-  function revealRows() {
-    if (rowsEl) rowsEl.innerHTML = "";
-    count = 0; updateCount();
-    setStatus("running", false);
-    ROWS.forEach(function(row, i) {
-      later(function() {
-        addRow(row);
-        litAt[i] = performance.now();
-        count = i + 1; updateCount(); kick();
-        if (i === ROWS.length - 1) later(finish, 260);
-      }, i * 115);
-    });
+  function size() {
+    var r = film.getBoundingClientRect();
+    W = Math.max(280, r.width); H = Math.max(160, r.height);
+    DPR = Math.min(2, window.devicePixelRatio || 1);
+    canvas.width = Math.round(W * DPR); canvas.height = Math.round(H * DPR);
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    spacing = W < 600 ? 9 : 8;
+    var padX = Math.max(12, W * 0.03), padTop = Math.max(30, H * 0.10);
+    var padBottom = H < 420 ? Math.max(96, H * 0.30) : Math.max(58, H * 0.18);
+    cols = Math.max(10, Math.floor((W - padX * 2) / spacing));
+    rows = Math.max(7, Math.floor((H - padTop - padBottom) / spacing));
+    ox = (W - (cols - 1) * spacing) / 2;
+    oy = padTop + ((H - padTop - padBottom) - (rows - 1) * spacing) / 2;
+    buildDots(); buildMasks();
   }
 
-  function resetUI() {
-    [typed1, typed2, typed3].forEach(function(el){ if (el) el.textContent = ""; });
-    if (line2) { line2.classList.remove("term-show"); line2.classList.add("term-hidden"); }
-    if (line3) { line3.classList.remove("term-show"); line3.classList.add("term-hidden"); }
-    if (rowsEl) rowsEl.innerHTML = "";
-    count = 0; updateCount();
-    setStatus("ready", false);
-    if (noteEl) noteEl.textContent = "Replay of the documented first-use run. Expected exit 0 · 12 of 12 CLI and MCP outcomes.";
-    if (copyBtn) copyBtn.hidden = true;
-    if (replayBtn) replayBtn.disabled = true;
-    if (timerEl) timerEl.textContent = "0.0s";
-    litAt = new Array(12).fill(0); draw();
+  function drawBuckets(buckets, rgb, radius, maxAlpha) {
+    for (var b = 0; b < buckets.length; b++) {
+      var pts = buckets[b];
+      if (!pts.length) continue;
+      var a = maxAlpha * (b + 1) / buckets.length;
+      ctx.fillStyle = "rgba(" + rgb + "," + a.toFixed(3) + ")";
+      ctx.beginPath();
+      for (var i = 0; i < pts.length; i += 2) {
+        ctx.moveTo(pts[i] + radius, pts[i + 1]);
+        ctx.arc(pts[i], pts[i + 1], radius, 0, Math.PI * 2);
+      }
+      ctx.fill();
+    }
   }
 
-  function run() {
-    resetUI();
-    running = true;
-    t0 = performance.now();
-    timerInt = window.setInterval(updateTimer, 100);
-    if (typed1) typed1.appendChild(caret);
-    typeInto(typed1, COMMANDS[0], 13, function() {
-      later(function() {
-        showLine(2);
-        if (typed2) typed2.appendChild(caret);
-        typeInto(typed2, COMMANDS[1], 12, function() {
-          later(function() {
-            showLine(3);
-            if (typed3) typed3.appendChild(caret);
-            typeInto(typed3, COMMANDS[2], 12, function() {
-              later(function() { if (caret.parentNode) caret.parentNode.removeChild(caret); revealRows(); }, 260);
-            });
-          }, 160);
-        });
+  function renderDots(t, idx, w) {
+    if (!ctx) return;
+    ctx.clearRect(0, 0, W, H);
+    var mask = SCENES[idx].mask ? masks[SCENES[idx].mask] : null;
+    var vb = [], fb = [];
+    var i;
+    for (i = 0; i < 8; i++) vb.push([]);
+    for (i = 0; i < 3; i++) fb.push([]);
+    for (i = 0; i < cols * rows; i++) {
+      var m = mask ? mask[i] * w : 0;
+      var shimmer = m * 0.20 * Math.sin(cx[i] * 0.17 + cy[i] * 0.11 - t * 2.3);
+      var lit = clamp(m + shimmer, 0, 1);
+      var base = clamp(0.10 + 0.13 * noise[i] + 0.03 * Math.sin(t * 0.8 + phase[i]), 0, 0.4);
+      if (lit > 0.04) {
+        var lvl = Math.min(7, Math.floor(lit * 8));
+        vb[lvl].push(cx[i], cy[i]);
+      } else {
+        var fl = Math.min(2, Math.floor(base * 9));
+        fb[fl].push(cx[i], cy[i]);
+      }
+    }
+    drawBuckets(fb, "236,236,239", spacing * 0.15, 0.28);
+    drawBuckets(vb, "139,124,246", spacing * 0.215, 1.0);
+  }
+
+  function setScene(idx, force) {
+    if (!force && idx === shownScene) return;
+    shownScene = idx;
+    var sc = SCENES[idx];
+    if (sceneEl) sceneEl.textContent = "SCENE 0" + (idx + 1) + " — " + sc.name;
+    if (captionEl) {
+      if (capTimer) window.clearTimeout(capTimer);
+      captionEl.classList.add("fading");
+      capTimer = window.setTimeout(function() {
+        captionEl.textContent = sc.cap;
+        captionEl.classList.remove("fading");
       }, 220);
-    });
+    }
   }
 
-  function finishImmediate() {
-    clearAll();
-    resetUI();
-    if (typed1) typed1.textContent = COMMANDS[0];
-    showLine(2); if (typed2) typed2.textContent = COMMANDS[1];
-    showLine(3); if (typed3) typed3.textContent = COMMANDS[2];
-    if (rowsEl) rowsEl.innerHTML = "";
-    ROWS.forEach(function(row, i){ addRow(row); litAt[i] = 0; });
-    count = 12; updateCount(); draw();
-    if (timerEl) timerEl.textContent = "—";
-    if (copyBtn) copyBtn.hidden = false;
-    if (replayBtn) replayBtn.disabled = false;
-    setStatus("passed · exit 0", true);
-    if (noteEl) noteEl.textContent = "Observed 12/12 outcomes · exit 0 — replay of the documented run, not a live verification.";
+  function frame(now) {
+    raf = window.requestAnimationFrame(frame);
+    var total = 0, i;
+    for (i = 0; i < SCENES.length; i++) total += SCENES[i].dur;
+    var cycle = (total + HOLD) / 1000;
+    var t = ((now - start) / 1000) % cycle;
+    var acc = 0, idx = -1, local = 0;
+    for (i = 0; i < SCENES.length; i++) {
+      var d = SCENES[i].dur / 1000;
+      if (t < acc + d) { idx = i; local = (t - acc) / d; break; }
+      acc += d;
+    }
+    if (idx < 0) { idx = SCENES.length - 1; local = 0.5; }
+    setScene(idx, false);
+    var w = smooth(local / 0.30) * (1 - smooth((local - 0.76) / 0.24));
+    if (SCENES[idx].mask === null) w = 0;
+    renderDots(now / 1000, idx, w);
   }
 
-  if (replayBtn) replayBtn.addEventListener("click", function(){ if (running) return; if (reduce) { finishImmediate(); } else { run(); } });
+  function renderStatic() {
+    setScene(3, true);
+    renderDots(0, 3, 1);
+  }
 
-  // Word stagger for the sub-copy (skip under reduced motion).
+  function startLoop() {
+    if (reduce) { renderStatic(); return; }
+    if (raf) window.cancelAnimationFrame(raf);
+    start = performance.now(); shownScene = -1; running = true;
+    raf = window.requestAnimationFrame(frame);
+  }
+  function stopLoop() { if (raf) { window.cancelAnimationFrame(raf); raf = null; } running = false; }
+
+  window.addEventListener("resize", function() { size(); renderStatic(); if (running) startLoop(); });
+  if (window.ResizeObserver) { new ResizeObserver(function(){ size(); renderStatic(); if (running) startLoop(); }).observe(film); }
+
+  if (replayBtn) replayBtn.addEventListener("click", function(){ startLoop(); });
+
+  document.addEventListener("visibilitychange", function() {
+    if (document.hidden) { stopLoop(); } else if (!reduce) { startLoop(); }
+  });
+
   var sub = document.getElementById("hero-sub");
   if (sub && !reduce) {
     var words = sub.textContent.trim().split(/\s+/);
     sub.textContent = "";
-    words.forEach(function(word, i){
+    words.forEach(function(word, i) {
       var span = document.createElement("span");
       span.className = "w"; span.textContent = word;
       span.style.animationDelay = (i * 18) + "ms";
@@ -671,17 +635,19 @@ tooltipText = kubeObject.getName()</code>
     });
   }
 
-  if (reduce) { finishImmediate(); return; }
-
-  var started = false;
-  function startOnce(){ if (started) return; started = true; run(); }
-  if ("IntersectionObserver" in window) {
-    var io = new IntersectionObserver(function(entries){
-      entries.forEach(function(entry){ if (entry.isIntersecting) { io.unobserve(entry.target); startOnce(); } });
-    }, { threshold: 0.35 });
+  size();
+  if (reduce) { renderStatic(); }
+  else if ("IntersectionObserver" in window) {
+    var io = new IntersectionObserver(function(entries) {
+      entries.forEach(function(entry) {
+        if (entry.isIntersecting) { if (!running) startLoop(); }
+        else { stopLoop(); }
+      });
+    }, { threshold: 0.25 });
     io.observe(film);
+    startLoop();
   } else {
-    startOnce();
+    startLoop();
   }
 })();
 </script>
