@@ -20,6 +20,10 @@ general simulator and not a sandbox.
   build, 190 tests, 12/12 first use, 14 MCP tools, PII-free).
 - **First use:** `node examples/first-use/run.mjs` → **12/12** expected CLI/MCP
   outcomes (pass / mismatch / unavailable for command and browser), exit codes 0/1/2.
+- **Docs clarification (2026-11-06):** added a one-page
+  [browser scenario cheat sheet](schema-cheatsheet.md) plus explicit
+  selector/zero-based/private-evidence guidance in the README and browser guide;
+  product behavior and test counts are unchanged.
 - **CI:** green on **Ubuntu and macOS** (Node 22) — run
   https://github.com/ifelse-codes/praman/actions/runs/42018863948. Each runner
   reports 27/28 files and 174 passed / 16 skipped of 190 tests; the skips are the

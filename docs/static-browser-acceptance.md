@@ -181,6 +181,26 @@ inspect focus at that actual position before speech. A passing preflight is
 explicitly non-proof; final recording still requires fresh proof and matching
 live replays. Do not treat these examples as permission to create a movie.
 
+## Common authoring traps
+
+- **One element per selector.** Playwright strict mode rejects selectors matching
+  two or more elements (most checks also require an attached element). An
+  ambiguous or missing selector returns `insufficient_evidence`; the cause is in
+  the private `result.json`, not in the redacted summary. Fix the selector (for
+  example, target the single group container) instead of loosening the check.
+- **A container can be visible while empty.** For charts, lists and other
+  asynchronous content, assert the rendered text/value/state (or wait for the
+  element that appears), not only the wrapper's visibility.
+- **Zero-based indexes shift on insertion.** `afterStep`, network `window` steps
+  and walkthrough `step`/`startStep` are zero-based. Validation rejects
+  out-of-range values but cannot tell that an index now points at a different
+  action — renumber after inserting steps.
+- **Read private evidence when a step fails.** `--summary` and `REPORT.md` are
+  redacted by design; the exact error and observed values are in
+  `after-<run>/result.json` and `proof.json`. See the
+  [schema cheat sheet](schema-cheatsheet.md#debug-a-failed-run-private-evidence)
+  for the short `jq` recipe; do not publish private evidence.
+
 ## Optional presentation
 
 Verification is complete without recording. If separately authorized, add an authored `walkthrough` with `startStep` and current `after` beats, then call `demonstrate` or MCP `praman_demonstrate`. Acceptance stories omit `before` and `code`; they explain purpose, current requirements, visible results and limits—not an invented failure/fix. Narration and matching fresh replays are still mandatory. See [video guidelines](video-guidelines.md).

@@ -64,7 +64,7 @@ code out of PRAMAN's core.
 
 | What you have | Route | Prerequisites / limits |
 | --- | --- | --- |
-| Static app or already-running browser UI | `scenario-verify scenario.json -o .praman/run` · MCP `praman_scenario_verify` | Running HTTP(S) app + installed Chromium. [Project-local static recipe](docs/static-browser-acceptance.md). No Docker or video required. |
+| Static app or already-running browser UI | `scenario-verify scenario.json -o .praman/run` · MCP `praman_scenario_verify` | Running HTTP(S) app + installed Chromium. [Project-local static recipe](docs/static-browser-acceptance.md); [scenario cheat sheet](docs/schema-cheatsheet.md). No Docker or video required. |
 | Backend app with a UI | Same browser scenario route; provision/reset owned services first | Browser checks include same-origin JSON fields. Fresh contexts do not reset backend state. |
 | CLI or bounded local program | `command-verify commands.json -o .praman/run` · MCP `praman_command_verify` | Trusted executable, cwd, explicit expectations and deadline. [Command contract](#trusted-command-verification). Not a shell or sandbox. |
 | Command/HTTP workflow suite | `coverage-review review.json -o .praman/coverage` · MCP `praman_coverage_review` | [Initial-state model transition gaps and caller-mapped assertions](#workflow-coverage-gap-review-group-3-bounded-scope). Not autonomous requirements discovery. |
@@ -137,6 +137,8 @@ Use the guide in order: [install and build](docs/first-use.md#1-setup-once),
 [inspect results](docs/first-use.md#3-inspect-and-rerun-through-the-cli),
 [configure MCP](docs/first-use.md#4-configure-an-mcp-client), then
 [use your own project](docs/first-use.md#5-use-praman-on-your-own-project).
+For the browser scenario format in one page, see the
+[browser scenario cheat sheet](docs/schema-cheatsheet.md).
 No published `npm install praman` or `npx praman` route is claimed.
 
 ### Tested source setup
@@ -213,7 +215,7 @@ source root:
 
 ```sh
 copy="$(mktemp -d "${TMPDIR:-/tmp}/praman-clean.XXXXXX")"
-cp package.json package-lock.json tsconfig.json "$copy/"
+cp package.json package-lock.json tsconfig.json vitest.config.ts tsconfig.test.json "$copy/"
 cp -R src tests "$copy/"
 home="$(mktemp -d "${TMPDIR:-/tmp}/praman-home.XXXXXX")"
 runtime_tmp="$(mktemp -d "${TMPDIR:-/tmp}/praman-runtime.XXXXXX")"
@@ -230,6 +232,9 @@ node dist/cli.js --help
 npx playwright install chromium
 npm test
 ```
+
+The configuration files are included in the copy so the optional suite uses the
+project's recorded timeouts; without them Vitest runs on its 5 s defaults.
 
 Keep runtime temp **outside the source package**: extensionless CommonJS test
 helpers otherwise inherit the root `"type":"module"` and fail. The first
@@ -1775,6 +1780,18 @@ node dist/cli.js demonstrate ./scenario.json -o ./.praman/change-report
   Each run saves `network.json` (including optimizer error bodies); a visible
   broken image cannot pass an `image` check. Autonomous test design, arbitrary
   source checkout/deployment and exhaustive behavior discovery remain out of scope.
+- **Authoring traps and private debugging:** selectors must resolve to exactly one
+  element — Playwright strict-mode ambiguity returns `insufficient_evidence`, not
+  an app defect, and the raw cause is in the private `after-<run>/result.json`.
+  Indexes (`afterStep`, network windows, walkthrough steps) are zero-based and
+  shift when a step is inserted; renumber them. A visible container is not
+  rendered content: for asynchronous UI, assert the actual text/value/state, not
+  only a wrapper's visibility. `waitFor` waits for visibility only; `fill` is
+  atomic and `press` sends one key/chord. Drag, scroll, double-click,
+  `selectOption`, per-key typing and JS evaluation are not part of the current
+  DSL — use unit/Playwright tests for direct manipulation. See the
+  [browser scenario cheat sheet](docs/schema-cheatsheet.md), including the
+  one-line `jq` private-evidence debug recipe.
 
 ### Standalone scene preview (Group 8)
 
