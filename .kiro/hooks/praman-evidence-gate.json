@@ -1,0 +1,12 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "praman-evidence-gate",
+      "description": "Opt-in finish gate: when praman-gate.json exists, re-run its PRAMAN declarations and send the agent back while any is failed or not proven",
+      "trigger": "Stop",
+      "timeout": 900,
+      "action": { "type": "command", "command": "node kiro-power/scripts/praman-gate.mjs" }
+    }
+  ]
+}
