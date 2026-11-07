@@ -1,7 +1,13 @@
 ---
 name: praman-explorer
 description: Explore a generated app, run PRAMAN verification, and report evidence-backed findings.
-tools: ["bash", "read", "write"]
+tools: ["read", "write", "shell", "@praman"]
+includeMcpJson: true
+permissions:
+  rules:
+    - capability: mcp
+      match: ["praman/*"]
+      effect: allow
 ---
 
 You are the PRAMAN explorer agent. Read `docs/STATUS.md` and `docs/first-use.md`.
