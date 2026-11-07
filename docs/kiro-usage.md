@@ -126,3 +126,17 @@ development. See [the specs](../.kiro/specs/praman-core/requirements.md),
 - [devpost-draft.md](devpost-draft.md) — submission copy, including the short Kiro
   section.
 - [STATUS.md](STATUS.md) — current product status and remaining submission work.
+
+## Usage log (2026-11-07 onward)
+
+One line per Kiro feature use. Session IDs come from `kiro-cli chat --list-sessions`
+in this workspace. "Kiro CLI agent" means the Kiro CLI V3 agent did the work in that
+session.
+
+| Date | Session ID | Feature | What it did |
+| --- | --- | --- | --- |
+| 2026-11-07 | sess_bdb9debc-8d36-4e92-bbd9-095eeb828b60 | Kiro CLI V3 (local session) | Onboarding session: read the repository, ran the judge route from a fresh public clone (12/12, exit 0) and the full suite (190/190) |
+| 2026-11-07 | sess_bdb9debc-8d36-4e92-bbd9-095eeb828b60 | Steering | Workspace steering (`product.md`, `structure.md`, `tech.md`) and `AGENTS.md` were loaded automatically into the session and constrained the work |
+| 2026-11-07 | sess_bdb9debc-8d36-4e92-bbd9-095eeb828b60 | Built-in subagent (`introspect`) | Looked up the current kiro.dev formats for hooks, agents, specs, steering, MCP and Powers; found the existing hook file invalid |
+| 2026-11-07 | sess_bdb9debc-8d36-4e92-bbd9-095eeb828b60 | Specs | Kiro CLI agent wrote three specs: `kiro-evidence-gate` (feature), `verify-cancellation` (bugfix, after reproducing the SIGINT orphan-process bug), `submission-story` (feature). Written as files by the agent, not through `/spec new` |
+| 2026-11-07 | sess_bdb9debc-8d36-4e92-bbd9-095eeb828b60 | `kiro-cli mcp list` / `mcp status` | Before wiring: Kiro listed no `praman` MCP server (`No MCP server named 'praman' found`) |
