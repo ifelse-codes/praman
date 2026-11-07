@@ -58,6 +58,21 @@ gate still prints the safe summary there and the write-up says so.
   neither stderr nor exit code.
 - IDE behavior: not yet tested.
 
+**Feedback channel finding (CLI V3 and IDE, 2026-11-07):** `PostFileSave` hooks fire on
+agent writes on both surfaces (`ContextualHookInvoked … completed` about 0.9 s after the
+write), but their output and exit code never reach the agent; after a deliberate type
+error the IDE agent said it had not run a type check. The Stop hook is the channel
+that does feed back: its stderr reached the agent and exit 1 continued the turn. So the
+gate is a Stop hook, and requirement 2.3 ("show its result in the session") is recorded
+as not achievable with save hooks; the lint hook stays as a background check only.
+
+**CLI exit codes are not proof.** `command-verify` on a missing declaration crashes with
+an uncaught `ENOENT` and exits 1, the same code as an observed mismatch. The gate
+therefore reads `proof.json` and `feedback.json` and treats the declaration as passed
+only when the CLI exits 0 **and** both files say `passed`. Any disagreement or missing
+file is `insufficient_evidence`. (The crash exit code is a small CLI defect to fix in a
+separate bugfix spec, not here.)
+
 ## Turn bound
 
 The script stores `{sessionId, consecutiveNonPass}` in `.praman/gate/state.json`. The
