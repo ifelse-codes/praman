@@ -1,6 +1,0 @@
-{
-  "name": "praman-review-on-save",
-  "trigger": { "type": "file_save", "pattern": "src/**/*.ts" },
-  "action": { "type": "command", "command": "npm run lint" },
-  "description": "Typecheck after editing source"
-}
