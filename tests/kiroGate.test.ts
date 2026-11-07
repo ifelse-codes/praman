@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -126,10 +126,31 @@ describe.skipIf(!hasBuild)('Kiro Stop-hook evidence gate', () => {
       expect(codes).toEqual([1, 1, 0, 1]);
       // A different session keeps its own counter.
       expect((await runGate(dir, 'sess-other')).code).toBe(1);
-      const state = JSON.parse(await readFile(join(dir, '.praman', 'gate', 'state.json'), 'utf8'));
+      const state = JSON.parse(await readFile(join(dir, '.praman', 'gate-state.json'), 'utf8'));
       expect(state.sessions['sess-bound'].consecutiveNonPass).toBe(1);
       expect(state.sessions['sess-other'].consecutiveNonPass).toBe(1);
       expect(last?.stdout).toBe('');
+    } finally { await rm(dir, { recursive: true, force: true }); }
+  });
+
+  it('counts gate internal errors toward the bound and never reports them as passed', async () => {
+    const dir = await workspace({
+      'pass.json': declaration('10\n'),
+      'praman-gate.json': gateFile([{ kind: 'command', path: 'pass.json' }], { maxExtraTurns: 2 }),
+    });
+    try {
+      // A regular file where the run tree belongs makes the gate fail internally (ENOTDIR),
+      // even though the declaration itself would pass.
+      await mkdir(join(dir, '.praman'));
+      await writeFile(join(dir, '.praman', 'gate'), 'not a directory');
+      const runs = [];
+      for (let attempt = 0; attempt < 3; attempt += 1) runs.push(await runGate(dir, 'sess-internal'));
+      expect(runs.map(run => run.code)).toEqual([1, 1, 0]);
+      expect(runs[0].stderr).toContain('PRAMAN gate: gate run: NOT PROVEN | internal error (ENOTDIR)');
+      expect(runs[0].stderr).toContain('rejection 1 of 2');
+      expect(runs[1].stderr).toContain('rejection 2 of 2');
+      expect(runs[2].stdout).toContain('NOT PROVEN after 2 rejected stop(s)');
+      for (const run of runs) expect(`${run.stdout}${run.stderr}`).not.toContain('passed');
     } finally { await rm(dir, { recursive: true, force: true }); }
   });
 

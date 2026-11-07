@@ -75,7 +75,8 @@ separate bugfix spec, not here.)
 
 ## Turn bound
 
-The script stores `{sessionId, consecutiveNonPass}` in `.praman/gate/state.json`. The
+The script stores `{sessionId, consecutiveNonPass}` in `.praman/gate-state.json` (beside
+the run tree, so a damaged `.praman/gate/` is still counted). The
 session identifier comes from the hook's stdin JSON if present (spike confirms the
 field); otherwise the counter is keyed by the hook process's parent session marker and
 resets after an all-pass run. When `consecutiveNonPass >= maxExtraTurns` the script

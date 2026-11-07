@@ -161,7 +161,8 @@ async function main() {
   if (!existsSync(configPath)) return 0; // Opt-in: silent without a gate file.
 
   const sessionKey = typeof input.session_id === 'string' && input.session_id ? input.session_id : 'unknown-session';
-  const statePath = join(root, '.praman', 'gate', 'state.json');
+  // State lives beside, not inside, the run directories so a damaged run tree is still counted.
+  const statePath = join(root, '.praman', 'gate-state.json');
   const state = readJson(statePath) ?? { version: 1, sessions: {} };
   if (!state.sessions || typeof state.sessions !== 'object') state.sessions = {};
   const previous = Number(state.sessions[sessionKey]?.consecutiveNonPass) || 0;
@@ -175,18 +176,23 @@ async function main() {
   }
 
   if (!results) {
-    const cli = locateCli();
-    if (!cli) {
-      results = [{ label: 'PRAMAN CLI', verdict: 'insufficient_evidence', reason: 'dist/cli.js not found; run npm run build or set PRAMAN_HOME' }];
-    } else {
-      const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const runDirectory = join(root, '.praman', 'gate', `${stamp}-${process.pid}`);
-      mkdirSync(runDirectory, { recursive: true, mode: 0o700 });
-      results = [];
-      // Sequential: declarations may share caller-owned state.
-      for (const [index, entry] of config.declarations.entries()) {
-        results.push(await verifyDeclaration(cli, root, runDirectory, entry, index));
+    try {
+      const cli = locateCli();
+      if (!cli) {
+        results = [{ label: 'PRAMAN CLI', verdict: 'insufficient_evidence', reason: 'dist/cli.js not found; run npm run build or set PRAMAN_HOME' }];
+      } else {
+        const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const runDirectory = join(root, '.praman', 'gate', `${stamp}-${process.pid}`);
+        mkdirSync(runDirectory, { recursive: true, mode: 0o700 });
+        results = [];
+        // Sequential: declarations may share caller-owned state.
+        for (const [index, entry] of config.declarations.entries()) {
+          results.push(await verifyDeclaration(cli, root, runDirectory, entry, index));
+        }
       }
+    } catch (error) {
+      // An internal gate error is never a pass; it is counted like any other rejection.
+      results = [{ label: 'gate run', verdict: 'insufficient_evidence', reason: `internal error (${error?.code ?? error?.name ?? 'unknown'})` }];
     }
   }
 
@@ -222,7 +228,8 @@ async function main() {
 }
 
 main().then(code => { process.exitCode = code; }, error => {
-  // An internal gate error is not a pass: request another turn with a safe message.
+  // Reached only if the rejection counter itself cannot be read or written, so this
+  // case cannot be counted. It is still never a pass: request another turn.
   process.stderr.write(`PRAMAN gate: internal error (${error?.code ?? error?.name ?? 'unknown'}); the work is NOT PROVEN.\n`);
   process.exitCode = 1;
 });

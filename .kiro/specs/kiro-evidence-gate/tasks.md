@@ -20,7 +20,7 @@ Target: week 1 (Nov 9–15, 2026). Run every task in a recorded Kiro session.
 
 - [x] 4. Build the Stop-hook gate
   - [x] 4.1 Write `kiro-power/scripts/praman-gate.mjs` (strict config parse, CLI spawn, safe summary)
-  - [x] 4.2 Implement the bounded turn counter in `.praman/gate/state.json`
+  - [x] 4.2 Implement the bounded turn counter in `.praman/gate-state.json` (gate internal errors count toward the bound)
   - [x] 4.3 Add `.kiro/hooks/praman-evidence-gate.json`
   - [x] 4.4 Add `tests/kiroGate.test.ts` for the six error-handling rows (7 tests; full suite 197/29 files)
   - [x] 4.5 Proven in Kiro CLI V3 (session `sess_1654a697-a525-4e8a-8bce-29ce588d1b68`): rejected a stop on a failing declaration, released it after the fix. IDE Stop behavior still untested
