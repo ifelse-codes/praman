@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "praman": {
+      "command": "node",
+      "args": ["dist/cli.js", "mcp"],
+      "autoApprove": [],
+      "disabled": false
+    }
+  }
+}
