@@ -3,9 +3,9 @@
 Target: week 1 (Nov 9–15, 2026). Run every task in a recorded Kiro session.
 
 - [ ] 1. Spike: confirm Kiro hook and MCP behavior on both surfaces
-  - [ ] 1.1 Record the Stop-hook stdin JSON fields and which exit code continues a turn in CLI V3 and in the IDE
-  - [ ] 1.2 Confirm the MCP server working directory for `.kiro/settings/mcp.json` in CLI V3 and IDE
-  - [ ] 1.3 Confirm whether the `PostFileSave` matcher sees relative or absolute paths
+  - [ ] 1.1 Record the Stop-hook stdin JSON fields and which exit code continues a turn in CLI V3 and in the IDE (CLI V3 done 2026-11-07: exit 1 continues once; IDE pending)
+  - [ ] 1.2 Confirm the MCP server working directory for `.kiro/settings/mcp.json` in CLI V3 and IDE (CLI V3 done 2026-11-07: workspace root; IDE pending)
+  - [x] 1.3 Confirm whether the `PostFileSave` matcher sees relative or absolute paths (matcher `(^|/)src/.*\.ts$` fires in CLI V3, so either form works)
   - _Requirements: 1.1, 2.3, 3.4, 3.6_
 
 - [ ] 2. Wire PRAMAN MCP into the workspace

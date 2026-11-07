@@ -41,6 +41,23 @@ kiro.dev documents that in CLI V3 a `Stop` command hook exiting 1 (or exit 0 wit
 surfaces before the script hard-codes a code. If the IDE cannot continue a turn, the
 gate still prints the safe summary there and the write-up says so.
 
+**Spike 1.1 result, CLI V3 headless (2026-11-07, session
+`sess_2bee93f1-dd5d-49eb-8fe0-9673427faf8b`):**
+
+- Stop-hook stdin is `{"session_id", "hook_event_name": "Stop", "cwd"}`; `cwd` is the
+  workspace root, so relative paths work.
+- Exit 1 continued the turn: the agent answered `FIRST`, the hook exited 1 with an
+  instruction on stderr, and the agent then answered `CONTINUED`, a word that appeared
+  only in that stderr. `runFinished.finalText` was `FIRSTCONTINUED`.
+- The continuation stays inside the same turn (one `turn_start`/`turn_end`).
+- The hook was **not** invoked again when the continued response stopped (one
+  invocation recorded, counter file = 1). So after one rejection the agent can end the
+  turn without a re-check. The gate must therefore re-verify on the next turn's Stop
+  and must not treat "no second invocation" as a pass.
+- Kiro records the invocation as `completed` regardless of exit code and stores
+  neither stderr nor exit code.
+- IDE behavior: not yet tested.
+
 ## Turn bound
 
 The script stores `{sessionId, consecutiveNonPass}` in `.praman/gate/state.json`. The
