@@ -20,6 +20,21 @@ general simulator and not a sandbox.
   build, 190 tests, 12/12 first use, 14 MCP tools, PII-free).
 - **First use:** `node examples/first-use/run.mjs` → **12/12** expected CLI/MCP
   outcomes (pass / mismatch / unavailable for command and browser), exit codes 0/1/2.
+- **Kiro integration (2026-11-07/08, local branch `kiro-evidence-gate`, not pushed):**
+  spec `kiro-evidence-gate` closed. Workspace MCP wiring (`.kiro/settings/mcp.json`,
+  owner-created because Kiro blocks agent writes there), `praman-explorer` agent with a
+  `praman/*`-only permission rule, a v1 `PostFileSave` lint hook, an opt-in `Stop`-hook
+  finish gate (`kiro-power/scripts/praman-gate.mjs` + 8 tests), two new steering files,
+  and an installable Kiro Power (`kiro-power/`). Observed in Kiro: MCP calls returned
+  `passed`/`failed` (CLI interactive + headless; IDE listed 14 tools); the gate rejected a
+  failing stop and released it after the agent's fix (interactive CLI, owner-approved
+  edits); the Power ran a `passed` check from a separate project. Full suite **198 tests /
+  29 files**. Limits: IDE `Stop` behavior untested; save-hook results never reach the
+  agent; the agent never sees a passing gate verdict; the Power needs explicit
+  `power`/`mcp` `praman*` allow rules for headless use and absolute paths. Session IDs:
+  `docs/kiro-usage.md` usage log. `kiro-crew/` stub removed.
+- **Open defect:** interrupting `command-verify` (SIGINT) leaves the declared command
+  running (reproduced 2026-11-07; spec `verify-cancellation`).
 - **Docs clarification (2026-11-06):** added a one-page
   [browser scenario cheat sheet](schema-cheatsheet.md) plus explicit
   selector/zero-based/private-evidence guidance in the README and browser guide;
@@ -80,10 +95,9 @@ The shipped/frozen/deferred view is in [ROADMAP.md](ROADMAP.md).
 1. **Video and submission (owner):** record and upload the ≤3-minute video; replace
    the remaining `<DEMO_VIDEO_URL>` in the Devpost draft; save and submit. Target
    Nov 26–27, deadline Dec 4, 2026.
-2. **Kiro (optional):** the truthful write-up is ready. Additional Kiro usage is
-   currently blocked by the monthly usage limit (authenticated CLI attempt on
-   2026-11-05 failed with `UsageLimitReachedError` before any tool call). Resolve the
-   plan/credits first if a stronger usage story is wanted; do not invent one.
+2. **Kiro:** spec `kiro-evidence-gate` is closed on the local branch, awaiting owner
+   review and push. Next: spec `verify-cancellation`, the Power path bugfix, then spec
+   `submission-story` (video from this work only; the non-Kiro Headlamp clip is dropped).
 3. **Independent-human validation:** a person other than the owner following the
    first-use guide (CI already covers two operating systems).
 4. **Post-submission backlog:** npm publish pipeline, Windows support, deferred

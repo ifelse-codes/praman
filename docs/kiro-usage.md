@@ -6,6 +6,16 @@ Kiro actually did from what an AI coding assistant and the submitter did.
 **Short version: Kiro was genuinely used, but narrowly — one substantive IDE session
 on one bounded Headlamp feature. Kiro did not build PRAMAN's core.**
 
+> **Update 2026-11-08.** The statement above describes the state on 2026-11-05 and is
+> kept as history. From 2026-11-07, Kiro CLI V3 sessions in this repository built and
+> proved PRAMAN's Kiro integration (spec `kiro-evidence-gate`): workspace MCP wiring, a
+> custom agent with a PRAMAN-only permission rule, a lint hook, a `Stop`-hook finish
+> gate with tests, steering, and an installable Kiro Power. The owner ran the
+> interactive CLI and IDE checks. Every session and its limits are in the
+> [usage log](#usage-log-2026-11-07-onward). Kiro still did not build PRAMAN's original
+> verification core. The quota block described below no longer applies. A full rewrite
+> of this document is task 2 of spec `submission-story`.
+
 ## Short version
 
 - **Installed:** the Kiro IDE app (1.4.62) and `kiro-cli` 2.37.1 are installed on the
@@ -96,7 +106,7 @@ development. See [the specs](../.kiro/specs/praman-core/requirements.md),
 | PRAMAN `/.kiro` specs, steering, hook, agent | Assistant (created 2026-10-31; refreshed 2026-11-05) | Git history |
 | Headlamp editor dry-run preview (the Kiro session's task) | Mixed: Kiro started the spec and the edits shown in its snapshots; the assistant completed the remaining work after quota | Kiro snapshots and session end; continuation evidence in the external archive |
 | Headlamp tooltip repair shown in the 2:49 walkthrough | Earlier PRAMAN Headlamp cycle; **not** part of Kiro's recorded session | Kiro's snapshots do not touch Headlamp's `frontend/src/components/common/Link.tsx`; the clip predates this session |
-| `kiro-crew/` stub | Assistant scaffold; not a working Kiro Crew app and not used for the submission | Two files in the repository; no run evidence |
+| `kiro-crew/` stub | Assistant scaffold; not a working Kiro Crew app and not used for the submission. Removed 2026-11-08 (owner decision) | Two files in the repository until removal; no run evidence |
 
 ## Limits and non-claims
 
@@ -166,3 +176,6 @@ session.
 | 2026-11-08 | sess_875deeac-1bc5-45f3-882b-2e65f55568e5 | Kiro Power + throwaway scratch agent permissions | Scratch-only agent with `power`/`praman` and `mcp`/`praman/*` allow rules: activation allowed, but the power's `use` call (title `@praman/praman/praman_command_verify`) was still denied (`effect: ask`). No verdict |
 | 2026-11-08 | sess_ccfd7c6f-68ac-4da3-8694-8e499b47b797 | Kiro Power end to end (headless, scratch agent) | With rules `power` / `["praman","praman*"]` and `mcp` / `["praman*","power-praman*"]`: zero denials. The agent activated the power and called `praman_command_verify`. First call failed because relative paths resolved against the installed power's directory; the agent retried with absolute paths. Evidence in the scratch project: `proof.json` and `feedback.json` = `passed`, 2/2 runs printed `10\n`. Installed power directory unchanged by the run |
 | 2026-11-08 | sess_307a37d7-cbe4-43c6-b95d-843e34705c3c | Kiro Power re-test after skill fix | Kiro CLI agent added "pass absolute paths" to `SKILL.md` and reinstalled (`Updated power "praman"`). The agent still tried relative paths first, then retried with absolute paths: `passed`. Known limit: the skill text did not change the first attempt; the power's MCP server runs from the installed power directory, so relative paths fail |
+| 2026-11-08 | sess_bdb9debc-8d36-4e92-bbd9-095eeb828b60 | Custom agent + steering (`kiro-evidence-gate` task 6) | Kiro CLI agent added steering resources to `praman-explorer`, wrote `.kiro/steering/video.md` (`fileMatch`, includes `docs/video-guidelines.md`) and `.kiro/steering/declarations.md` (`auto`, includes `docs/schema-cheatsheet.md`), and removed the stale `kiro-crew/` stub (owner decision 4-B). Kiro loaded the new `auto` steering into this session's available context as `praman-declarations` as soon as it was written |
+| 2026-11-08 | sess_1266542d-6e5f-474a-9bba-ace1d8805048 | Custom agent resources + steering (headless, `--agent praman-explorer`) | Asked which mode to use for a new check and what exit 2 means, with no tool calls. The agent answered from `declarations.md` ("`acceptance`"; exit 2 = `insufficient_evidence`, "not proven") and listed `praman-declarations`, the video steering and both referenced docs among its context. The session record's `steering_inclusion` entry lists only the always-on files; the two new files reached the agent through the agent's `resources` glob |
+| 2026-11-08 | sess_bdb9debc-8d36-4e92-bbd9-095eeb828b60 | Kiro Power docs | Kiro CLI agent added the required permission rules (`power` `praman*`, `mcp` `praman*`) with copy-paste examples to the README, a new `kiro-power/README.md` and the skill; reinstalled the Power (`Updated power "praman"`, installed copy identical to the repo) |

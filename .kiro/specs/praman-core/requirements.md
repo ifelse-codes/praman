@@ -27,8 +27,9 @@ PRAMAN does not generate or repair application code.
    (create/observe/workload/fault/recover/reset/verify/demonstrate/destroy).
 8. **Optional presentation:** proof-gated narrated walkthroughs; never a prerequisite
    for verification and never a substitute for it.
-9. **Kiro integration:** `/.kiro` specs, steering, hook and agent, kept in sync with
-   the delivered product.
+9. **Kiro integration:** `/.kiro` specs, steering, hooks, a custom agent, workspace MCP
+   wiring and an installable Kiro Power (`kiro-power/`), each exercised in recorded Kiro
+   sessions (see spec `kiro-evidence-gate` and `docs/kiro-usage.md`).
 
 ## Non-functional
 - No false green: unavailable execution and incomplete evidence stay explicit.

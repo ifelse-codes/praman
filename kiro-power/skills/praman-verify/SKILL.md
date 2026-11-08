@@ -16,6 +16,18 @@ and browser actions run with the user's authority.
   do not fall back to claiming success.
 - Browser checks also need `npx playwright install chromium` in that checkout and a
   running target the user started. PRAMAN does not reset backend state.
+- If Power activation or a `praman_*` call is denied with "approval is not supported in
+  non-interactive mode", the session has no allow rule. Tell the user to add these to
+  their agent's `permissions.rules` (see the Power's README); do not work around it:
+
+  ```yaml
+  - capability: power
+    match: ["praman", "praman*"]
+    effect: allow
+  - capability: mcp
+    match: ["praman*", "power-praman*"]
+    effect: allow
+  ```
 
 ## Step 1: Pick the surface
 

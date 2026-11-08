@@ -319,9 +319,9 @@ commands/config overlays stay in integrations. Checks, evidence classification,
 safe feedback and recording gates stay shared. Browser scenarios and the command
 verification contract below are distinct proof surfaces; native-UI checks remain unsupported.
 
-The bundled modules compile to `dist/integrations/{kan,headlamp}.js`. Other modules
-can live in the caller's project; no app-name registry, core schema change or new
-CLI/MCP tool is required. Without `application`, an environment manages only its
+Integration modules live in the caller's project; no app-name registry, core schema
+change or new CLI/MCP tool is required (target-specific reference integrations were
+removed from the product on 2026-11-05). Without `application`, an environment manages only its
 declared infrastructure (and may exercise an explicitly supplied running scenario).
 
 **Clean cutover:** use `application` plus top-level `scenario`, not the old
@@ -1952,16 +1952,80 @@ campaign tools: `praman_service_replay`, `praman_workflow_replay`,
 The legacy `praman_verify`, `praman_experience` and `praman_stimulate` tools
 were removed on 2026-11-05; they depended on the deleted checkout demo pipeline.
 
+## Kiro integration
+
+PRAMAN plugs into Kiro in four ways. Each was exercised in recorded Kiro sessions; the
+session IDs and limits are in the [Kiro usage log](docs/kiro-usage.md#usage-log-2026-11-07-onward).
+
+| Piece | File | What it does |
+| --- | --- | --- |
+| Workspace MCP | `.kiro/settings/mcp.json` | Starts `node dist/cli.js mcp` so Kiro agents in this repo get the 14 `praman_*` tools (run `npm run build` first) |
+| Custom agent | `.kiro/agents/praman-explorer.md` | Verification agent with PRAMAN steering as resources and an allow rule for `praman/*` only (`kiro-cli chat --v3 --agent praman-explorer`) |
+| Finish gate | `.kiro/hooks/praman-evidence-gate.json` + `kiro-power/scripts/praman-gate.mjs` | Opt-in `Stop` hook. With a `praman-gate.json` in the workspace root, it re-runs those declarations whenever the agent finishes and sends the agent back while any is failed or not proven |
+| Kiro Power | `kiro-power/` | Installable package of the MCP tools and a `praman-verify` skill for use in other projects |
+
+Also: a `PostFileSave` lint hook (`.kiro/hooks/praman-lint-on-save.json`) and steering
+in `.kiro/steering/`. The lint hook fires on agent writes, but Kiro does not show its
+result to the agent on CLI or IDE.
+
+### Finish gate
+
+Create `praman-gate.json` in the workspace root (it is opt-in; without it the hook does
+nothing):
+
+```json
+{
+  "declarations": [{ "kind": "command", "path": "checks/total.json" }],
+  "maxExtraTurns": 3
+}
+```
+
+`kind` is `command` or `browser`. A declaration counts as passed only when the CLI exits
+0 and its `proof.json` and `feedback.json` both say `passed`. Limits: the gate sends the
+agent back at most `maxExtraTurns` times per session, then stops blocking but still
+reports "not proven". Kiro runs the hook once per turn, so a fix is checked on the next
+turn. The agent only sees failing verdicts; a pass is visible in `.praman/gate/`
+evidence. Tested in Kiro CLI V3; not yet in the IDE.
+
+### Installing the Power and the permissions it needs
+
+```sh
+npm ci && npm run build
+export PRAMAN_HOME="$PWD"          # set in every shell that starts Kiro
+kiro-cli powers install ./kiro-power
+```
+
+Interactive sessions prompt for each Power activation and tool call. **Headless runs
+deny them** unless rules allow them; a rule for `praman` alone was not enough. Add both
+rules to your agent's `permissions` (copy-paste):
+
+```yaml
+permissions:
+  rules:
+    - capability: power
+      match: ["praman", "praman*"]
+      effect: allow
+    - capability: mcp
+      match: ["praman*", "power-praman*"]
+      effect: allow
+```
+
+Pass absolute `specPath`/`outDir` values: the Power's server runs from the installed
+Power's directory. A full example agent and limits are in
+[kiro-power/README.md](kiro-power/README.md). These rules let the agent run any
+`praman_*` tool with your authority; PRAMAN is not a sandbox.
+
 ## Kiro usage
 
-`/.kiro/` contains specs, steering, a save hook and a custom agent.
+`/.kiro/` contains specs (`praman-core`, `kiro-evidence-gate`, `verify-cancellation`,
+`submission-story`), steering, two hooks and a custom agent.
 
-Actual Kiro engineering was **one bounded IDE session** (2026-11-01, about 86
-minutes) that started a Headlamp dry-run preview feature before hitting a usage
-limit; the remaining work and the product core were completed with an assistant.
-Attribution is mixed and disclosed. The full truthful account, observed evidence
-and limits are in [Kiro usage](docs/kiro-usage.md). Do not claim substantial
-Kiro-authored development without evidence; do not claim Kiro built the core.
+Kiro use has two parts. The earlier one was a single bounded IDE session (2026-11-01,
+about 86 minutes) on a Headlamp feature; PRAMAN's original core was built with an
+assistant, not Kiro. Since 2026-11-07, the Kiro integration above was built and proven
+in Kiro CLI V3 sessions, with owner-run CLI and IDE checks. The truthful account, every
+session ID and the limits are in [Kiro usage](docs/kiro-usage.md). Do not claim Kiro
+built PRAMAN's original core.
 
 ## License
 MIT
