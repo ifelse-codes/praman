@@ -3,7 +3,8 @@ import { dirname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { ChangeSpec, ChangeProof, ScenarioRun } from '../case/change.js';
 import type { Verdict } from '../eval/eval.js';
-import { checkDiagnostics, formatSummary } from './diagnostics.js';
+import { checkDiagnostics, formatSummary, formatTable, type Diagnostic } from './diagnostics.js';
+import { describeDiagnosis } from './classify.js';
 import { identityComplete, sameIdentity, type IdentitySnapshot } from '../eval/identity.js';
 
 export interface FeedbackContext {
@@ -216,12 +217,26 @@ export function formatFeedback(feedback: ChangeFeedback): string {
   }
   return lines.join('\n') + '\n';
 }
+/** One row per declared check: index, kind, checkpoint, verdict per run and safe diagnosis labels. */
+export function formatCheckOverview(feedback: Pick<ChangeFeedback, 'findings'>, diagnostics: Diagnostic[]): string[] {
+  const runs = feedback.findings[0]?.occurrences ?? [];
+  const header = ['Check', 'Kind', 'After step', ...runs.map(row => row.version === 'before' ? 'Before' : `Run ${row.run}`), 'Diagnosis'];
+  const rows = feedback.findings.map(finding => {
+    const labels = diagnostics.filter(item => item.diagnosis && (item.category === 'evidence_unavailable' && item.checkIndex === finding.checkIndex
+      // A stopped run explains the checks it never reached.
+      || item.category === 'execution_unavailable' && finding.occurrences.some(row => row.version === item.version && row.run === item.run && row.verdict === 'not_executed')))
+      .map(item => `${describeDiagnosis(item.diagnosis!)}${item.category === 'execution_unavailable' && item.step !== undefined ? ` at step ${item.step}` : ''}`);
+    const step = finding.occurrences[0]?.afterStep;
+    return [String(finding.checkIndex), finding.kind, step === undefined ? 'end' : String(step), ...finding.occurrences.map(row => row.verdict), [...new Set(labels)].join('; ')];
+  });
+  return ['## Checks', '', ...formatTable(header, rows)];
+}
 export function saveFeedback(spec: ChangeSpec, proof: ChangeProof, outDir: string, context?: FeedbackContext) {
   mkdirSync(outDir, { recursive: true });
   const diagnostics = checkDiagnostics(outDir, { ...proof, regressionCheck: spec.regressionCheck }, spec.checks.map(check => check.id));
   const feedback = { ...buildFeedback(spec, proof, outDir, context), diagnostics };
   const feedbackPath = join(outDir, 'feedback.json'), report = join(outDir, 'REPORT.md');
   writeFileSync(feedbackPath, JSON.stringify(feedback, null, 2), { mode: 0o600 });
-  writeFileSync(report, formatSummary({ verdict: proof.verdict, diagnostics }, true) + '\n\n' + formatFeedback(feedback), { mode: 0o600 });
+  writeFileSync(report, formatSummary({ verdict: proof.verdict, diagnostics }, true, formatCheckOverview(feedback, diagnostics)) + '\n\n' + formatFeedback(feedback), { mode: 0o600 });
   return { feedback, feedbackPath, report, diagnostics };
 }

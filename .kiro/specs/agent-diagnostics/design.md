@@ -49,14 +49,23 @@ to a container or use a unique attribute), then rerun."
 
 ## Report table
 
-`src/review/feedback.ts` renders a Markdown table before the per-check sections:
+`src/review/feedback.ts` renders a Markdown table (`## Checks`) right after the
+`Outcome:` line of `REPORT.md`, before the per-diagnostic list and the per-check sections,
+so it is the first thing a reader sees even when there are many diagnostics:
 
 ```
-| Check | Kind | Step | Run 1 | Run 2 | Diagnosis |
+| Check | Kind | After step | Run 1 | Run 2 | Diagnosis |
 | --- | --- | --- | --- | --- | --- |
 | 0 | text | 2 | passed | passed | |
-| 11 | visible | 25 | not run | not run | locator_ambiguous (12) |
+| 11 | visible | 25 | not_executed | not_executed | locator_ambiguous (12 elements) at step 25 |
 ```
+
+Verdict cells use the product's own words (`passed`, `failed`, `insufficient_evidence`,
+`not_executed`); paired modes add a `Before` column. A check that never ran shows the
+diagnosis of the step that stopped its run. The command report uses the same table without
+the step column; kinds are `exit`, `stdout`, `stderr` or `artifact`, and the Diagnosis cell
+names a run that did not exit (`run timeout`, `run interrupted`, `run unavailable`), since
+command runs have no Playwright message to classify.
 
 ## Testing strategy
 

@@ -5,7 +5,7 @@ import { chmodSync, closeSync, copyFileSync, existsSync, mkdirSync, openSync, re
 import path from 'node:path';
 import { z } from 'zod';
 import { safeFeedbackValue } from '../review/feedback.js';
-import { checkDiagnostics, formatSummary } from '../review/diagnostics.js';
+import { checkDiagnostics, formatSummary, formatTable } from '../review/diagnostics.js';
 import { inspectMedia, mediaAssertion } from './media.js';
 import { observeResources, resourceConfigSchema, type ResourceConfig, type ResourceObservation } from './resources.js';
 import { captureIdentity, identityComplete, identityDeclarationSchema, identityScope, normalizeIdentity, sameIdentity, type IdentitySnapshot } from './identity.js';
@@ -218,7 +218,14 @@ export async function proveCommands(specPath: string, outputDirectory: string, s
   });
   const feedbackPath = path.join(outDir, 'feedback.json'), report = path.join(outDir, 'REPORT.md');
   privateJson(feedbackPath, feedback);
+  // Same overview as browser reports; command checks have no steps, and a run that did not exit names its status.
+  const runLabels = [...(before ? ['Before'] : []), ...current.map((_, i) => `Run ${i + 1}`)];
+  const overview = ['## Checks', '', ...formatTable(['Check', 'Kind', ...runLabels, 'Diagnosis'], feedback.findings.map(finding => {
+    const statuses = [...new Set(finding.occurrences.map(row => row.status).filter(status => status !== 'exited'))];
+    return [finding.checkIndex === -1 ? 'exit' : String(finding.checkIndex), finding.checkIndex === -1 ? 'exit' : spec.checks[finding.checkIndex]?.source ?? 'unknown',
+      ...finding.occurrences.map(row => row.verdict ?? 'not_executed'), statuses.map(status => `run ${status}`).join('; ')];
+  }))];
   writeFileSync(report, `# Command verification\n\nMode: ${spec.mode}\n\nBaseline: ${spec.baselineKind ?? 'none (current-only)'}\n\nVerdict: ${verdict}\n\n${feedback.reason}\n\n${feedback.scope}\n\nIdentity: ${proof.identityStatus}. Inspect private proof.json and per-run result.json identityBefore/identityAfter entries for declared coverage and hashes.\n\n${feedback.reproduction}\n\nPrivate evidence: proof.json; per-run result.json, stdout.txt, stderr.txt and captured artifacts.\n`, { mode: 0o600 });
-  writeFileSync(report, '\n' + formatSummary({ verdict, diagnostics }, true) + '\n', { flag: 'a', mode: 0o600 });
+  writeFileSync(report, '\n' + formatSummary({ verdict, diagnostics }, true, overview) + '\n', { flag: 'a', mode: 0o600 });
   return { verdict, feedback, feedbackPath, report, proofPath, diagnostics };
 }

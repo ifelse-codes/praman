@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { classifyError, describeDiagnosis, diagnosisNextAction, type Diagnosis } from './classify.js';
 
 export interface Diagnostic {
   category: 'check_mismatch' | 'execution_unavailable' | 'evidence_unavailable' | 'proof_gate' | 'story_preflight' | 'recording_unavailable';
@@ -11,14 +12,24 @@ export interface Diagnostic {
   stage?: 'before' | 'current' | 'code';
   beat?: number;
   step?: number;
+  /** Fixed failure kind and safe counts for browser execution/evidence failures; never raw text. */
+  diagnosis?: Diagnosis;
   references: Array<{ path: string; pointer?: string; private: true }>;
   nextAction: string;
 }
 
-export function formatSummary(result: { verdict: string; diagnostics?: Diagnostic[]; report?: string; proofVerdict?: string; proof?: { verdict: string } }, markdown = false): string {
+/** Markdown table with escaped cells; callers pass only indexes, kinds, verdicts and safe labels. */
+export function formatTable(header: string[], rows: string[][]): string[] {
+  const cell = (value: string) => value.replace(/\\/g, '\\\\').replace(/\|/g, '\\|').replace(/\r?\n/g, ' ');
+  return [`| ${header.map(cell).join(' | ')} |`, `| ${header.map(() => '---').join(' | ')} |`, ...rows.map(row => `| ${row.map(cell).join(' | ')} |`)];
+}
+
+/** `overview` lines (for example a check table) are placed right after the outcome in Markdown reports. */
+export function formatSummary(result: { verdict: string; diagnostics?: Diagnostic[]; report?: string; proofVerdict?: string; proof?: { verdict: string } }, markdown = false, overview: string[] = []): string {
   const lines = [`Outcome: ${result.verdict}`];
   const proofVerdict = result.proofVerdict ?? result.proof?.verdict;
   if (proofVerdict && proofVerdict !== result.verdict) lines.push(`Proof: ${proofVerdict} (separate from delivery)`);
+  if (markdown && overview.length) lines.push('', ...overview, '');
   const shown = markdown ? result.diagnostics ?? [] : (result.diagnostics ?? []).slice(0, 1);
   for (const diagnostic of shown) {
     const location = [diagnostic.version, diagnostic.run === undefined ? undefined : `run ${diagnostic.run}`,
@@ -26,7 +37,7 @@ export function formatSummary(result: { verdict: string; diagnostics?: Diagnosti
       diagnostic.stage === undefined ? undefined : `stage ${diagnostic.stage}`,
       diagnostic.beat === undefined ? undefined : `beat[${diagnostic.beat}]`,
       diagnostic.step === undefined ? undefined : `step[${diagnostic.step}]`].filter(Boolean).join(' ');
-    lines.push(`${diagnostic.category}${location ? `: ${location}` : ''}`,
+    lines.push(`${diagnostic.category}${location ? `: ${location}` : ''}${diagnostic.diagnosis ? `; diagnosis: ${describeDiagnosis(diagnostic.diagnosis)}` : ''}`,
       ...diagnostic.references.map(ref => {
         const label = `${ref.path}${ref.pointer ? `#${ref.pointer}` : ''}`;
         const url = pathToFileURL(ref.path); if (ref.pointer) url.hash = ref.pointer;
@@ -60,10 +71,12 @@ export function checkDiagnostics(outDir: string, proof: { verdict: string; mode?
     const directory = version === 'before' ? 'before' : `${command ? 'current' : 'after'}-${run}`;
     const proofPointer = version === 'before' ? '/before' : `/${command ? 'current' : 'after'}/${run - 1}`;
     const result = `${directory}/result.json`;
+    // Browser errors only: command runs have no Playwright messages to classify.
+    const runDiagnosis = !command && value.error ? classifyError(value.error) : undefined;
     if (value.error || value.failedStep !== undefined) diagnostics.push({
-      category: 'execution_unavailable', version, run, step: value.failedStep,
+      category: 'execution_unavailable', version, run, step: value.failedStep, ...(runDiagnosis ? { diagnosis: runDiagnosis } : {}),
       references: [ref('proof.json', proofPointer), ...(existsSync(join(outDir, result)) ? [ref(result)] : [])],
-      nextAction: 'Inspect the private execution failure; restore prerequisites and rerun in a fresh directory.',
+      nextAction: (runDiagnosis && diagnosisNextAction(runDiagnosis)) ?? 'Inspect the private execution failure; restore prerequisites and rerun in a fresh directory.',
     });
     for (const [index, row] of value.checks.entries()) {
       const unavailable = row.verdict !== 'passed' && row.verdict !== 'failed'
@@ -73,8 +86,10 @@ export function checkDiagnostics(outDir: string, proof: { verdict: string; mode?
       if (version === 'before' && row.verdict === 'failed' && !unavailable
         && !(proof.mode === 'repair' && proof.verdict !== 'passed' && row.id !== proof.regressionCheck)) continue;
       const checkIndex = row.id === '$exit' && command ? -1 : checkIds.indexOf(row.id);
+      // A browser check that could not observe keeps its private error in `evidence`.
+      const diagnosis = !command && row.verdict === 'insufficient_evidence' && typeof row.evidence === 'string' && row.evidence ? classifyError(row.evidence) : undefined;
       diagnostics.push({
-        category: unavailable ? 'evidence_unavailable' : 'check_mismatch', version, run, checkIndex,
+        category: unavailable ? 'evidence_unavailable' : 'check_mismatch', version, run, checkIndex, ...(diagnosis ? { diagnosis } : {}),
         references: [ref('proof.json', `${proofPointer}/checks/${index}`),
           ...(existsSync(join(outDir, result)) ? [ref(result, `/checks/${index}`)] : []),
           ...(command && row.evidence ? [ref(row.evidence)] : []),
@@ -83,7 +98,7 @@ export function checkDiagnostics(outDir: string, proof: { verdict: string; mode?
           ? proof.mode === 'acceptance'
             ? 'Inspect the declared current requirement, private expectation and observation, and run preconditions before deciding whether the requirement or implementation needs correction; rerun all current checks. A mismatch alone does not establish an application defect.'
             : 'Compare the private expectation and observation; investigate the mismatch and rerun all declared checks.'
-          : 'Restore the missing execution or evidence before diagnosing a defect; rerun all declared checks.',
+          : (diagnosis && diagnosisNextAction(diagnosis)) ?? 'Restore the missing execution or evidence before diagnosing a defect; rerun all declared checks.',
       });
     }
   }

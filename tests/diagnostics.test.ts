@@ -26,6 +26,12 @@ it('locates a private command mismatch by declaration index, result pointer and 
   expect(expected.pointer).toBe('/checks/0');
   expect(JSON.parse(readFileSync(expected.path, 'utf8')).checks[0].value).toBe('different-private-value');
   expect(diagnostic.references.find(ref => ref.path.endsWith('result.json'))?.pointer).toBe('/checks/1');
+  expect(result.diagnostics.every(row => row.diagnosis === undefined)).toBe(true);
+  const report = readFileSync(result.report, 'utf8');
+  expect(report).toContain('| Check | Kind | Run 1 | Run 2 | Diagnosis |');
+  expect(report).toContain('| exit | exit | passed | passed |  |');
+  expect(report).toContain('| 0 | stdout | failed | failed |  |');
+  expect(report.indexOf('## Checks')).toBeLessThan(report.indexOf('check_mismatch'));
   for (const text of [JSON.stringify(result), readFileSync(result.feedbackPath, 'utf8'), readFileSync(result.report, 'utf8')]) {
     expect(text).not.toContain(secret); expect(text).not.toContain('different-private-value');
   }
