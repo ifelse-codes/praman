@@ -41,7 +41,8 @@ general simulator and not a sandbox.
   `insufficient_evidence` before anything runs or is written. Proven in Kiro
   (`sess_055fb96f…`). Known limit: the demonstrate tools' speech cache stays relative.
   Full suite **206 tests / 30 files** locally.
-- **Cancellation fix (2026-11-08, local branch `plan-agent-gaps`, not pushed):** spec
+- **Cancellation fix (2026-11-08, public `main` `59090bf` via fast-forward, PR #4; CI
+  green on Ubuntu and macOS, 200 passed / 16 skipped of 216):** spec
   `verify-cancellation` tasks 1, 3 and 4. Ctrl-C/SIGTERM on `command-verify` and
   `workflow-replay`, and MCP cancel, stdin close or SIGINT/SIGTERM for
   `praman_command_verify`/`praman_workflow_replay`, now stop the declared command's
