@@ -1,0 +1,14 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "praman",
+  "version": "0.1.0",
+  "description": "Evidence-driven verification for AI-generated software: run authored command and browser checks against the real software and get passed, failed or not-proven verdicts with private evidence",
+  "author": {
+    "name": "PRAMAN contributors",
+    "url": "https://github.com/ifelse-codes/praman"
+  },
+  "keywords": ["praman", "verify", "verification", "evidence", "prove", "acceptance check", "regression check", "command-verify", "scenario-verify"],
+  "homepage": "https://ifelse-codes.github.io/praman/",
+  "repository": "https://github.com/ifelse-codes/praman",
+  "license": "MIT"
+}

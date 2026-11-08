@@ -1,0 +1,13 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "praman-lint-on-save",
+      "description": "Typecheck PRAMAN source after the agent saves a TypeScript file under src/",
+      "trigger": "PostFileSave",
+      "matcher": "(^|/)src/.*\\.ts$",
+      "timeout": 120,
+      "action": { "type": "command", "command": "npm run lint" }
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+  "mcpServers": {
+    "praman": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["${PRAMAN_HOME}/dist/cli.js", "mcp"]
+    }
+  }
+}
