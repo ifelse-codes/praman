@@ -1,8 +1,8 @@
 # Tasks: verification cancellation
 
-Target: week 2 (Nov 16–22, 2026). Implement in a recorded Kiro bugfix-spec session; use
-the Kiro IDE for the property-based test step if the owner wants Kiro-generated PBT
-(kiro.dev lists PBT as IDE-only).
+Target: week 2 (Nov 16–22, 2026). Implement in a recorded Kiro bugfix-spec session.
+Owner decision 2026-11-08: the property-based test step (task 2) runs in the Kiro IDE,
+by the owner (kiro.dev lists PBT as IDE-only). Part of the "vital gaps" plan (gap 6).
 
 - [ ] 1. Reproduce and scope
   - [ ] 1.1 Add the reproduction as a failing test (command-verify SIGINT leaves the group alive)
