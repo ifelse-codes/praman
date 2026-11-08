@@ -16,7 +16,7 @@ const fileHash = (file: string) => hash(readFileSync(file));
 function privateJson(file: string, value: unknown) { writeFileSync(file, JSON.stringify(value, null, 2), { mode: 0o600 }); }
 
 /** The replay closure executes only the exact fresh proof contract; it never accepts saved output as a replay. */
-export function commandReplayGate(spec: CommandSpec, proofFile: string, outDir: string): (stage: 'before' | 'current') => Promise<CommandReplay> {
+export function commandReplayGate(spec: CommandSpec, proofFile: string, outDir: string, signal?: AbortSignal): (stage: 'before' | 'current') => Promise<CommandReplay> {
   const proof = proofSchema.parse(JSON.parse(readFileSync(proofFile, 'utf8')));
   if (proof.mode !== spec.mode || proof.baselineKind !== spec.baselineKind || proof.verdict !== 'passed' || proof.specHash !== hash(JSON.stringify(spec)) || proof.current.length !== spec.repeats) throw new Error('Recording requires matching fresh mode-specific command proof.');
   const allChecks = ['$exit', ...spec.checks.map(c => c.id)];
@@ -40,7 +40,7 @@ export function commandReplayGate(spec: CommandSpec, proofFile: string, outDir: 
     const reference = stage === 'before' ? proof.before! : proof.current[0];
     const command = spec[stage]!;
     if (proof.specHash !== hash(JSON.stringify(spec)) || fileHash(proofFile) !== proofHash || [...referenceHashes].some(([file, identity]) => fileHash(file) !== identity) || !sameIdentity(captureCommandIdentity(command), reference.identityBefore)) throw new Error('Proof or declared execution identity changed before replay.');
-    const observed = await executeCommand(spec, command, path.join(outDir, `replay-${stage}`));
+    const observed = await executeCommand(spec, command, path.join(outDir, `replay-${stage}`), undefined, signal);
     let matches = observed.status === 'exited' && observed.status === reference.status && observed.verdict === reference.verdict && observed.code === reference.code && observed.signal === reference.signal && sameIdentity(observed.identityBefore, reference.identityBefore) && sameIdentity(observed.identityAfter, reference.identityBefore);
     matches &&= fileHash(observed.stdout) === referenceHashes.get(reference.stdout) && fileHash(observed.stderr) === referenceHashes.get(reference.stderr);
     matches &&= observed.checks.length === reference.checks.length && observed.checks.every(c => {
@@ -67,7 +67,7 @@ export function loadCommandVideoPlan(planPath: string) {
   return { plan, spec };
 }
 
-export async function demonstrateCommands(planPath: string, outputDirectory: string, cut: VideoCut = 'full') {
+export async function demonstrateCommands(planPath: string, outputDirectory: string, cut: VideoCut = 'full', signal?: AbortSignal) {
   planPath = path.resolve(planPath);
   const { plan, spec } = loadCommandVideoPlan(planPath);
   videoCutSchema.parse(cut);
@@ -80,16 +80,16 @@ export async function demonstrateCommands(planPath: string, outputDirectory: str
   mkdirSync(outDir, { mode: 0o700 });
   privateJson(path.join(outDir, 'video-plan.json'), plan);
   privateJson(path.join(outDir, 'input-identities.json'), Object.fromEntries(inputs));
-  const result = await proveCommands(plan.commandsPath, path.join(outDir, 'proof'));
+  const result = await proveCommands(plan.commandsPath, path.join(outDir, 'proof'), signal);
   const report = path.join(outDir, 'REPORT.md');
   let demoVideo: string | undefined;
   let verdict = result.verdict;
   let recordingError: string | undefined;
-  if (result.verdict === 'passed') {
+  if (result.verdict === 'passed' && !signal?.aborted) {
     try {
-      const replay = commandReplayGate(spec, result.proofPath, outDir);
+      const replay = commandReplayGate(spec, result.proofPath, outDir, signal);
       const unchanged = () => { if ([...inputs].some(([file, identity]) => fileHash(file) !== identity)) throw new Error('Recording declaration or source changed since proof.'); };
-      demoVideo = await recordCommandWalkthrough(plan, spec, outDir, async stage => { unchanged(); const replayed = await replay(stage); unchanged(); return replayed; }, cut);
+      demoVideo = await recordCommandWalkthrough(plan, spec, outDir, async stage => { unchanged(); const replayed = await replay(stage); unchanged(); return replayed; }, cut, signal);
       unchanged();
     } catch (error) {
       demoVideo = undefined; verdict = 'insufficient_evidence';
@@ -100,7 +100,9 @@ export async function demonstrateCommands(planPath: string, outputDirectory: str
   }
   const scope = `Only declared command checks. Browser-hosted xterm rendering of real pipe output, not native terminal/TTY capture. Recording renderer, speech and encoder dependencies are outside command verification identity scope unless explicitly declared as tools/inputs. ${identityScope}`;
   const diagnostics = [...result.diagnostics, ...(recordingError ? [recordingDiagnostic(outDir, path.join(outDir, 'recording-failure.json'))] : [])];
-  const delivery = { mode: spec.mode, baselineKind: spec.baselineKind, composition, verdict, proofVerdict: result.verdict, diagnostics, demoVideo, report, proofPath: result.proofPath, feedbackPath: result.feedbackPath, recordingError, scope };
+  const interrupted = Boolean(signal?.aborted);
+  if (interrupted) { verdict = 'insufficient_evidence'; demoVideo = undefined; rmSync(path.join(outDir, 'demo.mp4'), { force: true }); }
+  const delivery = { mode: spec.mode, baselineKind: spec.baselineKind, composition, verdict, ...(interrupted ? { interrupted: true } : {}), proofVerdict: result.verdict, diagnostics, demoVideo, report, proofPath: result.proofPath, feedbackPath: result.feedbackPath, recordingError, scope };
   privateJson(path.join(outDir, 'delivery.json'), delivery);
   writeFileSync(report, `# Command video delivery\n\nMode: ${spec.mode} · baseline: ${spec.baselineKind ?? 'none (current-only)'}\n\nProof: **${result.verdict}** · delivery: **${verdict}**\n\n${scope}\n\n${demoVideo ? '[Watch the narrated walkthrough](demo.mp4) · [Captions](video/captions.vtt) · [Measured narration and recording provenance](video/tour.json)\n\nMode-appropriate real commands executed again during capture; stdout, stderr, exit, checks, artifacts and executable identity matched fresh proof.' : recordingError ?? 'Recording blocked: mode-specific verification did not pass.'}\n\n## Evidence\n\n- [Verification report](proof/REPORT.md), [proof](proof/proof.json), [safe feedback](proof/feedback.json)\n- [Resolved private recording plan](video-plan.json), [input file identities](input-identities.json)\n${demoVideo ? `- [Current replay](replay-current.json)${spec.mode !== 'acceptance' ? ' · [Baseline replay](replay-before.json)' : ''}\n- Raw command streams and artifacts: proof/ and replay-current/${spec.mode !== 'acceptance' ? ', replay-before/' : ''}\n- Narration, supplied source patch, rendered text and scene PNGs: video/\n` : ''}\nRaw evidence, movie and authored narration are private and not sanitized exports. Review before sharing. Story is authored by the coding agent; structural gates do not certify human comprehension or root cause. Baseline attribution is caller-declared, not authenticated history.\n`, { mode: 0o600 });
   writeFileSync(report, '\n' + formatSummary({ verdict, diagnostics }, true) + '\n', { flag: 'a', mode: 0o600 });

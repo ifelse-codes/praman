@@ -41,18 +41,21 @@ general simulator and not a sandbox.
   `insufficient_evidence` before anything runs or is written. Proven in Kiro
   (`sess_055fb96f…`). Known limit: the demonstrate tools' speech cache stays relative.
   Full suite **206 tests / 30 files** locally.
-- **Cancellation fix (2026-11-08, public `main` `59090bf` via fast-forward, PR #4; CI
-  green on Ubuntu and macOS, 200 passed / 16 skipped of 216):** spec
-  `verify-cancellation` tasks 1, 3 and 4. Ctrl-C/SIGTERM on `command-verify` and
-  `workflow-replay`, and MCP cancel, stdin close or SIGINT/SIGTERM for
-  `praman_command_verify`/`praman_workflow_replay`, now stop the declared command's
-  process group (SIGTERM, SIGKILL after 2 s), start no further runs, record
-  `insufficient_evidence` with `"interrupted": true`, and the CLI exits 130/143.
-  Reproduced before the fix on 5 of 6 paths (`scenario-verify` was not affected); after
-  the fix no orphan on all 6. Full suite **216 tests / 31 files**; first-use 12/12.
-  Waiting: owner property tests P1–P5 in the Kiro IDE (task 2) and the self-check repair
-  run (task 5.2). Not wired: `coverage-review`, `command-demonstrate`,
-  `command-preview`, non-durable `workflow-campaign`.
+- **Cancellation fix (2026-11-08):** spec `verify-cancellation` closed except the owner's
+  property-test task 2. First fix on public `main` `59090bf` (fast-forward, PR #4; CI
+  green on Ubuntu and macOS, 200 passed / 16 skipped of 216). Follow-up commit (local
+  until approved) covers the remaining paths. Ctrl-C/SIGTERM on `command-verify`,
+  `workflow-replay`, `coverage-review`, `workflow-campaign` (not durable),
+  `command-preview` and `command-demonstrate`, and MCP cancel, stdin close or
+  SIGINT/SIGTERM for the matching tools, now stop the declared command's process group
+  (SIGTERM, SIGKILL after 2 s), start no further runs, record `insufficient_evidence`
+  with `"interrupted": true`, and the CLI exits 130/143. Owned groups are also killed
+  if PRAMAN exits early. Reproduced before the fix on every listed path;
+  `scenario-verify` and durable campaigns were not affected. Self-check
+  (`examples/self-check/cancellation/`, repair mode): baseline `643fbe0` `orphan: yes`,
+  current `orphan: no` 3/3, `passed`; also `passed` through the Kiro `Stop` gate
+  (`sess_c6010529…`). Full suite **221 tests / 31 files**; first-use 12/12. Waiting:
+  owner property tests P1–P5 in the Kiro IDE (task 2).
 - **Docs clarification (2026-11-06):** added a one-page
   [browser scenario cheat sheet](schema-cheatsheet.md) plus explicit
   selector/zero-based/private-evidence guidance in the README and browser guide;
@@ -116,8 +119,9 @@ The shipped/frozen/deferred view is in [ROADMAP.md](ROADMAP.md).
    the remaining `<DEMO_VIDEO_URL>` in the Devpost draft; save and submit. Target
    Nov 26–27, deadline Dec 4, 2026.
 2. **Kiro:** spec `kiro-evidence-gate` is closed and merged to public `main` (PR #1).
-   Next: the Power path bugfix spec, spec `verify-cancellation`, then spec
-   `submission-story` (video from this work only; the non-Kiro Headlamp clip is dropped).
+   Done: the Power path bugfix and spec `verify-cancellation` (except the owner's
+   property tests). Next: specs `agent-diagnostics`, `scenario-actions`, `named-steps`,
+   then `submission-story` (video from this work only; the non-Kiro Headlamp clip is dropped).
 3. **Independent-human validation:** a person other than the owner following the
    first-use guide (CI already covers two operating systems).
 4. **Post-submission backlog:** npm publish pipeline, Windows support, deferred

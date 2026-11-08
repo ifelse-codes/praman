@@ -71,9 +71,10 @@ program.command('command-demonstrate').description('Verify declared command mode
   .option('--summary', 'print only outcome, indexed failures, private evidence and next action')
   .addOption(new Option('--cut <cut>', 'authored presentation composition').choices(['full', 'short']).default('full'))
   .action(async (plan, opts) => {
-    const result = await demonstrateCommands(plan, opts.out, opts.cut);
+    const { result, received } = await withStop(signal => demonstrateCommands(plan, opts.out, opts.cut, signal));
     console.log(opts.summary ? formatSummary(result) : JSON.stringify(result, null, 2));
-    if (result.verdict !== 'passed' || !result.demoVideo) process.exitCode = result.verdict === 'failed' ? 1 : 2;
+    if (received) exitAfter(received, result.verdict);
+    else if (result.verdict !== 'passed' || !result.demoVideo) process.exitCode = result.verdict === 'failed' ? 1 : 2;
   });
 
 program.command('preview').description('Execute and inspect a browser story without speech, movies or proof')
@@ -89,9 +90,9 @@ program.command('command-preview').description('Execute and inspect terminal/sou
   .argument('<plan>').requiredOption('-o, --out <dir>', 'fresh private preview directory')
   .addOption(new Option('--cut <cut>', 'authored presentation composition').choices(['full', 'short']).default('full'))
   .action(async (plan, opts) => {
-    const result = await previewCommands(plan, opts.out, opts.cut);
+    const { result, received } = await withStop(signal => previewCommands(plan, opts.out, opts.cut, signal));
     console.log(JSON.stringify(result, null, 2));
-    if (result.status !== 'passed') process.exitCode = 2;
+    exitAfter(received, result.status === 'passed' ? 'passed' : 'insufficient_evidence');
   });
 
 program.command('scenario-verify').description('Verify browser acceptance, historical repair or comparison without recording')
@@ -156,18 +157,22 @@ program.command('workflow-replay').description('Execute a trusted application co
 program.command('coverage-review').description('Review declared command/HTTP workflow coverage and model-only candidate stimuli; not whole-app proof')
   .argument('<declaration>').requiredOption('-o, --out <dir>', 'fresh private coverage directory')
   .action(async (file, opts) => {
-    const result = await reviewCoverage(file, opts.out);
+    const { result, received } = await withStop(signal => reviewCoverage(file, opts.out, signal));
     console.log(JSON.stringify(result, null, 2));
-    if (result.verdict !== 'passed') process.exitCode = result.verdict === 'failed' ? 1 : 2;
+    exitAfter(received, result.verdict);
   });
 
 program.command('workflow-campaign').description('Run count- or duration-bounded isolated command/HTTP campaigns, drain active workflows and combine evidence; not a sandbox')
   .argument('<declaration>').requiredOption('-o, --out <dir>', 'fresh private campaign directory')
   .option('--durable', 'persist a count-based isolated queue; orderly interruption can be resumed locally')
   .action(async (file, opts) => {
-    const result = opts.durable ? (await withStop(signal => startDurableCampaign(file, opts.out, signal))).result : await runCampaign(file, opts.out);
+    // Durable campaigns drain admitted work on stop so they can resume; plain campaigns
+    // stop their active commands and record the run as interrupted.
+    const { result, received } = opts.durable
+      ? { ...(await withStop(signal => startDurableCampaign(file, opts.out, signal))), received: undefined }
+      : await withStop(signal => runCampaign(file, opts.out, signal));
     console.log(JSON.stringify(result, null, 2));
-    if (result.verdict !== 'passed') process.exitCode = result.verdict === 'failed' ? 1 : 2;
+    exitAfter(received, result.verdict);
   });
 
 program.command('campaign-resume').description('Resume pending local durable jobs without rerunning completed or uncertain work')

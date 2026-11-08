@@ -46,7 +46,7 @@ works the same for every agent and the CLI, and keeps existing declarations unch
 
 | Order | Problem today | Planned fix | Size |
 | --- | --- | --- | --- |
-| 1 | Ctrl-C stops PRAMAN but leaves the tested program running | Stop every owned process on Ctrl-C or MCP cancel; record the run as not proven | M |
+| 1 | ~~Ctrl-C stops PRAMAN but leaves the tested program running~~ **Done 2026-11-08** | Stop every owned process on Ctrl-C or MCP cancel; record the run as not proven. Owner property tests (task 2) still to run | M |
 | 2 | When a step fails, the summary does not say why (for example a selector that matched 12 elements) | Name the failure kind and safe counts in the summary, report and MCP result; selectors and values stay private | S |
 | 2 | The report has no overview of all checks | One pass/fail table at the top of `REPORT.md` | S |
 | 3 | Only 8 browser actions; agents write side scripts for double-click, select, typing, scroll and drag | Add `dblclick`, `selectOption`, `type`, `scroll`, `drag` | S–M |

@@ -7,6 +7,7 @@ import { replayWorkflow } from '../core/workflow.js';
 import { serviceSchema } from '../gateway/service.js';
 import { serviceReplaySchema } from '../gateway/replay.js';
 import { normalizeIdentity } from '../eval/identity.js';
+import { interruptedReason } from '../eval/command.js';
 
 const referenceSchema = z.object({ caseIndex: z.number().int().nonnegative(), checkIndex: z.number().int().min(-1) }).strict();
 const reviewSchema = z.object({
@@ -34,7 +35,7 @@ function combine(values: Verdict[]): Verdict {
 }
 
 /** Initial-state command/HTTP model review. Authored mappings are not independent requirement discovery. */
-export async function reviewCoverage(specPath: string, outputDirectory: string) {
+export async function reviewCoverage(specPath: string, outputDirectory: string, signal?: AbortSignal) {
   const outDir = path.resolve(outputDirectory);
   mkdirSync(path.dirname(outDir), { recursive: true, mode: 0o700 });
   mkdirSync(outDir, { mode: 0o700 });
@@ -82,9 +83,11 @@ export async function reviewCoverage(specPath: string, outputDirectory: string) 
     edges.forEach((edge, transitionIndex) => transitions.push({ transitionIndex, stateIndex: edge.stateIndex, routeIndex: edge.routeIndex, reachable: paths.has(edge.state), status: 'untested', occurrences: [] }));
     const results: { runs: { verdict: Verdict; checks: Verdict[]; resultPath: string }[] }[] = [];
     for (const [caseIndex, workflow] of workflows.entries()) {
+      // An interruption stops the active command and starts no further case.
+      if (signal?.aborted) break;
       const input = path.join(outDir, `case-${caseIndex}.json`);
       privateJson(input, workflow);
-      const result = await replayWorkflow(input, path.join(outDir, `case-${caseIndex}`));
+      const result = await replayWorkflow(input, path.join(outDir, `case-${caseIndex}`), { signal });
       const observations: { verdict: Verdict; checks: Verdict[]; resultPath: string }[] = [];
       results.push({ runs: observations });
       cases.push({ caseIndex, verdict: result.verdict, proofPath: result.proofPath });
@@ -104,6 +107,8 @@ export async function reviewCoverage(specPath: string, outputDirectory: string) 
         }
       }
     }
+    // Partial cases cannot establish coverage; skip the requirement and gap analysis.
+    if (signal?.aborted) throw new Error(interruptedReason);
     for (const [requirementIndex, requirement] of manifest.requirements.entries()) {
       const checks = requirement.checks.map(ref => {
         const result = results[ref.caseIndex];
@@ -134,16 +139,18 @@ export async function reviewCoverage(specPath: string, outputDirectory: string) 
       privateJson(row.candidatePath, candidate);
     }
   } catch (e) { error = String(e); }
-  const verdict: Verdict = error || cases.some(row => row.verdict === 'insufficient_evidence') || requirements.some(row => row.status === 'insufficient_evidence') ? 'insufficient_evidence'
+  const interrupted = Boolean(signal?.aborted);
+  const verdict: Verdict = interrupted || error || cases.some(row => row.verdict === 'insufficient_evidence') || requirements.some(row => row.status === 'insufficient_evidence') ? 'insufficient_evidence'
     : cases.some(row => row.verdict === 'failed') || requirements.some(row => row.status !== 'passed') || transitions.some(row => row.reachable && row.status !== 'verified') ? 'failed' : 'passed';
   const reportPath = path.join(outDir, 'coverage.json');
   const scope = 'Initial-state command workflows against one declared finite-state HTTP dependency. Coverage is model-transition exercise plus caller-mapped command assertions, not source coverage, independently discovered requirements, whole-app correctness or historical repair proof. Candidates test only the simulator and do not close application coverage gaps.';
   const result = {
-    verdict, proof: false, scope, reportPath, cases, requirements, transitions,
+    verdict, proof: false, ...(interrupted ? { interrupted: true } : {}), scope, reportPath, cases, requirements, transitions,
     counts: { reachable: transitions.filter(row => row.reachable).length, unreachable: transitions.filter(row => !row.reachable).length,
       exercised: transitions.filter(row => row.reachable && row.occurrences.length).length, verified: transitions.filter(row => row.reachable && row.status === 'verified').length,
       untestedRequirements: requirements.filter(row => row.status === 'untested').length },
-    nextAction: verdict === 'passed' ? 'All reachable model transitions and mapped assertions passed within this declared scope; preserve private evidence. This does not establish requirement completeness.'
+    nextAction: interrupted ? `${interruptedReason} Rerun in a fresh output directory.`
+      : verdict === 'passed' ? 'All reachable model transitions and mapped assertions passed within this declared scope; preserve private evidence. This does not establish requirement completeness.'
       : verdict === 'failed' ? 'Inspect indexed gaps and private evidence. Adapt model-only candidates into authored application workflows and map missing requirements; rerun the review. A coverage gap is not an application defect.'
       : 'Inspect private input/execution errors and restore complete supported workflows before making coverage claims.',
   };

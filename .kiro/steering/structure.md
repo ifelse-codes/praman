@@ -11,6 +11,7 @@ src/
   review/           feedback, diagnostics, coverage review
   mcp/              stdio MCP server
 examples/first-use/ public negative-control runner (CLI + MCP, 12 outcomes)
+examples/self-check/ PRAMAN checks its own fixes (PRAMAN is the target; repair mode)
 docs/               product docs (first-use, static acceptance, release, status)
 .kiro/              specs, steering, hooks, agent
 praman/.praman/     ignored private runtime evidence (not in Git)

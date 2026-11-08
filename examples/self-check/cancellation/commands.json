@@ -1,0 +1,38 @@
+{
+  "mode": "repair",
+  "baselineKind": "historical",
+  "title": "Ctrl-C stops the declared command",
+  "requirement": "When command-verify receives SIGINT while a declared command runs, the command's process group is stopped before PRAMAN exits.",
+  "before": {
+    "executable": "node",
+    "args": ["harness.mjs", "../../../.praman/self-check/baseline/dist/cli.js"],
+    "cwd": ".",
+    "deadlineMs": 60000,
+    "identity": {
+      "files": [
+        { "role": "script", "path": "./harness.mjs" },
+        { "role": "input", "path": "../../../.praman/self-check/baseline/dist/cli.js" },
+        { "role": "input", "path": "../../../.praman/self-check/baseline/dist/eval/command.js" }
+      ]
+    }
+  },
+  "current": {
+    "executable": "node",
+    "args": ["harness.mjs", "../../../dist/cli.js"],
+    "cwd": ".",
+    "deadlineMs": 60000,
+    "identity": {
+      "files": [
+        { "role": "script", "path": "./harness.mjs" },
+        { "role": "input", "path": "../../../dist/cli.js" },
+        { "role": "input", "path": "../../../dist/eval/command.js" }
+      ]
+    }
+  },
+  "expectedExit": 0,
+  "checks": [
+    { "id": "no-orphan", "source": "stdout", "operator": "equals", "value": "orphan: no\n" }
+  ],
+  "regressionCheck": "no-orphan",
+  "repeats": 3
+}

@@ -57,7 +57,7 @@ export async function startMcp() {
   tool('praman_workflow_campaign', 'Run count- or duration-bounded command/HTTP campaigns with isolated, persistent per-worker or shared-service model state and private evidence/reports. Duration closes admission then drains active commands. Optional root-process resource observations; not a sandbox, distributed scheduler, autonomous tester or historical repair proof.', {
     specPath: z.string(), outDir: z.string(), durable: z.boolean().optional(),
   }, async ({ specPath, outDir, durable }, extra) => {
-    const result = durable ? await startDurableCampaign(specPath, outDir, extra.signal) : await runCampaign(specPath, outDir);
+    const result = durable ? await startDurableCampaign(specPath, outDir, extra.signal) : await cancellable(extra.signal, signal => runCampaign(specPath, outDir, signal));
     return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }], isError: result.verdict !== 'passed' };
   });
   tool('praman_campaign_resume', 'Resume pending jobs in a local durable count campaign, preserving completed receipts. Ungraceful in-flight execution fails closed for recovery; not distributed execution.', {
@@ -74,8 +74,8 @@ export async function startMcp() {
   });
   tool('praman_coverage_review', 'Execute declared initial-state command/HTTP workflows, review reachable model transitions and caller-mapped assertions, and propose model-only simulator cases. Not autonomous requirements discovery or whole-app proof. Trusted commands; private inputs/evidence.', {
     specPath: z.string(), outDir: z.string(),
-  }, async ({ specPath, outDir }) => {
-    const result = await reviewCoverage(specPath, outDir);
+  }, async ({ specPath, outDir }, extra) => {
+    const result = await cancellable(extra.signal, signal => reviewCoverage(specPath, outDir, signal));
     return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }], isError: result.verdict !== 'passed' };
   });
   tool('praman_workflow_replay', 'Run trusted command/dependency workflows with explicit application state preconditions and fresh isolated repeats. Capture private reconstructable traces; not a sandbox or historical repair proof.', {
@@ -104,8 +104,8 @@ export async function startMcp() {
   });
   tool('praman_command_demonstrate', 'Verify the declared command mode, then deliver a mode-appropriate narrated browser-hosted terminal/source video only when live replays match proof. Private output; not native TTY capture or a sandbox.', {
     planPath: z.string(), outDir: z.string(), cut: videoCutSchema.optional(),
-  }, async ({ planPath, outDir, cut }) => {
-    const result = await demonstrateCommands(planPath, outDir, cut);
+  }, async ({ planPath, outDir, cut }, extra) => {
+    const result = await cancellable(extra.signal, signal => demonstrateCommands(planPath, outDir, cut, signal));
     return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }], isError: result.verdict !== 'passed' || !result.demoVideo };
   });
   tool('praman_preview', 'Execute real authored browser actions and inspect story framing without speech or movies. Layout preview is explicitly non-proof, may mutate application state and never authorizes recording. Final fresh proof and matching live replays remain required. Private evidence.', {
@@ -116,8 +116,8 @@ export async function startMcp() {
   });
   tool('praman_command_preview', 'Execute trusted commands and inspect terminal/source story framing without speech or movies. Non-proof, not native TTY capture or a sandbox; real commands may mutate external state. Final fresh proof and matching live replays remain required. Private evidence.', {
     planPath: z.string(), outDir: z.string(), cut: videoCutSchema.optional(),
-  }, async ({ planPath, outDir, cut }) => {
-    const result = await previewCommands(planPath, outDir, cut);
+  }, async ({ planPath, outDir, cut }, extra) => {
+    const result = await cancellable(extra.signal, signal => previewCommands(planPath, outDir, cut, signal));
     return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }], isError: result.status !== 'passed' };
   });
   tool('praman_environment', 'Manage owned real kind or Docker environments. create provisions dependencies and application; workload exercises live state; fault/recover pause the actual dependency; reset restores seed; verify collects proof; demonstrate records only after its proof gate; destroy removes owned resources.', {

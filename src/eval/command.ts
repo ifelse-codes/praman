@@ -38,6 +38,17 @@ export interface CommandRun { verdict: Verdict; status: 'exited' | 'timeout' | '
 const maxEvidence = 8 * 1024 * 1024;
 function privateJson(file: string, value: unknown) { writeFileSync(file, JSON.stringify(value, null, 2), { mode: 0o600 }); }
 function stopGroup(pid?: number, signal: NodeJS.Signals = 'SIGKILL') { if (!pid) return; try { process.kill(-pid, signal); } catch (e) { if ((e as NodeJS.ErrnoException).code !== 'ESRCH') throw e; } }
+/** Owned groups still running. If this process exits early (for example Playwright's own
+ * SIGINT handler calls process.exit), they are killed instead of left behind. */
+const liveGroups = new Set<number>();
+let exitGuard = false;
+function ownGroup(pid: number) {
+  if (!exitGuard) {
+    exitGuard = true;
+    process.on('exit', () => { for (const group of liveGroups) { try { stopGroup(group); } catch { /* best effort at exit */ } } });
+  }
+  liveGroups.add(pid);
+}
 /** After an abort, the owned group gets SIGTERM and this long to exit before SIGKILL. */
 export const interruptGraceMs = 2000;
 export const interruptedReason = 'Verification was interrupted before all declared runs completed; no claim is established.';
@@ -73,6 +84,7 @@ export async function executeCommand(spec: CommandSpec, command: CommandSpec['cu
   } else {
     // Use the captured PATH choice rather than resolving it again inside spawn.
     const child = spawn(executableIdentity!.path!, command.args, { cwd: command.cwd, env, detached: true, stdio: ['pipe', out, err] });
+    if (child.pid) ownGroup(child.pid);
     const observer = resources && child.pid ? observeResources(child.pid, resources) : undefined;
     const timer = setTimeout(() => { expired = true; stopGroup(child.pid); }, command.deadlineMs);
     // Interruption: ask the owned group to stop, then force it after a bounded grace.
@@ -91,7 +103,7 @@ export async function executeCommand(spec: CommandSpec, command: CommandSpec['cu
     } catch (e) { error = String(e); }
     finally {
       abortSignal?.removeEventListener('abort', onAbort);
-      clearTimeout(timer); clearTimeout(grace); stopGroup(child.pid); closeSync(out); closeSync(err);
+      clearTimeout(timer); clearTimeout(grace); stopGroup(child.pid); if (child.pid) liveGroups.delete(child.pid); closeSync(out); closeSync(err);
       resourceObservation = await observer?.stop();
     }
   }

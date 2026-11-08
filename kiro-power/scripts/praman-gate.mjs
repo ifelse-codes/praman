@@ -123,7 +123,7 @@ async function verifyDeclaration(cli, root, runDirectory, entry, index) {
   const run = await runCli(cli, [command, declarationPath, '-o', outDir, '--summary'], root, Math.min(DECLARATION_TIMEOUT_MS, remaining));
   const report = relative(root, join(outDir, 'REPORT.md'));
   if (run.spawnError) return { label, verdict: 'insufficient_evidence', reason: 'could not start the PRAMAN CLI' };
-  if (run.timedOut) return { label, verdict: 'insufficient_evidence', reason: 'verification timed out (see spec verify-cancellation for orphan-process limits)' };
+  if (run.timedOut) return { label, verdict: 'insufficient_evidence', reason: 'verification timed out; the gate stopped the PRAMAN CLI (SIGTERM, then SIGKILL after 2 s)' };
   const proof = readJson(join(outDir, 'proof.json'));
   const feedback = readJson(join(outDir, 'feedback.json'));
   if (!proof || !feedback) return { label, verdict: 'insufficient_evidence', reason: `no complete evidence written (CLI exit ${run.code})` };

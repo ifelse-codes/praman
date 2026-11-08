@@ -22,7 +22,7 @@ const receiptSchema = z.object({
 });
 
 /** Only structural indexes and local evidence pointers leave the private preflight receipt. */
-async function preview(outputDirectory: string, execute: (directory: string) => Promise<unknown>) {
+async function preview(outputDirectory: string, execute: (directory: string) => Promise<unknown>, signal?: AbortSignal) {
   const outDir = path.resolve(outputDirectory);
   try {
     mkdirSync(path.dirname(outDir), { recursive: true, mode: 0o700 });
@@ -32,7 +32,7 @@ async function preview(outputDirectory: string, execute: (directory: string) => 
   }
   const directory = path.join(outDir, 'preflight'), receiptPath = path.join(directory, 'preflight.json');
   let status: 'passed' | 'blocked' = 'passed';
-  try { await execute(directory); }
+  try { await execute(directory); if (signal?.aborted) throw new Error('Preview interrupted.'); }
   catch (error) {
     status = 'blocked';
     if (!existsSync(receiptPath)) {
@@ -62,6 +62,7 @@ async function preview(outputDirectory: string, execute: (directory: string) => 
   }));
   const result = { kind: 'story-preflight' as const, proof: false as const, status,
     verdict: status === 'passed' ? 'passed' as const : 'insufficient_evidence' as const,
+    ...(signal?.aborted ? { interrupted: true } : {}),
     diagnostics, receiptPath, scenes, scope };
   writeFileSync(path.join(outDir, 'feedback.json'), JSON.stringify(result, null, 2), { mode: 0o600 });
   return result;
@@ -73,10 +74,10 @@ export function previewChange(input: ChangeSpec | string, outputDirectory: strin
     typeof input === 'string' ? loadChangeSpec(input) : changeSpecSchema.parse(input), directory, cut));
 }
 
-export function previewCommands(planPath: string, outputDirectory: string, cut: VideoCut = 'full') {
+export function previewCommands(planPath: string, outputDirectory: string, cut: VideoCut = 'full', signal?: AbortSignal) {
   videoCutSchema.parse(cut);
   return preview(outputDirectory, directory => {
     const { plan, spec } = loadCommandVideoPlan(planPath);
-    return preflightCommandWalkthrough(plan, spec, directory, cut);
-  });
+    return preflightCommandWalkthrough(plan, spec, directory, cut, signal);
+  }, signal);
 }

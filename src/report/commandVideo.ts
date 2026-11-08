@@ -35,14 +35,14 @@ function privateJson(file: string, value: unknown) { writeFileSync(file, JSON.st
 const style = `*{box-sizing:border-box}body{margin:0;padding:40px 48px;background:#101827;color:#f8fafc;font:24px Arial}h1{font-size:34px;font-weight:500;margin:0 0 16px}p{margin:12px 0;color:#a8b5c8;font-size:20px}#surface{border:1px solid #ffffff40;border-radius:12px;padding:22px;background:#0b1220}pre{white-space:pre-wrap;overflow-wrap:anywhere;font:22px/1.5 monospace;margin:12px 0}table{border-collapse:collapse;width:100%;font:27px/1.5 monospace;table-layout:fixed}td{white-space:pre-wrap;overflow-wrap:anywhere;padding:3px 12px;vertical-align:top}td:first-child{width:110px;white-space:nowrap;text-align:right;color:#94a3b8}.changed{background:#164e3860}footer{margin-top:18px;color:#94a3b8;font-size:18px}`;
 
 /** Real command execution and layout inspection only; never final replay evidence. */
-export async function preflightCommandWalkthrough(plan: CommandVideoPlan, spec: CommandSpec, outputDirectory: string, cut: VideoCut = 'full') {
+export async function preflightCommandWalkthrough(plan: CommandVideoPlan, spec: CommandSpec, outputDirectory: string, cut: VideoCut = 'full', signal?: AbortSignal) {
   mkdirSync(path.dirname(outputDirectory), { recursive: true, mode: 0o700 });
   mkdirSync(outputDirectory, { mode: 0o700 });
   try {
     return await renderCommandWalkthrough(plan, spec, outputDirectory, async stage => {
       const command = spec[stage];
       if (!command) throw new Error('Story preflight requested an undeclared command stage.');
-      const run = await executeCommand(spec, command, path.join(outputDirectory, `execution-${stage}`));
+      const run = await executeCommand(spec, command, path.join(outputDirectory, `execution-${stage}`), undefined, signal);
       if (run.status !== 'exited' || run.verdict === 'insufficient_evidence') throw new Error('Story preflight command execution/evidence unavailable.');
       return { stage, command, run, reference: run };
     }, true, cut);
@@ -54,9 +54,10 @@ export async function preflightCommandWalkthrough(plan: CommandVideoPlan, spec: 
 }
 
 /** Live commands rendered from captured pipe streams in xterm; not a native TTY recording. */
-export async function recordCommandWalkthrough(plan: CommandVideoPlan, spec: CommandSpec, outDir: string, replay: (stage: 'before' | 'current') => Promise<CommandReplay>, cut: VideoCut = 'full'): Promise<string> {
+export async function recordCommandWalkthrough(plan: CommandVideoPlan, spec: CommandSpec, outDir: string, replay: (stage: 'before' | 'current') => Promise<CommandReplay>, cut: VideoCut = 'full', signal?: AbortSignal): Promise<string> {
   if (existsSync(path.join(outDir, 'demo.mp4')) || existsSync(path.join(outDir, 'video'))) throw new Error('Recording output already exists; choose a fresh directory.');
-  await preflightCommandWalkthrough(plan, spec, path.join(outDir, 'video', 'preflight'), cut);
+  await preflightCommandWalkthrough(plan, spec, path.join(outDir, 'video', 'preflight'), cut, signal);
+  if (signal?.aborted) throw new Error('Recording interrupted before capture.');
   return renderCommandWalkthrough(plan, spec, outDir, replay, false, cut);
 }
 

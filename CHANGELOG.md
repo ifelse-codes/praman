@@ -9,12 +9,15 @@
 
 ### Fixed
 
-- Interruption (spec `verify-cancellation`): Ctrl-C or SIGTERM during `command-verify`
-  or `workflow-replay`, and MCP request cancellation, stdin close or SIGINT/SIGTERM for
-  `praman_command_verify`/`praman_workflow_replay`, no longer leave the declared command
+- Interruption (spec `verify-cancellation`): Ctrl-C or SIGTERM during `command-verify`,
+  `workflow-replay`, `coverage-review`, `workflow-campaign` (not durable),
+  `command-preview` or `command-demonstrate`, and MCP request cancellation, stdin close
+  or SIGINT/SIGTERM for the matching tools, no longer leave the declared command
   running. PRAMAN stops the owned process group (SIGTERM, then SIGKILL after 2 s),
   starts no further runs, records `insufficient_evidence` with `"interrupted": true`,
-  and the CLI exits 130 or 143. Uninterrupted runs are unchanged.
+  and the CLI exits 130 or 143. Owned groups are also killed if PRAMAN exits early.
+  Uninterrupted runs and durable/agent campaign stop behavior are unchanged. Added the
+  repair-mode self-check `examples/self-check/cancellation/`.
 - MCP: `PRAMAN_RELATIVE_PATHS=reject` refuses relative path arguments with an
   `insufficient_evidence` result before anything runs or is written. The Kiro Power sets
   it, because its server runs from the installed Power's directory; relative paths had

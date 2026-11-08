@@ -3,11 +3,15 @@ import { spawn } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { interruptGraceMs, proveCommands } from '../src/eval/command.js';
 import { replayWorkflow } from '../src/core/workflow.js';
+import { reviewCoverage } from '../src/review/coverage.js';
+import { runCampaign } from '../src/core/campaign.js';
+import { previewCommands } from '../src/core/preview.js';
+import { demonstrateCommands } from '../src/core/commandDemonstrate.js';
 
 // Spec verify-cancellation: an interrupted verification must stop every process it
 // owns, start no further runs and never record a pass. The declared command starts a
@@ -49,12 +53,18 @@ function commandDeclaration(repeats = 3, ignoreTerm = false) {
     checks: [{ id: 'out', source: 'stdout', operator: 'equals', value: '' }], repeats }));
   return file;
 }
-function workflowDeclaration() {
+function workflowDeclaration(cwd = '.') {
   const file = path.join(dir, 'workflow.json');
   writeFileSync(file, JSON.stringify({ version: 1, dependency: { version: 1, service: { version: 1, initial: 'ready', states: { ready: [{ method: 'GET', path: '/w', next: 'ready', response: { status: 200, body: { ok: true } } }] } },
     start: { kind: 'initial' }, steps: [{ method: 'GET', path: '/w', expect: { status: 200, body: { kind: 'json', value: { ok: true } } } }], final: { state: 'ready', requests: 1 }, repeats: 3 },
   applicationState: { kind: 'stateless' },
-  command: { mode: 'acceptance', title: 'Cancellation', requirement: 'Stop owned processes', current: sleeper(), checks: [{ id: 'out', source: 'stdout', operator: 'equals', value: '' }] } }));
+  command: { mode: 'acceptance', title: 'Cancellation', requirement: 'Stop owned processes', current: { ...sleeper(), cwd }, checks: [{ id: 'out', source: 'stdout', operator: 'equals', value: '' }] } }));
+  return file;
+}
+function planDeclaration() {
+  commandDeclaration();
+  const file = path.join(dir, 'plan.json');
+  writeFileSync(file, JSON.stringify({ commandsPath: './cmd.json', walkthrough: { after: [{ text: 'Cancellation', stream: 'stdout', from: 1, to: 1 }] } }));
   return file;
 }
 const readJson = (file: string) => JSON.parse(readFileSync(file, 'utf8')) as { verdict: string; interrupted?: boolean; current?: unknown[]; runs?: unknown[] };
@@ -119,6 +129,47 @@ describe('interrupted verification (in process)', () => {
     expect(result.verdict).toBe('insufficient_evidence');
     expect(readJson(result.proofPath)).toMatchObject({ verdict: 'insufficient_evidence', interrupted: true });
   });
+
+  /** Starts `run`, aborts once the first owned command is running, and checks the group is gone. */
+  async function interrupt<T>(run: (signal: AbortSignal) => Promise<T>) {
+    const controller = new AbortController();
+    const running = run(controller.signal);
+    expect(await firstLeader()).toBeTypeOf('number');
+    controller.abort();
+    const result = await running;
+    expect(await groupsGone(startedPids())).toBe(true);
+    expect(startedPids()).toHaveLength(1);
+    return result;
+  }
+
+  it('coverage review stops the owned group and records interrupted insufficient evidence', async () => {
+    const workflow = JSON.parse(readFileSync(workflowDeclaration(), 'utf8')) as { dependency: { service: unknown } };
+    const manifest = path.join(dir, 'review.json');
+    writeFileSync(manifest, JSON.stringify({ version: 1, service: workflow.dependency.service, cases: ['workflow.json'], requirements: [{ description: 'Cancellation', checks: [{ caseIndex: 0, checkIndex: 0 }] }] }));
+    const result = await interrupt(signal => reviewCoverage(manifest, path.join(dir, 'out'), signal));
+    expect(result).toMatchObject({ verdict: 'insufficient_evidence', interrupted: true });
+  });
+
+  it('a plain campaign stops the owned group, admits no further job and records interrupted insufficient evidence', async () => {
+    workflowDeclaration('{{runDir}}');
+    const manifest = path.join(dir, 'campaign.json');
+    writeFileSync(manifest, JSON.stringify({ version: 1, cases: ['workflow.json'], rounds: 3, concurrency: 1 }));
+    const result = await interrupt(signal => runCampaign(manifest, path.join(dir, 'out'), signal));
+    expect(result).toMatchObject({ verdict: 'insufficient_evidence', interrupted: true, schedule: { stopReason: 'interrupted' } });
+    expect(result.jobs).toHaveLength(1);
+  });
+
+  it('command preview stops the owned group and is blocked, never passed', async () => {
+    const result = await interrupt(signal => previewCommands(planDeclaration(), path.join(dir, 'out'), 'full', signal));
+    expect(result).toMatchObject({ status: 'blocked', verdict: 'insufficient_evidence', interrupted: true });
+  });
+
+  it('command demonstration stops the owned group during proof and delivers no movie', async () => {
+    const result = await interrupt(signal => demonstrateCommands(planDeclaration(), path.join(dir, 'out'), 'full', signal));
+    expect(result).toMatchObject({ verdict: 'insufficient_evidence', proofVerdict: 'insufficient_evidence', interrupted: true });
+    expect(result.demoVideo).toBeUndefined();
+    expect(existsSync(path.join(dir, 'out', 'demo.mp4'))).toBe(false);
+  });
 });
 
 function startCli(args: string[]) {
@@ -128,6 +179,16 @@ function startCli(args: string[]) {
 }
 
 describe.skipIf(!hasBuild)('interrupted verification through compiled entry points (requires npm run build)', () => {
+  it('an owned group is killed when the PRAMAN process exits early (for example through another library\'s signal handler)', async () => {
+    const commandModule = pathToFileURL(path.join(root, 'dist', 'eval', 'command.js')).href;
+    // Starts a verification, then calls process.exit(130) while the declared command runs.
+    const script = `const { proveCommands } = await import(${JSON.stringify(commandModule)}); proveCommands(${JSON.stringify(commandDeclaration())}, ${JSON.stringify(path.join(dir, 'out'))});`
+      + `const fs = await import('node:fs'); const wait = () => fs.existsSync(${JSON.stringify(pidFile(1))}) ? process.exit(130) : setTimeout(wait, 25); wait();`;
+    const child = spawn(process.execPath, ['--input-type=module', '-e', script], { cwd: root, stdio: 'ignore' });
+    const exit = await new Promise<number | null>(resolve => child.on('close', code => resolve(code)));
+    expect(exit).toBe(130);
+    expect(await groupsGone(startedPids())).toBe(true);
+  }, 30000);
   for (const [signal, code] of [['SIGINT', 130], ['SIGTERM', 143]] as const) {
     it(`command-verify on ${signal} stops the owned group, writes interrupted evidence and exits ${code}`, async () => {
       const out = path.join(dir, 'out');

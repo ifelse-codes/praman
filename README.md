@@ -190,15 +190,20 @@ Session 1 also changed the expectation to `11\n` (failed, exit 1) and selected
 an intentionally missing executable (insufficient evidence, exit 2). Commands are
 trusted code, **not sandboxed**; keep evidence private under ignored `.praman/`.
 
-**Interruption.** If `command-verify` or `workflow-replay` receives SIGINT (Ctrl-C) or
-SIGTERM, PRAMAN sends SIGTERM to the declared command's process group, waits up to 2 s,
-then sends SIGKILL. It starts no further runs, writes `proof.json`/`feedback.json`
-(`workflow.json` for replays) with `insufficient_evidence` and `"interrupted": true`,
-and exits 130 (SIGINT) or 143 (SIGTERM). The MCP tools `praman_command_verify` and
-`praman_workflow_replay` do the same when the client cancels the request, closes the
+**Interruption.** If `command-verify`, `workflow-replay`, `coverage-review`,
+`workflow-campaign` (without `--durable`), `command-preview` or `command-demonstrate`
+receives SIGINT (Ctrl-C) or SIGTERM, PRAMAN sends SIGTERM to each running declared
+command's process group, waits up to 2 s, then sends SIGKILL. It starts no further
+runs, writes its evidence (`proof.json`/`feedback.json`, `workflow.json`,
+`coverage.json` or `campaign.json`) with `insufficient_evidence` and
+`"interrupted": true`, delivers no movie, and exits 130 (SIGINT) or 143 (SIGTERM).
+The matching MCP tools do the same when the client cancels the request, closes the
 server's stdin, or sends the server SIGINT/SIGTERM. An interrupted run never passes.
-Limits: processes that leave the declared command's process group, and a PRAMAN
-process killed with SIGKILL, are outside this cleanup.
+If the PRAMAN process exits early for another reason, owned groups still running are
+killed on exit. Durable and agent campaigns keep their own stop behavior: they finish
+admitted work, then exit. Limits: processes that leave the declared command's process
+group, and a PRAMAN process killed with SIGKILL, are outside this cleanup.
+`examples/self-check/cancellation/` lets PRAMAN check this fix in repair mode.
 
 ### Prerequisites by route
 

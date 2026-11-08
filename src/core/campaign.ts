@@ -6,6 +6,7 @@ import { workflowSchema } from '../case/workflow.js';
 import { createServiceState, type ServiceState, type ServiceSnapshot } from '../gateway/service.js';
 import { replayWorkflow, type WorkflowOccurrence } from './workflow.js';
 import { resourceConfigSchema } from '../eval/resources.js';
+import { interruptedReason } from '../eval/command.js';
 import { WorkflowSession } from './workflowSession.js';
 import { captureCampaignWorkflows } from './workflowInputs.js';
 
@@ -34,7 +35,7 @@ interface CampaignSchedule {
   rounds?: number; durationMs?: number; maxJobs?: number;
   startedAt?: string; endedAt?: string; elapsedMs?: number;
   admissionClosedAfterMs?: number; drainMs?: number;
-  stopReason: 'input_error' | 'execution_error' | 'rounds_complete' | 'duration_elapsed' | 'job_limit';
+  stopReason: 'input_error' | 'execution_error' | 'rounds_complete' | 'duration_elapsed' | 'job_limit' | 'interrupted';
   unstartedCases: number[];
 }
 function readJson(file: string): unknown {
@@ -46,8 +47,10 @@ function privateJson(file: string, value: unknown) {
   writeFileSync(file, JSON.stringify(value, null, 2), { mode: 0o600, flag: 'wx' });
 }
 
-/** Bounded scheduling of trusted workflows; isolated local state is not a sandbox. */
-export async function runCampaign(specPath: string, outputDirectory: string) {
+/** Bounded scheduling of trusted workflows; isolated local state is not a sandbox.
+ * A `signal` interrupts: active commands stop, no job starts, nothing passes. Durable and
+ * agent campaigns pass no signal here; they keep their own drain-on-stop behavior. */
+export async function runCampaign(specPath: string, outputDirectory: string, signal?: AbortSignal) {
   const outDir = path.resolve(outputDirectory);
   mkdirSync(path.dirname(outDir), { recursive: true, mode: 0o700 });
   mkdirSync(outDir, { mode: 0o700 });
@@ -89,12 +92,13 @@ export async function runCampaign(specPath: string, outputDirectory: string) {
     const start = performance.now();
     schedule.startedAt = new Date().toISOString();
     let cursor = 0, active = 0, admissionClosedAfterMs: number | undefined;
-    let stopReason: 'rounds_complete' | 'duration_elapsed' | 'job_limit' | undefined;
+    let stopReason: 'rounds_complete' | 'duration_elapsed' | 'job_limit' | 'interrupted' | undefined;
     async function worker(workerIndex: number) {
       let session: WorkflowSession | undefined;
       let receiptPath: string | undefined;
       try {
       while (stopReason === undefined) {
+        if (signal?.aborted) { stopReason = 'interrupted'; admissionClosedAfterMs = performance.now() - start; break; }
         // A monotonic admission check never starts a new job at or after the cutoff.
         const startedAfterMs = performance.now() - start;
         const expired = durationMs !== undefined && startedAfterMs >= durationMs;
@@ -120,7 +124,7 @@ export async function runCampaign(specPath: string, outputDirectory: string) {
             receiptPath = path.join(workerDir, 'final-state.json');
             workersState.push({ workerIndex, receiptPath, workspacePath: session.workspacePath });
           }
-          result = await replayWorkflow(inputs[caseIndex], jobDir, { isolateApplication: true, resources: manifest.resources, session });
+          result = await replayWorkflow(inputs[caseIndex], jobDir, { isolateApplication: true, resources: manifest.resources, session, signal });
         }
         catch (e) {
           // A failed job must not orphan siblings or turn a partial campaign green.
@@ -142,7 +146,7 @@ export async function runCampaign(specPath: string, outputDirectory: string) {
     try {
       const workers = await Promise.allSettled(Array.from({ length: Math.min(concurrency, total) }, (_, index) => worker(index)));
       for (const worker of workers) if (worker.status === 'rejected') throw worker.reason;
-      schedule.stopReason = stopReason!;
+      schedule.stopReason = signal?.aborted ? 'interrupted' : stopReason!;
     } finally {
       schedule.endedAt = new Date().toISOString();
       schedule.elapsedMs = performance.now() - start;
@@ -163,7 +167,8 @@ export async function runCampaign(specPath: string, outputDirectory: string) {
     shared = { verdict, receiptPath: path.join(outDir, 'shared-state.json') };
     privateJson(shared.receiptPath, { initial: sharedInitial, final, expected: { state: sharedExpectedState, requests: expectedRequests }, verdict });
   }
-  const verdict: Verdict = error || !jobs.length || schedule.unstartedCases.length
+  const interrupted = Boolean(signal?.aborted);
+  const verdict: Verdict = interrupted || error || !jobs.length || schedule.unstartedCases.length
     || schedule.kind === 'duration' && schedule.stopReason !== 'duration_elapsed'
     || shared?.verdict === 'insufficient_evidence'
     || jobs.some(job => job.verdict === 'insufficient_evidence') ? 'insufficient_evidence'
@@ -175,14 +180,15 @@ export async function runCampaign(specPath: string, outputDirectory: string) {
     rssSlopeKiBPerSecond: run.resources?.rssSlopeKiBPerSecond, peakReportedCpuPercent: run.resources?.peakReportedCpuPercent }))) : [];
   const scope = 'Count- or duration-bounded command/HTTP campaigns. Default state is fresh per repeat; explicit per-worker state retains each workspace/model, while shared-service state gives worker listeners one atomic shared model with per-worker application workspaces. Duration closes admission then drains owned commands. Optional resources describe root-process observations only. Trusted execution, not external-world isolation, whole-system accounting, distributed workers, autonomous agents or historical repair proof.';
   const result = {
-    verdict, proof: false, scope, reportPath, report, concurrency, peakConcurrency, schedule, jobs,
+    verdict, proof: false, ...(interrupted ? { interrupted: true } : {}), scope, reportPath, report, concurrency, peakConcurrency, schedule, jobs,
     state: { kind: stateKind, workers: workersState, shared },
     resources: resourcesRequested ? { scope: 'Descriptive sampled root-process observations, not resource acceptance, leak diagnosis, descendants or whole-system trends.', observations } : undefined,
     counts: { jobs: jobs.length, passed: jobs.filter(job => job.verdict === 'passed').length,
       failed: jobs.filter(job => job.verdict === 'failed').length,
       insufficient_evidence: jobs.filter(job => job.verdict === 'insufficient_evidence').length,
       runs: jobs.reduce((sum, job) => sum + job.runs.length, 0) },
-    nextAction: verdict === 'passed' ? 'The declared scheduling scope completed and all admitted workflow repeats passed; preserve private evidence.'
+    nextAction: interrupted ? `${interruptedReason} Rerun in a fresh output directory.`
+      : verdict === 'passed' ? 'The declared scheduling scope completed and all admitted workflow repeats passed; preserve private evidence.'
       : verdict === 'failed' ? 'Inspect indexed job/run expectations and private observations; a mismatch does not establish root cause.'
       : 'Inspect scheduling limits, unstarted cases and private input/execution receipts; restore complete execution before making duration or behavior claims.',
   };
