@@ -26,10 +26,10 @@ Target: week 1 (Nov 9–15, 2026). Run every task in a recorded Kiro session.
   - [x] 4.5 Proven in Kiro CLI V3 (session `sess_1654a697-a525-4e8a-8bce-29ce588d1b68`): rejected a stop on a failing declaration, released it after the fix. IDE Stop behavior still untested
   - _Requirements: 3.1–3.8_
 
-- [ ] 5. Package the Power
-  - [ ] 5.1 Write `kiro-power/plugin.json`, `kiro-power/mcp.json` (`${PRAMAN_HOME}`)
-  - [ ] 5.2 Write `kiro-power/skills/praman-verify/SKILL.md`
-  - [ ] 5.3 Install with `kiro-cli powers install ./kiro-power` in a different scratch project and run one acceptance check through it
+- [x] 5. Package the Power
+  - [x] 5.1 Write `kiro-power/plugin.json`, `kiro-power/mcp.json` (`${PRAMAN_HOME}`)
+  - [x] 5.2 Write `kiro-power/skills/praman-verify/SKILL.md`
+  - [x] 5.3 Install with `kiro-cli powers install ./kiro-power` in a different scratch project and run one acceptance check through it (2026-11-08, `sess_ccfd7c6f…`: `passed`). Limits: needs `power`/`praman*` allow rules for headless; relative paths resolve against the installed power directory
   - _Requirements: 4.1–4.4_
 
 - [ ] 6. Refresh agent and steering

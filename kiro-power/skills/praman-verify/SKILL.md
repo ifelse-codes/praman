@@ -53,8 +53,11 @@ fields are listed in the
 
 ## Step 3: Run it
 
-Use a **fresh, unused** output directory under `.praman/` for every run, for example
-`.praman/verify-<short-name>-<n>`. PRAMAN refuses a directory that already exists.
+Pass **absolute paths** for `specPath` and `outDir`. The power's MCP server runs from
+the installed power's own directory, not the user's project, so relative paths resolve
+to the wrong place. Use a **fresh, unused** output directory under the project's
+`.praman/` for every run, for example `<project>/.praman/verify-<short-name>-<n>`.
+PRAMAN refuses a directory that already exists.
 
 ## Step 4: Report the verdict
 
