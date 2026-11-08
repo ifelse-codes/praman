@@ -42,9 +42,10 @@ general simulator and not a sandbox.
   (`sess_055fb96f…`). Known limit: the demonstrate tools' speech cache stays relative.
   Full suite **206 tests / 30 files** locally.
 - **Cancellation fix (2026-11-08):** spec `verify-cancellation` closed except the owner's
-  property-test task 2. First fix on public `main` `59090bf` (fast-forward, PR #4; CI
-  green on Ubuntu and macOS, 200 passed / 16 skipped of 216). Follow-up commit (local
-  until approved) covers the remaining paths. Ctrl-C/SIGTERM on `command-verify`,
+  property-test task 2. On public `main`: first fix `59090bf` (PR #4) and the follow-up
+  `7d2f4a7` plus a macOS cleanup fix `454c4ba` (PR #5), both by fast-forward; CI green
+  on Ubuntu and macOS (205 passed / 16 skipped of 221). The follow-up covers the
+  remaining paths. Ctrl-C/SIGTERM on `command-verify`,
   `workflow-replay`, `coverage-review`, `workflow-campaign` (not durable),
   `command-preview` and `command-demonstrate`, and MCP cancel, stdin close or
   SIGINT/SIGTERM for the matching tools, now stop the declared command's process group
