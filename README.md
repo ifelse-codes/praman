@@ -240,8 +240,7 @@ Keep runtime temp **outside the source package**: extensionless CommonJS test
 helpers otherwise inherit the root `"type":"module"` and fail. The first
 Session 1 test run exposed this harness placement issue; moving only TMPDIR
 outside the package yielded **188 passing tests / 27 files** in that historical
-Session 1 run (the current suite is **190 tests / 28 files** after the 2026-11-05
-cleanup and release hardening). Full tests also
+Session 1 run (the current suite is **198 tests / 29 files** as of 2026-11-08). Full tests also
 use installed FFmpeg/ffprobe; that does not make them core command prerequisites.
 The core smoke used a separate PATH containing only a Node symlink, a fresh HOME,
 empty browser directory and no inherited provider settings.
