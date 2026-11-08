@@ -39,6 +39,6 @@ Target: week 1 (Nov 9–15, 2026). Run every task in a recorded Kiro session.
   - _Requirements: 5.1–5.4_
 
 - [ ] 7. Record evidence
-  - [ ] 7.1 One CLI V3 and one IDE session showing the gate blocking on a mismatch and releasing after a fix
+  - [x] 7.1 One CLI V3 session showing the gate blocking on a mismatch and releasing after a fix (interactive, owner-approved edits: `sess_d3717c15-a0de-46ee-9f10-104798730f87`; IDE still pending)
   - [ ] 7.2 Update `docs/kiro-usage.md`, `.kiro/specs/praman-core/tasks.md` and `docs/STATUS.md` with observed results and limits
   - _Requirements: 6.1, 6.2_

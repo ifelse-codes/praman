@@ -58,6 +58,12 @@ gate still prints the safe summary there and the write-up says so.
   neither stderr nor exit code.
 - IDE behavior: not yet tested.
 
+**Passing verdicts are invisible to the agent** (interactive CLI V3, session
+`sess_d3717c15-a0de-46ee-9f10-104798730f87`): the gate runs after the agent's final
+message, and a passing (exit 0) Stop hook's output is not shown to it. The agent only
+ever sees failing verdicts. It must not claim the gate passed; the pass is visible only
+in `.praman/gate/<run>/` evidence and the rejection counter.
+
 **Feedback channel finding (CLI V3 and IDE, 2026-11-07):** `PostFileSave` hooks fire on
 agent writes on both surfaces (`ContextualHookInvoked … completed` about 0.9 s after the
 write), but their output and exit code never reach the agent; after a deliberate type
