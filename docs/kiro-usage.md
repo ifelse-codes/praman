@@ -3,20 +3,73 @@
 This is the truthful usage account for the Kiroween submission. It separates what
 Kiro actually did from what an AI coding assistant and the submitter did.
 
+## Current state (2026-11-07 onward)
+
+**Short version: from 2026-11-07, Kiro built and proved PRAMAN's Kiro integration in
+recorded Kiro CLI sessions, with the owner running the interactive CLI and IDE checks.
+Kiro did not build PRAMAN's original verification core.**
+
+- **Where:** Kiro CLI 2.37.1 with the V3 agent, in this repository. The main working
+  session is `sess_bdb9debc-8d36-4e92-bbd9-095eeb828b60`; headless proof runs and
+  owner-run interactive CLI and IDE sessions are listed in the
+  [usage log](#usage-log-2026-11-07-onward), each with what it showed.
+- **What Kiro built (spec `kiro-evidence-gate`, closed 2026-11-08):**
+  - the `praman-explorer` custom agent with a permission rule allowing only `praman/*`;
+  - a v1 `PostFileSave` lint hook, replacing an invalid hook file;
+  - the opt-in `Stop`-hook finish gate (`kiro-power/scripts/praman-gate.mjs`) and its
+    8 tests;
+  - two steering files (`fileMatch` and `auto`);
+  - the installable Kiro Power in `kiro-power/` (manifest, MCP config, skill, README);
+  - the three specs `kiro-evidence-gate`, `verify-cancellation` (bugfix) and
+    `submission-story`, plus the documentation updates.
+- **What the owner did:** created `.kiro/settings/mcp.json` by hand (Kiro does not let
+  the agent change its own MCP configuration), ran the interactive CLI and IDE
+  sessions, approved each edit in the recorded gate demo, and made every scope
+  decision.
+- **Observed in Kiro:** MCP calls returned `passed` and `failed` verdicts in the CLI
+  (interactive and headless); the IDE listed all 14 `praman_*` tools; the finish gate
+  rejected a stop on a failing check and released it after the agent's fix
+  (interactive CLI, owner-approved edits); the Power ran a `passed` check from a
+  separate project.
+
+| Kiro feature | Status | Evidence |
+| --- | --- | --- |
+| Kiro CLI (V3, interactive and headless) | Used | Usage log, every row |
+| Kiro IDE | Used for checks only (MCP tool listing, lint hook) | `sess_7732334c…`; one earlier run invalid (Restricted Mode) |
+| Specs | Used: 2 feature specs, 1 bugfix spec. Written as files by the agent, not through `/spec new` | `.kiro/specs/` |
+| Steering | Used: always-on files, plus new `fileMatch` and `auto` files | `sess_1266542d…` |
+| Agent hooks | Used: `PostFileSave` (fires, result not shown to the agent) and `Stop` (finish gate) | `sess_2bee93f1…`, `sess_d3717c15…` |
+| Custom agents | Used: `praman-explorer` with capability permissions | `sess_cf1d826d…` |
+| MCP | Used: workspace server, 14 tools | `sess_289994fb…`, `sess_cf1d826d…` |
+| Kiro Powers | Used: authored, installed, exercised from another project | `sess_ccfd7c6f…` |
+| Built-in subagent (`introspect`) | Used to look up current `.kiro` formats | Main session |
+| Property-based testing | Not yet used; planned for spec `verify-cancellation` in the IDE | — |
+| Kiro Web, Kiro Crew | Not used; the old `kiro-crew/` stub was removed | — |
+
+**Non-claims and limits:**
+
+- Kiro did not build PRAMAN's original verification core: the browser and command
+  engines, CLI, MCP server, reports, evidence model and the tests that existed by
+  2026-11-05. That work was done by an AI coding assistant under the submitter's
+  direction (see the history below).
+- Not yet tested in the IDE: the finish gate's `Stop` behavior.
+- Save-hook results never reach the agent, in the CLI or the IDE.
+- The agent never sees a passing gate verdict, only failing ones.
+- Headless use of the Power needs explicit allow rules and absolute paths.
+- Session records and counts show activity, not correctness. Raw session data stays
+  private; this document is the reviewed summary.
+
+## History (2026-11-05)
+
+The account below was written on 2026-11-05 and is kept unchanged except that its
+headings moved one level down. It describes Kiro use up to that date. Its statements
+about the quota block and about the `/.kiro` assets not being Kiro output were true then
+and are superseded by the current state above.
+
 **Short version: Kiro was genuinely used, but narrowly — one substantive IDE session
 on one bounded Headlamp feature. Kiro did not build PRAMAN's core.**
 
-> **Update 2026-11-08.** The statement above describes the state on 2026-11-05 and is
-> kept as history. From 2026-11-07, Kiro CLI V3 sessions in this repository built and
-> proved PRAMAN's Kiro integration (spec `kiro-evidence-gate`): workspace MCP wiring, a
-> custom agent with a PRAMAN-only permission rule, a lint hook, a `Stop`-hook finish
-> gate with tests, steering, and an installable Kiro Power. The owner ran the
-> interactive CLI and IDE checks. Every session and its limits are in the
-> [usage log](#usage-log-2026-11-07-onward). Kiro still did not build PRAMAN's original
-> verification core. The quota block described below no longer applies. A full rewrite
-> of this document is task 2 of spec `submission-story`.
-
-## Short version
+### Short version
 
 - **Installed:** the Kiro IDE app (1.4.62) and `kiro-cli` 2.37.1 are installed on the
   recording machine (observed 2026-11-05). Installation is not usage.
@@ -29,7 +82,7 @@ on one bounded Headlamp feature. Kiro did not build PRAMAN's core.**
 - **Not Kiro:** PRAMAN's core engine, CLI, MCP server, report/verification modules,
   tests and product documentation were not built in the Kiro session.
 
-## What the session was asked to do
+### What the session was asked to do
 
 The submitter asked Kiro to continue PRAMAN with Headlamp as the next
 development-and-verification cycle: **implement one useful, bounded Headlamp
@@ -39,7 +92,7 @@ before demonstration, and the rule that missing or unavailable evidence must nev
 become a passing result. The recorded work centered on an editor dry-run preview
 feature for Headlamp, recorded under the Kiro spec name `editor-dryrun-preview`.
 
-## Additional CLI attempt (2026-11-05)
+### Additional CLI attempt (2026-11-05)
 
 One more logged Kiro session was attempted on 2026-11-05 to strengthen this account.
 `kiro-cli` 2.37.1 was installed and authenticated on the same machine (Google sign-in).
@@ -51,7 +104,7 @@ usage was produced: the monthly limit that ended the 2026-11-01 session still ap
 on 2026-11-05. The attempt is recorded so the submission does not imply more Kiro
 usage than actually occurred.
 
-## Observed evidence
+### Observed evidence
 
 Values below were read directly from Kiro's local session store for the
 `kiroween` workspace on 2026-11-05. The raw session data is private (local paths,
@@ -74,7 +127,7 @@ session state and transcript) and is not part of this repository.
 Snapshot counts show which files Kiro touched; they do not by themselves prove
 authorship of every line, correctness, or acceptance.
 
-## What Kiro did and did not do
+### What Kiro did and did not do
 
 **Kiro's recorded work** was the bounded Headlamp editor dry-run preview feature:
 its spec notes, edits to the Headlamp editor dialog and its test, and the PRAMAN
@@ -98,7 +151,7 @@ guidance for whichever agent runs in this workspace, not evidence of Kiro
 development. See [the specs](../.kiro/specs/praman-core/requirements.md),
 [steering](../.kiro/steering/product.md) and [agent](../.kiro/agents/praman-explorer.md).
 
-## Attribution summary
+### Attribution summary
 
 | Area | Author of record | Basis |
 | --- | --- | --- |
@@ -108,7 +161,7 @@ development. See [the specs](../.kiro/specs/praman-core/requirements.md),
 | Headlamp tooltip repair shown in the 2:49 walkthrough | Earlier PRAMAN Headlamp cycle; **not** part of Kiro's recorded session | Kiro's snapshots do not touch Headlamp's `frontend/src/components/common/Link.tsx`; the clip predates this session |
 | `kiro-crew/` stub | Assistant scaffold; not a working Kiro Crew app and not used for the submission. Removed 2026-11-08 (owner decision) | Two files in the repository until removal; no run evidence |
 
-## Limits and non-claims
+### Limits and non-claims
 
 - This is **not** substantial Kiro-authored development. One 86-minute session
   started one bounded feature; it did not complete a Kiro-driven build cycle.
@@ -127,7 +180,7 @@ development. See [the specs](../.kiro/specs/praman-core/requirements.md),
 - Raw Kiro session data is private and deliberately not published; this write-up is
   the reviewed summary.
 
-## Where to look
+### Where to look
 
 - [ARCHIVE.md](ARCHIVE.md) — external archive holding the continuation's proof and
   walkthrough recordings.
