@@ -37,7 +37,10 @@ interface CheckResult { id: string; verdict: Verdict; reason: string; evidence: 
 export interface CommandRun { verdict: Verdict; status: 'exited' | 'timeout' | 'unavailable' | 'interrupted'; code: number | null; signal: string | null; executableHash?: string; executableHashAfter?: string; identityBefore?: IdentitySnapshot; identityAfter?: IdentitySnapshot; startedAt: string; endedAt: string; checks: CheckResult[]; resultPath: string; stdout: string; stderr: string; error?: string; resources?: ResourceObservation; }
 const maxEvidence = 8 * 1024 * 1024;
 function privateJson(file: string, value: unknown) { writeFileSync(file, JSON.stringify(value, null, 2), { mode: 0o600 }); }
-function stopGroup(pid?: number, signal: NodeJS.Signals = 'SIGKILL') { if (!pid) return; try { process.kill(-pid, signal); } catch (e) { if ((e as NodeJS.ErrnoException).code !== 'ESRCH') throw e; } }
+// ESRCH: the group is gone. EPERM: macOS reports it when a group holds only exited
+// (zombie) members, and it also means anything left cannot be signalled by us; either
+// way there is nothing more to stop, and cleanup must not crash evidence writing.
+function stopGroup(pid?: number, signal: NodeJS.Signals = 'SIGKILL') { if (!pid) return; try { process.kill(-pid, signal); } catch (e) { const code = (e as NodeJS.ErrnoException).code; if (code !== 'ESRCH' && code !== 'EPERM') throw e; } }
 /** Owned groups still running. If this process exits early (for example Playwright's own
  * SIGINT handler calls process.exit), they are killed instead of left behind. */
 const liveGroups = new Set<number>();
