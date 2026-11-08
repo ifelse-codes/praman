@@ -1,6 +1,6 @@
 # Tasks: agent diagnostics
 
-- [ ] 1. Capture real Playwright error messages (strict mode, timeout, navigation, closed) from local fixtures
+- [x] 1. Capture real Playwright error messages (strict mode, timeout, navigation, closed) from local fixtures
   - _Requirements: 1.1–1.5_
 - [ ] 2. `src/review/classify.ts` and unit tests
   - _Requirements: 1.1–1.5, 1.7_

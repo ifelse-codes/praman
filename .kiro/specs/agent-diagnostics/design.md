@@ -13,6 +13,32 @@ Pattern table, first match wins:
 | `browser_closed` | `Target page, context or browser has been closed`, `crashed` | none |
 | `unknown` | anything else | none |
 
+### Captured messages (task 1, 2026-11-09, Playwright in this checkout)
+
+Real runs of `scenario-verify --summary` against a local three-button page (driver in
+ignored `.praman/agent-diagnostics/`). Before the fix every case printed only
+`execution_unavailable: current run 1 step[0]` or `evidence_unavailable: current run 1
+check[1]` with the generic next action. The raw messages, with selectors replaced:
+
+| Case | Where | Raw message (first lines) |
+| --- | --- | --- |
+| click on 3 matches | step error | `locator.click: Error: strict mode violation: locator('<sel>') resolved to 3 elements:` |
+| text check on 3 matches | check evidence | `locator.waitFor: Error: strict mode violation: locator('<sel>') resolved to 3 elements:` |
+| `waitFor` on a hidden element | step error | `locator.waitFor: Timeout 15000ms exceeded.` / `waiting for locator('<sel>') to be visible` |
+| click on a missing element | step error | `locator.click: Timeout 3000ms exceeded.` / `waiting for locator('<sel>')` (no state named) |
+| text check on a missing element | check evidence | `locator.waitFor: Timeout 1500ms exceeded.` / `waiting for locator('<sel>')` (no state named) |
+| `goto` to a 404 path | step error | `Step 1 navigation failed` (PRAMAN's own message) |
+| app URL refused | run error, no step | `page.goto: net::ERR_UNSAFE_PORT at <url>` |
+| `waitForURL` never reached | step error | `page.waitForURL: Timeout 15000ms exceeded.` / `waiting for navigation to "<url>"` |
+| page or browser closed | action error | `locator.click: Target page, context or browser has been closed` |
+| tab crashed | action error | `locator.click: Target crashed` |
+
+Call logs contain ANSI color codes; the classifier strips them. Playwright names the
+awaited state only for explicit `waitFor` states, so `locator_timeout` carries the state
+only when the message names it. A `waitForURL` or `page.goto` timeout is
+`navigation_failed`, not `locator_timeout`, because no element was awaited. Checks first
+on `closed`/`crashed`, so a closed page during navigation is `browser_closed`.
+
 Only the kind and the listed numeric or enum facts leave private evidence. The raw message
 stays in `result.json` as today.
 
