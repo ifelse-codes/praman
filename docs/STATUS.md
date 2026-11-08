@@ -41,8 +41,17 @@ general simulator and not a sandbox.
   `insufficient_evidence` before anything runs or is written. Proven in Kiro
   (`sess_055fb96f…`). Known limit: the demonstrate tools' speech cache stays relative.
   Full suite **206 tests / 30 files** locally.
-- **Open defect:** interrupting `command-verify` (SIGINT) leaves the declared command
-  running (reproduced 2026-11-07; spec `verify-cancellation`).
+- **Cancellation fix (2026-11-08, local branch `plan-agent-gaps`, not pushed):** spec
+  `verify-cancellation` tasks 1, 3 and 4. Ctrl-C/SIGTERM on `command-verify` and
+  `workflow-replay`, and MCP cancel, stdin close or SIGINT/SIGTERM for
+  `praman_command_verify`/`praman_workflow_replay`, now stop the declared command's
+  process group (SIGTERM, SIGKILL after 2 s), start no further runs, record
+  `insufficient_evidence` with `"interrupted": true`, and the CLI exits 130/143.
+  Reproduced before the fix on 5 of 6 paths (`scenario-verify` was not affected); after
+  the fix no orphan on all 6. Full suite **216 tests / 31 files**; first-use 12/12.
+  Waiting: owner property tests P1–P5 in the Kiro IDE (task 2) and the self-check repair
+  run (task 5.2). Not wired: `coverage-review`, `command-demonstrate`,
+  `command-preview`, non-durable `workflow-campaign`.
 - **Docs clarification (2026-11-06):** added a one-page
   [browser scenario cheat sheet](schema-cheatsheet.md) plus explicit
   selector/zero-based/private-evidence guidance in the README and browser guide;

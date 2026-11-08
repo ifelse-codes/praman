@@ -23,6 +23,24 @@ export async function startMcp() {
   const server = new McpServer({ name: 'praman', version: '0.1.0' });
   // Read once at startup: an invalid value fails `praman mcp` visibly.
   const policy = relativePathPolicy();
+  // Cancellation: a request's own cancel, the client closing stdin, or SIGINT/SIGTERM to
+  // the server aborts the tracked verifications, which stop their owned process groups
+  // and write interrupted evidence before the server exits.
+  const closing = new AbortController();
+  const inFlight = new Set<Promise<unknown>>();
+  const cancellable = <T>(request: AbortSignal, operation: (signal: AbortSignal) => Promise<T>) => {
+    const running = operation(AbortSignal.any([request, closing.signal]));
+    inFlight.add(running);
+    void running.finally(() => inFlight.delete(running)).catch(() => {});
+    return running;
+  };
+  process.stdin.once('end', () => closing.abort());
+  for (const [name, code] of [['SIGINT', 130], ['SIGTERM', 143]] as const) {
+    process.once(name, () => {
+      closing.abort();
+      void Promise.allSettled([...inFlight]).then(() => process.exit(code));
+    });
+  }
   // Every tool is registered through this wrapper so the path policy is checked before
   // any handler runs. With the default policy it is a pass-through.
   const register = server.tool.bind(server) as (...args: unknown[]) => unknown;
@@ -62,8 +80,8 @@ export async function startMcp() {
   });
   tool('praman_workflow_replay', 'Run trusted command/dependency workflows with explicit application state preconditions and fresh isolated repeats. Capture private reconstructable traces; not a sandbox or historical repair proof.', {
     specPath: z.string(), outDir: z.string(),
-  }, async ({ specPath, outDir }) => {
-    const result = await replayWorkflow(specPath, outDir);
+  }, async ({ specPath, outDir }, extra) => {
+    const result = await cancellable(extra.signal, signal => replayWorkflow(specPath, outDir, { signal }));
     return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }], isError: result.verdict !== 'passed' };
   });
   tool('praman_case_from_trace', 'Reconstruct an executable workflow from complete PRAMAN workflow traces, preserving declared expectations. Missing state/actions/expectations and legacy spans are insufficient.', {
@@ -80,8 +98,8 @@ export async function startMcp() {
   });
   tool('praman_command_verify', 'Execute trusted commands in acceptance, repair or comparison mode. Record resolved executable/runner and declared script/input/interpreter/browser/tool identities; unavailable or changing identities cannot pass. Local hashes are not transitive, signed or hermetic provenance. Private evidence; not a sandbox.', {
     specPath: z.string(), outDir: z.string(),
-  }, async ({ specPath, outDir }) => {
-    const result = await proveCommands(specPath, outDir);
+  }, async ({ specPath, outDir }, extra) => {
+    const result = await cancellable(extra.signal, signal => proveCommands(specPath, outDir, signal));
     return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }], isError: result.verdict !== 'passed' };
   });
   tool('praman_command_demonstrate', 'Verify the declared command mode, then deliver a mode-appropriate narrated browser-hosted terminal/source video only when live replays match proof. Private output; not native TTY capture or a sandbox.', {

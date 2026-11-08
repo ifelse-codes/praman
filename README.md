@@ -190,6 +190,16 @@ Session 1 also changed the expectation to `11\n` (failed, exit 1) and selected
 an intentionally missing executable (insufficient evidence, exit 2). Commands are
 trusted code, **not sandboxed**; keep evidence private under ignored `.praman/`.
 
+**Interruption.** If `command-verify` or `workflow-replay` receives SIGINT (Ctrl-C) or
+SIGTERM, PRAMAN sends SIGTERM to the declared command's process group, waits up to 2 s,
+then sends SIGKILL. It starts no further runs, writes `proof.json`/`feedback.json`
+(`workflow.json` for replays) with `insufficient_evidence` and `"interrupted": true`,
+and exits 130 (SIGINT) or 143 (SIGTERM). The MCP tools `praman_command_verify` and
+`praman_workflow_replay` do the same when the client cancels the request, closes the
+server's stdin, or sends the server SIGINT/SIGTERM. An interrupted run never passes.
+Limits: processes that leave the declared command's process group, and a PRAMAN
+process killed with SIGKILL, are outside this cleanup.
+
 ### Prerequisites by route
 
 | Route | Additional requirements | Session 1 boundary |

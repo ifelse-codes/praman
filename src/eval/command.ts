@@ -34,17 +34,20 @@ export const commandProofSchema = z.object({
 export type CommandSpec = z.infer<typeof commandProofSchema>;
 type Verdict = 'passed' | 'failed' | 'insufficient_evidence';
 interface CheckResult { id: string; verdict: Verdict; reason: string; evidence: string; expected?: unknown; observed?: unknown; }
-export interface CommandRun { verdict: Verdict; status: 'exited' | 'timeout' | 'unavailable'; code: number | null; signal: string | null; executableHash?: string; executableHashAfter?: string; identityBefore?: IdentitySnapshot; identityAfter?: IdentitySnapshot; startedAt: string; endedAt: string; checks: CheckResult[]; resultPath: string; stdout: string; stderr: string; error?: string; resources?: ResourceObservation; }
+export interface CommandRun { verdict: Verdict; status: 'exited' | 'timeout' | 'unavailable' | 'interrupted'; code: number | null; signal: string | null; executableHash?: string; executableHashAfter?: string; identityBefore?: IdentitySnapshot; identityAfter?: IdentitySnapshot; startedAt: string; endedAt: string; checks: CheckResult[]; resultPath: string; stdout: string; stderr: string; error?: string; resources?: ResourceObservation; }
 const maxEvidence = 8 * 1024 * 1024;
 function privateJson(file: string, value: unknown) { writeFileSync(file, JSON.stringify(value, null, 2), { mode: 0o600 }); }
-function stopGroup(pid?: number) { if (!pid) return; try { process.kill(-pid, 'SIGKILL'); } catch (e) { if ((e as NodeJS.ErrnoException).code !== 'ESRCH') throw e; } }
+function stopGroup(pid?: number, signal: NodeJS.Signals = 'SIGKILL') { if (!pid) return; try { process.kill(-pid, signal); } catch (e) { if ((e as NodeJS.ErrnoException).code !== 'ESRCH') throw e; } }
+/** After an abort, the owned group gets SIGTERM and this long to exit before SIGKILL. */
+export const interruptGraceMs = 2000;
+export const interruptedReason = 'Verification was interrupted before all declared runs completed; no claim is established.';
 /** Resolve with the same effective environment and evaluator in verification and replay. */
 export function captureCommandIdentity(command: CommandSpec['current']) {
   const env = { ...process.env };
   for (const [key, value] of Object.entries(command.env)) { if (value === null) delete env[key]; else env[key] = value; }
   return captureIdentity(command.identity, { cwd: command.cwd, env, executable: command.executable, harness: import.meta.url });
 }
-export async function executeCommand(spec: CommandSpec, command: CommandSpec['current'], directory: string, resources?: ResourceConfig): Promise<CommandRun> {
+export async function executeCommand(spec: CommandSpec, command: CommandSpec['current'], directory: string, resources?: ResourceConfig, abortSignal?: AbortSignal): Promise<CommandRun> {
   if (resources) resources = resourceConfigSchema.parse(resources);
   const startedAt = new Date().toISOString();
   mkdirSync(directory, { recursive: true, mode: 0o700 });
@@ -56,12 +59,15 @@ export async function executeCommand(spec: CommandSpec, command: CommandSpec['cu
   }));
   const env = { ...process.env };
   for (const [key, value] of Object.entries(command.env)) { if (value === null) delete env[key]; else env[key] = value; }
-  let expired = false, error: string | undefined, code: number | null = null, signal: string | null = null;
+  let expired = false, interrupted = false, error: string | undefined, code: number | null = null, signal: string | null = null;
   const identityBefore = captureCommandIdentity(command);
   const executableIdentity = identityBefore.entries.find(entry => entry.role === 'command-executable');
   const executableHash = executableIdentity?.sha256;
   let resourceObservation: ResourceObservation | undefined;
-  if (!identityComplete(identityBefore)) {
+  if (abortSignal?.aborted) {
+    interrupted = true;
+    closeSync(out); closeSync(err);
+  } else if (!identityComplete(identityBefore)) {
     error = 'Declared execution identity is unavailable; inspect private identityBefore entries.';
     closeSync(out); closeSync(err);
   } else {
@@ -69,17 +75,27 @@ export async function executeCommand(spec: CommandSpec, command: CommandSpec['cu
     const child = spawn(executableIdentity!.path!, command.args, { cwd: command.cwd, env, detached: true, stdio: ['pipe', out, err] });
     const observer = resources && child.pid ? observeResources(child.pid, resources) : undefined;
     const timer = setTimeout(() => { expired = true; stopGroup(child.pid); }, command.deadlineMs);
+    // Interruption: ask the owned group to stop, then force it after a bounded grace.
+    let grace: NodeJS.Timeout | undefined;
+    const onAbort = () => {
+      if (interrupted || expired) return;
+      interrupted = true;
+      stopGroup(child.pid, 'SIGTERM');
+      grace = setTimeout(() => stopGroup(child.pid), interruptGraceMs);
+    };
+    abortSignal?.addEventListener('abort', onAbort, { once: true });
     child.stdin!.on('error', () => {});
     child.stdin!.end(command.stdin);
     try {
       [code, signal] = await once(child, 'close') as [number | null, string | null];
     } catch (e) { error = String(e); }
     finally {
-      clearTimeout(timer); stopGroup(child.pid); closeSync(out); closeSync(err);
+      abortSignal?.removeEventListener('abort', onAbort);
+      clearTimeout(timer); clearTimeout(grace); stopGroup(child.pid); closeSync(out); closeSync(err);
       resourceObservation = await observer?.stop();
     }
   }
-  const status = expired ? 'timeout' : error ? 'unavailable' : 'exited';
+  const status = expired ? 'timeout' : interrupted ? 'interrupted' : error ? 'unavailable' : 'exited';
   const checks: CheckResult[] = [{ id: '$exit', verdict: status !== 'exited' || code === null ? 'insufficient_evidence' : code === spec.expectedExit ? 'passed' : 'failed', reason: status === 'exited' ? `Expected exit ${spec.expectedExit}; observed ${code}, signal ${signal}.` : `Execution ${status}.`, evidence: resultPath }];
   for (const check of spec.checks) {
     const source = check.source === 'stdout' ? stdout : check.source === 'stderr' ? stderr : path.resolve(command.cwd, check.path!);
@@ -120,7 +136,7 @@ export function loadCommandSpec(specPath: string): CommandSpec {
 }
 
 /** Trusted local commands, not a sandbox. Raw declarations and output stay private. */
-export async function proveCommands(specPath: string, outputDirectory: string) {
+export async function proveCommands(specPath: string, outputDirectory: string, signal?: AbortSignal) {
   specPath = path.resolve(specPath);
   const spec = loadCommandSpec(specPath);
   const outDir = path.resolve(outputDirectory);
@@ -129,34 +145,37 @@ export async function proveCommands(specPath: string, outputDirectory: string) {
   const proofPath = path.join(outDir, 'proof.json');
   if (existsSync(proofPath) || existsSync(path.join(outDir, 'declaration.json'))) throw new Error('Proof output directory already contains a run; choose a fresh directory.');
   privateJson(path.join(outDir, 'declaration.json'), spec);
-  const before = spec.mode === 'acceptance' ? undefined : await executeCommand(spec, spec.before!, path.join(outDir, 'before'));
+  // An interruption stops the active run and starts no further run.
+  const before = spec.mode === 'acceptance' || signal?.aborted ? undefined : await executeCommand(spec, spec.before!, path.join(outDir, 'before'), undefined, signal);
   const current: CommandRun[] = [];
-  for (let i = 0; i < spec.repeats; i++) current.push(await executeCommand(spec, spec.current, path.join(outDir, `current-${i + 1}`)));
+  for (let i = 0; i < spec.repeats && !signal?.aborted; i++) current.push(await executeCommand(spec, spec.current, path.join(outDir, `current-${i + 1}`), undefined, signal));
+  const interrupted = Boolean(signal?.aborted) || [before, ...current].some(run => run?.status === 'interrupted');
   const stable = (runs: CommandRun[]) => runs.every(run => sameIdentity(runs[0]?.identityBefore, run.identityBefore) && sameIdentity(run.identityBefore, run.identityAfter));
   const identitiesStable = stable(current) && (!before || stable([before]));
   const oldComplete = !before || before.status === 'exited' && before.signal === null && !before.checks.some(row => row.verdict === 'insufficient_evidence');
   const repairEstablished = before && before.code === spec.expectedExit && before.checks.find(row => row.id === spec.regressionCheck)?.verdict === 'failed'
     && before.checks.every(row => row.id === spec.regressionCheck || row.verdict === 'passed');
-  const verdict: Verdict = !identitiesStable || !oldComplete || current.some(run => run.verdict === 'insufficient_evidence') ? 'insufficient_evidence'
+  const verdict: Verdict = interrupted || !identitiesStable || !oldComplete || current.some(run => run.verdict === 'insufficient_evidence') ? 'insufficient_evidence'
     : current.some(run => run.verdict !== 'passed') ? 'failed'
     : spec.mode === 'repair' && !repairEstablished ? 'insufficient_evidence' : 'passed';
-  const reason = verdict === 'insufficient_evidence' ? spec.mode === 'acceptance'
+  const reason = interrupted ? interruptedReason
+    : verdict === 'insufficient_evidence' ? spec.mode === 'acceptance'
     ? 'Current requirement execution or evidence is unavailable; no acceptance claim is established.'
     : 'Execution/evidence unavailable or strict historical repair gate not established.'
     : verdict === 'failed' ? 'A current declared requirement failed.'
     : spec.mode === 'acceptance' ? 'Declared current requirements passed in all repeated runs. No baseline or repair claim.'
     : spec.mode === 'comparison' ? `Complete ${spec.baselineKind} baseline comparison; repeated current requirements passed. No historical repair claim.`
     : 'Named historical regression reproduced, other baseline checks passed, and all repeated current checks passed.';
-  const proof = { mode: spec.mode, baselineKind: spec.baselineKind, verdict, reason, scope: `Only declared command checks; not whole-program correctness or sandboxing. Baseline attribution is caller-declared, not authenticated history. ${identityScope}`, identityStatus: identitiesStable ? 'stable' : 'unavailable_or_changed', verifiedAt: new Date().toISOString(), specHash: createHash('sha256').update(JSON.stringify(spec)).digest('hex'), ...(before ? { before } : {}), current };
+  const proof = { mode: spec.mode, baselineKind: spec.baselineKind, verdict, reason, ...(interrupted ? { interrupted: true } : {}), scope: `Only declared command checks; not whole-program correctness or sandboxing. Baseline attribution is caller-declared, not authenticated history. ${identityScope}`, identityStatus: identitiesStable ? 'stable' : 'unavailable_or_changed', verifiedAt: new Date().toISOString(), specHash: createHash('sha256').update(JSON.stringify(spec)).digest('hex'), ...(before ? { before } : {}), current };
   privateJson(proofPath, proof);
   const diagnostics = checkDiagnostics(outDir, { ...proof, regressionCheck: spec.regressionCheck }, spec.checks.map(check => check.id));
   // Deliberately do not present command arguments, environment, assertions, raw output or raw errors.
   const feedback = safeFeedbackValue({
-    mode: spec.mode, baselineKind: spec.baselineKind, verdict, scope: proof.scope, identityStatus: proof.identityStatus, identityEvidence: { path: proofPath, private: true }, verifiedAt: proof.verifiedAt, proofPath, reason,
+    mode: spec.mode, baselineKind: spec.baselineKind, verdict, ...(interrupted ? { interrupted: true } : {}), scope: proof.scope, identityStatus: proof.identityStatus, identityEvidence: { path: proofPath, private: true }, verifiedAt: proof.verifiedAt, proofPath, reason,
     diagnostics,
     findings: ['$exit', ...spec.checks.map(check => check.id)].map(checkId => {
       const mismatch = current.some(run => run.checks.find(row => row.id === checkId)?.verdict === 'failed');
-      const incomplete = current.some(run => run.checks.find(row => row.id === checkId)?.verdict !== 'passed')
+      const incomplete = interrupted || current.some(run => run.checks.find(row => row.id === checkId)?.verdict !== 'passed')
         || Boolean(before && before.checks.find(row => row.id === checkId)?.verdict === 'insufficient_evidence');
       const historical = before?.checks.find(row => row.id === checkId)?.verdict === 'failed';
       return {

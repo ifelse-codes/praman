@@ -20,12 +20,20 @@ import { startDurableCampaign, resumeDurableCampaign } from './core/durableCampa
 import { runAgentCampaign } from './core/agentCampaign.js';
 import { previewChange, previewCommands } from './core/preview.js';
 
-async function withCampaignStop<T>(operation: (signal: AbortSignal) => Promise<T>) {
+/** SIGINT/SIGTERM become an abort that the operation handles; the first received signal is reported. */
+async function withStop<T>(operation: (signal: AbortSignal) => Promise<T>) {
   const controller = new AbortController();
-  const stop = () => controller.abort();
+  let received: NodeJS.Signals | undefined;
+  const stop = (name: NodeJS.Signals) => { received ??= name; controller.abort(); };
   process.on('SIGINT', stop); process.on('SIGTERM', stop);
-  try { return await operation(controller.signal); }
+  try { const result = await operation(controller.signal); return { result, received }; }
   finally { process.off('SIGINT', stop); process.off('SIGTERM', stop); }
+}
+/** Shell convention for a run ended by a signal, applied after cleanup and evidence writing. */
+const signalExit = { SIGINT: 130, SIGTERM: 143 } as Record<string, number>;
+function exitAfter(received: NodeJS.Signals | undefined, verdict: string) {
+  if (received) process.exitCode = signalExit[received];
+  else if (verdict !== 'passed') process.exitCode = verdict === 'failed' ? 1 : 2;
 }
 
 const program = new Command();
@@ -52,9 +60,9 @@ program.command('command-verify').description('Verify declared acceptance, histo
   .argument('<declaration>').option('-o, --out <dir>', 'private proof directory (must be fresh)', './.praman/command-proof')
   .option('--summary', 'print only outcome, indexed failures, private evidence and next action')
   .action(async (declaration, opts) => {
-    const result = await proveCommands(declaration, opts.out);
+    const { result, received } = await withStop(signal => proveCommands(declaration, opts.out, signal));
     console.log(opts.summary ? formatSummary(result) : JSON.stringify(result, null, 2));
-    if (result.verdict !== 'passed') process.exitCode = result.verdict === 'failed' ? 1 : 2;
+    exitAfter(received, result.verdict);
   });
 
 program.command('command-demonstrate').description('Verify declared command mode, then record a matching narrated walkthrough with live replays')
@@ -140,9 +148,9 @@ program.command('service-replay').description('Replay declared HTTP simulator ch
 program.command('workflow-replay').description('Execute a trusted application command with explicit state reset against an isolated declared dependency')
   .argument('<declaration>').requiredOption('-o, --out <dir>', 'fresh private evidence directory')
   .action(async (file, opts) => {
-    const result = await replayWorkflow(file, opts.out);
+    const { result, received } = await withStop(signal => replayWorkflow(file, opts.out, { signal }));
     console.log(JSON.stringify(result, null, 2));
-    if (result.verdict !== 'passed') process.exitCode = result.verdict === 'failed' ? 1 : 2;
+    exitAfter(received, result.verdict);
   });
 
 program.command('coverage-review').description('Review declared command/HTTP workflow coverage and model-only candidate stimuli; not whole-app proof')
@@ -157,7 +165,7 @@ program.command('workflow-campaign').description('Run count- or duration-bounded
   .argument('<declaration>').requiredOption('-o, --out <dir>', 'fresh private campaign directory')
   .option('--durable', 'persist a count-based isolated queue; orderly interruption can be resumed locally')
   .action(async (file, opts) => {
-    const result = opts.durable ? await withCampaignStop(signal => startDurableCampaign(file, opts.out, signal)) : await runCampaign(file, opts.out);
+    const result = opts.durable ? (await withStop(signal => startDurableCampaign(file, opts.out, signal))).result : await runCampaign(file, opts.out);
     console.log(JSON.stringify(result, null, 2));
     if (result.verdict !== 'passed') process.exitCode = result.verdict === 'failed' ? 1 : 2;
   });
@@ -165,7 +173,7 @@ program.command('workflow-campaign').description('Run count- or duration-bounded
 program.command('campaign-resume').description('Resume pending local durable jobs without rerunning completed or uncertain work')
   .argument('<directory>', 'existing durable session directory')
   .action(async directory => {
-    const result = await withCampaignStop(signal => resumeDurableCampaign(directory, signal));
+    const { result } = await withStop(signal => resumeDurableCampaign(directory, signal));
     console.log(JSON.stringify(result, null, 2));
     if (result.verdict !== 'passed') process.exitCode = result.verdict === 'failed' ? 1 : 2;
   });
@@ -173,7 +181,7 @@ program.command('campaign-resume').description('Resume pending local durable job
 program.command('agent-campaign').description('Run bounded parallel agents selecting only trusted command/HTTP workflows with independent authored expectations')
   .argument('<declaration>').requiredOption('-o, --out <dir>', 'fresh private agent campaign directory')
   .action(async (file, opts) => {
-    const result = await withCampaignStop(signal => runAgentCampaign(file, opts.out, signal));
+    const { result } = await withStop(signal => runAgentCampaign(file, opts.out, signal));
     console.log(JSON.stringify(result, null, 2));
     if (result.verdict !== 'passed') process.exitCode = result.verdict === 'failed' ? 1 : 2;
   });

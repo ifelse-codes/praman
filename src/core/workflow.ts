@@ -4,7 +4,7 @@ import { isDeepStrictEqual } from 'node:util';
 import { mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { workflowSchema } from '../case/workflow.js';
-import { executeCommand, type CommandRun, type CommandSpec } from '../eval/command.js';
+import { executeCommand, interruptedReason, type CommandRun, type CommandSpec } from '../eval/command.js';
 import { startService, type ServiceInstance, type ServiceInteraction } from '../gateway/service.js';
 import type { ResourceConfig, ResourceObservation } from '../eval/resources.js';
 import type { WorkflowSession } from './workflowSession.js';
@@ -36,7 +36,7 @@ export interface WorkflowOccurrence {
 }
 
 /** Trusted commands; fresh simulator plus explicit caller-owned application state contract. */
-export async function replayWorkflow(specPath: string, outputDirectory: string, options: { isolateApplication?: boolean; resources?: ResourceConfig; session?: WorkflowSession } = {}) {
+export async function replayWorkflow(specPath: string, outputDirectory: string, options: { isolateApplication?: boolean; resources?: ResourceConfig; session?: WorkflowSession; signal?: AbortSignal } = {}) {
   const outDir = path.resolve(outputDirectory);
   mkdirSync(path.dirname(outDir), { recursive: true, mode: 0o700 });
   mkdirSync(outDir, { mode: 0o700 });
@@ -55,7 +55,8 @@ export async function replayWorkflow(specPath: string, outputDirectory: string, 
     const restore = spec.dependency.start.kind === 'snapshot' ? readJson(path.resolve(directory, spec.dependency.start.path)) : undefined;
     privateJson(path.join(outDir, 'declaration.json'), spec);
     if (restore !== undefined) privateJson(path.join(outDir, 'starting-snapshot.json'), restore);
-    for (let repeat = 0; repeat < spec.dependency.repeats; repeat++) {
+    // An interruption stops the active command and starts no further repeat.
+    for (let repeat = 0; repeat < spec.dependency.repeats && !options.signal?.aborted; repeat++) {
       const runDir = path.join(outDir, `run-${repeat + 1}`);
       mkdirSync(runDir, { mode: 0o700 });
       const run: WorkflowRun = { verdict: 'insufficient_evidence', tracePath: path.join(runDir, 'trace.json') };
@@ -86,7 +87,7 @@ export async function replayWorkflow(specPath: string, outputDirectory: string, 
         if (execution.applicationState.kind === 'reset' && !options.session?.resetComplete) {
           const resetSpec = execution.applicationState.command;
           if (options.session) options.session.resetFailed = true;
-          run.reset = await executeCommand(resetSpec, resetSpec.current, path.join(runDir, 'reset'));
+          run.reset = await executeCommand(resetSpec, resetSpec.current, path.join(runDir, 'reset'), undefined, options.signal);
           if (run.reset.verdict !== 'passed') {
             throw new Error('Application reset preconditions not established');
           }
@@ -116,7 +117,7 @@ export async function replayWorkflow(specPath: string, outputDirectory: string, 
           ...invocation, args: invocation.args.map(bind),
           env: Object.fromEntries(Object.entries(invocation.env).map(([key, value]) => [key, value === null ? null : bind(value)])),
           stdin: invocation.stdin === undefined ? undefined : bind(invocation.stdin),
-        }, path.join(runDir, 'command'), options.resources);
+        }, path.join(runDir, 'command'), options.resources, options.signal);
         // executeCommand waits for exit and kills any remaining owned process group.
         final = service.snapshot();
         const complete = run.command.status === 'exited' && run.command.signal === null && !overflow;
@@ -156,17 +157,19 @@ export async function replayWorkflow(specPath: string, outputDirectory: string, 
       runs.push(run);
     }
   } catch (e) { error = String(e); }
-  const verdict: Verdict = error || !runs.length || runs.some(run => run.verdict === 'insufficient_evidence') ? 'insufficient_evidence'
+  const interrupted = Boolean(options.signal?.aborted) || runs.some(run => run.reset?.status === 'interrupted' || run.command?.status === 'interrupted');
+  const verdict: Verdict = interrupted || error || !runs.length || runs.some(run => run.verdict === 'insufficient_evidence') ? 'insufficient_evidence'
     : runs.some(run => run.verdict === 'failed') ? 'failed' : 'passed';
   const proofPath = path.join(outDir, 'workflow.json');
-  privateJson(proofPath, { version: 1, verdict, runs, error, declarationHash: (() => {
+  privateJson(proofPath, { version: 1, verdict, ...(interrupted ? { interrupted: true, reason: interruptedReason } : {}), runs, error, declarationHash: (() => {
     try { return createHash('sha256').update(readFileSync(path.join(outDir, 'declaration.json'))).digest('hex'); } catch { return undefined; }
   })() });
   const result = {
-    verdict, proofPath,
+    verdict, proofPath, ...(interrupted ? { interrupted: true } : {}),
     scope: 'Declared command workflow against a simulated dependency; application reset/stateless scope is caller-declared, not a whole-world snapshot or historical repair proof.',
     runs: runs.map((run, index): WorkflowOccurrence => ({ run: index + 1, verdict: run.verdict, tracePath: run.tracePath, resultPath: path.join(path.dirname(run.tracePath), 'result.json'), workspacePath: run.workspacePath, dependencyVerdict: run.dependencyVerdict, commandVerdict: run.command?.verdict, resources: run.command?.resources ? { ...run.command.resources, error: undefined } : undefined })),
-    nextAction: verdict === 'passed' ? 'Declared workflow checks passed in fresh isolated repeats. Preserve private trace and inputs.'
+    nextAction: interrupted ? `${interruptedReason} Rerun in a fresh output directory.`
+      : verdict === 'passed' ? 'Declared workflow checks passed in fresh isolated repeats. Preserve private trace and inputs.'
       : verdict === 'failed' ? 'Inspect private command and dependency observations against declared expectations; root cause is not established.'
       : 'Restore valid input, application reset and complete execution before claiming behavior.',
   };
