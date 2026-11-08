@@ -31,6 +31,10 @@ form are the remaining release blockers.
 - MCP path fix (2026-11-08): a server started outside the caller's project
   (`PRAMAN_RELATIVE_PATHS=reject`) refuses relative paths instead of reading or writing
   in its own folder.
+- Ctrl-C fix (2026-11-08, spec `verify-cancellation`, PR #4 and #5): Ctrl-C, SIGTERM or
+  an MCP cancel stops every program PRAMAN started, starts no further runs, and records
+  the run as not proven (CLI exit 130/143). PRAMAN checks this fix on itself in repair
+  mode (`examples/self-check/cancellation/`).
 
 ## Real-world use so far
 
@@ -44,14 +48,28 @@ evidence is private and held outside this repository (see [ARCHIVE.md](ARCHIVE.m
 Found by the opencode/Lattice session and our own testing. Each fix is app-independent,
 works the same for every agent and the CLI, and keeps existing declarations unchanged.
 
-| Order | Problem today | Planned fix | Size |
-| --- | --- | --- | --- |
-| 1 | ~~Ctrl-C stops PRAMAN but leaves the tested program running~~ **Done 2026-11-08** | Stop every owned process on Ctrl-C or MCP cancel; record the run as not proven | M |
-| 2 | When a step fails, the summary does not say why (for example a selector that matched 12 elements) | Name the failure kind and safe counts in the summary, report and MCP result; selectors and values stay private | S |
-| 2 | The report has no overview of all checks | One pass/fail table at the top of `REPORT.md` | S |
-| 3 | Only 8 browser actions; agents write side scripts for double-click, select, typing, scroll and drag | Add `dblclick`, `selectOption`, `type`, `scroll`, `drag` | S–M |
-| 3 | `waitFor` only waits for "visible"; a half-rendered page can pass | `waitFor` state (`hidden`, `attached`, `detached`) or exact element count; a `count` check | S |
-| 4 | Checks point at steps by number, so inserting a step shifts them | Optional step names that checks can reference | M |
+| Order | Problem today | Planned fix | Spec | Size |
+| --- | --- | --- | --- | --- |
+| 1 | ~~Ctrl-C stops PRAMAN but leaves the tested program running~~ **Done 2026-11-08** | Stop every owned process on Ctrl-C or MCP cancel; record the run as not proven | `verify-cancellation` | M |
+| 2 | When a step fails, the summary does not say why (for example a selector that matched 12 elements) | Name the failure kind and safe counts in the summary, report and MCP result; selectors and values stay private | `agent-diagnostics` | S |
+| 2 | The report has no overview of all checks | One pass/fail table at the top of `REPORT.md` | `agent-diagnostics` | S |
+| 3 | Only 8 browser actions; agents write side scripts for double-click, select, typing, scroll and drag | Add `dblclick`, `selectOption`, `type`, `scroll`, `drag` | `scenario-actions` | S–M |
+| 3 | `waitFor` only waits for "visible"; a half-rendered page can pass | `waitFor` state (`hidden`, `attached`, `detached`) or exact element count; a `count` check | `scenario-actions` | S |
+| 4 | Checks point at steps by number, so inserting a step shifts them | Optional step names that checks can reference | `named-steps` | M |
+| 5 | No demo video yet | A video of under 3 minutes made only from this Kiro work (the earlier non-Kiro Headlamp clip is dropped) | `submission-story` | M |
+
+Next session starts with order 2: spec `agent-diagnostics`, shown first on a real
+failing check, then fixed.
+
+### Carried over from the 2026-11-08 session
+
+- Local `main` still points to the old private commit `b7f11d0`; it shares no history
+  with public `main`. Moving it (`git branch -f main <public main>`) needs the owner's
+  yes. Work continues on `plan-agent-gaps`, which matches public `main`.
+- `docs/kiro-usage.md` has no row yet for PR #8 (docs only) and its CI rerun; add it
+  with the next real commit.
+- `tests/networkPolicy.test.ts` failed once on macOS CI (PR #8, docs-only change) and
+  passed on rerun. Treat as flaky; if it fails again, investigate and fix it.
 
 This replaces the earlier "no new features" freeze for these items only. Other optional
 surfaces stay frozen.
