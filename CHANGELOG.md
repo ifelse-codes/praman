@@ -12,8 +12,9 @@
 - MCP: `PRAMAN_RELATIVE_PATHS=reject` refuses relative path arguments with an
   `insufficient_evidence` result before anything runs or is written. The Kiro Power sets
   it, because its server runs from the installed Power's directory; relative paths had
-  resolved there. Default behavior (resolve against the server's working directory) is
-  unchanged.
+  resolved there. In this mode `praman_environment` also requires `baseDir`, because its
+  default is relative. Default behavior (resolve against the server's working directory)
+  is unchanged. Known limit: the demonstrate tools' speech cache default stays relative.
 
 ## 0.1.0 — 2026-11-05
 

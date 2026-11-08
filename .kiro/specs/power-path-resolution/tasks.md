@@ -18,8 +18,10 @@ Scope trimmed 2026-11-08 (owner): only `PRAMAN_RELATIVE_PATHS=reject` in the Pow
   - _Bugfix: Expected 3_
 
 - [x] 5. Verify
-  - [x] 5.1 Lint, test typecheck, full suite (204 tests / 30 files), first-use 12/12
+  - [x] 5.1 Lint, test typecheck, full suite (206 tests / 30 files after task 7), first-use 12/12
   - [x] 5.2 Kiro (`sess_055fb96f…`): relative paths refused naming `specPath`, `outDir`; no new files in the installed Power; absolute paths → `passed`
   - _Bugfix: Unchanged 1–5_
+
+- [x] 7. Review follow-up (owner, 2026-11-08): reproduced the `praman_environment` default `baseDir` inside the server directory; reject mode now requires `baseDir` (2 tests). Speech-cache default documented as a known limit
 
 - [ ] 6. Document: README, CHANGELOG, STATUS, kiro-usage (done locally). PR only after owner yes (identity check per `.kiro/steering/publishing.md`)

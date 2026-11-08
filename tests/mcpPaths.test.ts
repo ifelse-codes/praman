@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
-import { relativePathArguments, relativePathPolicy, relativePathRefusal } from '../src/mcp/paths.js';
+import { missingPathArguments, relativePathArguments, relativePathPolicy, relativePathRefusal } from '../src/mcp/paths.js';
 
 describe('MCP relative path policy', () => {
   it('defaults to cwd resolution, accepts reject, and refuses any other value', () => {
@@ -38,6 +38,16 @@ describe('MCP relative path policy', () => {
       'outDir', 'scenario.steps[2].path', 'scenario.diffPath', 'scenario.identity.files[0].path', 'scenario.identity.tools[1].executable',
     ]);
     expect(relativePathArguments({ specPath: '/a.json', outDir: '/out' })).toEqual([]);
+  });
+
+  it('requires praman_environment baseDir in reject mode, because its default is relative', () => {
+    expect(missingPathArguments('praman_environment', { action: 'observe', id: 'abcdefabcdef' })).toEqual(['baseDir']);
+    expect(missingPathArguments('praman_environment', { action: 'observe', baseDir: '' })).toEqual(['baseDir']);
+    expect(missingPathArguments('praman_environment', { action: 'observe', baseDir: '/abs/envs' })).toEqual([]);
+    expect(missingPathArguments('praman_command_verify', { specPath: '/a', outDir: '/b' })).toEqual([]);
+    const payload = JSON.parse(relativePathRefusal([], ['baseDir']).content[0].text);
+    expect(payload).toMatchObject({ verdict: 'insufficient_evidence', arguments: [], missing: ['baseDir'] });
+    expect(payload.reason).toContain('Supply baseDir as an absolute path');
   });
 
   it('refuses as not proven, naming arguments without their values', () => {
@@ -107,6 +117,24 @@ describe.skipIf(!hasBuild)('MCP server path policy (requires npm run build)', ()
     } finally {
       await rm(serverDirectory, { recursive: true, force: true });
       await rm(project, { recursive: true, force: true });
+    }
+  });
+
+  it('with reject: refuses praman_environment without baseDir instead of using a default inside the server directory', async () => {
+    const serverDirectory = await mkdtemp(join(tmpdir(), 'praman-installed-'));
+    try {
+      await withServer(serverDirectory, { PRAMAN_RELATIVE_PATHS: 'reject' }, async client => {
+        const result = CallToolResultSchema.parse(await client.callTool({ name: 'praman_environment', arguments: { action: 'observe', id: 'abcdefabcdef' } }));
+        expect(result.isError).toBe(true);
+        const text = result.content.find(item => item.type === 'text');
+        if (!text || text.type !== 'text') throw new Error('expected a text result');
+        const payload = JSON.parse(text.text);
+        expect(payload).toMatchObject({ verdict: 'insufficient_evidence', missing: ['baseDir'] });
+        expect(text.text).not.toContain('.praman/environments');
+      });
+      expect(await readdir(serverDirectory)).toEqual([]);
+    } finally {
+      await rm(serverDirectory, { recursive: true, force: true });
     }
   });
 

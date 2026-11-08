@@ -69,7 +69,9 @@ Pass **absolute paths** for `specPath` and `outDir` (and for any upload, diff or
 identity file in an inline scenario). The power's MCP server runs from the installed
 power's own directory, not the user's project, so it refuses relative paths with an
 `insufficient_evidence` result that names the argument; nothing runs or is written. If
-you see that refusal, retry with absolute paths. Use a **fresh, unused** output directory under the project's
+you see that refusal, retry with absolute paths. `praman_environment` also needs an
+absolute `baseDir`. Do not use `praman_demonstrate` or `praman_command_demonstrate`
+through this power: their speech cache would land in the installed power's folder. Use a **fresh, unused** output directory under the project's
 `.praman/` for every run, for example `<project>/.praman/verify-<short-name>-<n>`.
 PRAMAN refuses a directory that already exists.
 

@@ -38,6 +38,13 @@ Under the Power, `cwd` is the installed Power, so they resolve to the wrong dire
    paths, THEN they resolve against the installed Power directory (README documents
    server-`cwd` resolution for inline MCP scenarios; not yet observed — task 1.2).
 
+4. WHEN the Power's server receives `praman_environment` without `baseDir`, THEN the
+   system resolves its default `.praman/environments` inside the installed Power directory
+   (reproduced 2026-11-08: `ENOENT … <server-dir>/.praman/environments/abcdefabcdef/state.json`).
+5. WHEN the demonstrate tools generate speech through the Power, THEN the default speech
+   cache `.praman/speech-cache/v1` (`src/report/speech.ts`) resolves inside the installed
+   Power directory (confirmed from the code path; not executed).
+
 ## Expected behavior
 
 1. WHEN the server is started with `PRAMAN_RELATIVE_PATHS=reject` AND a tool receives any
@@ -51,13 +58,17 @@ Under the Power, `cwd` is the installed Power, so they resolve to the wrong dire
    startup SHALL fail visibly with a clear message.
 3. THE Power's `mcp.json` SHALL set `PRAMAN_RELATIVE_PATHS=reject`, and the Power skill and
    READMEs SHALL state that absolute paths are required.
-4. THE error text SHALL name arguments only and SHALL NOT include their values, raw
+4. WHEN reject mode is set AND `praman_environment` is called without `baseDir`, THEN the
+   system SHALL refuse it the same way, naming `baseDir` as missing.
+5. THE error text SHALL name arguments only and SHALL NOT include their values, raw
    declaration contents or environment values.
 
 ## Deferred (owner decision 2026-11-08)
 
 Not part of this bug fix:
 
+- The speech-cache default (Current 5): it is not a tool argument, so it is documented as a
+  known limit of the Power instead of fixed.
 - `PRAMAN_WORKSPACE=<dir>` to resolve relative paths against a declared project folder.
 - Resolving against a single project root reported by the MCP client (`roots/list`).
   Kiro does not support `roots` (probe `sess_bf2efd93…`), so this cannot be proven in Kiro.

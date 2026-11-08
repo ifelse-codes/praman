@@ -45,13 +45,26 @@ export function relativePathArguments(input: Record_): string[] {
   return names;
 }
 
-export function relativePathRefusal(names: string[]) {
+// Optional path arguments whose omission falls back to a relative default inside the
+// server's directory. In reject mode they must be supplied (as absolute paths).
+const REQUIRED_IN_REJECT_MODE: Record<string, readonly string[]> = {
+  praman_environment: ['baseDir'],
+};
+
+/** Names of path arguments that reject mode requires but the input omits. */
+export function missingPathArguments(toolName: string, input: Record_): string[] {
+  return (REQUIRED_IN_REJECT_MODE[toolName] ?? []).filter(name => input[name] === undefined || input[name] === '');
+}
+
+export function relativePathRefusal(names: string[], missing: string[] = []) {
   const payload = {
     verdict: 'insufficient_evidence',
-    reason: 'Relative paths are refused because this PRAMAN MCP server runs with PRAMAN_RELATIVE_PATHS=reject: '
-      + 'they would resolve inside the server\'s own directory, not your project. Pass absolute paths. '
-      + 'Nothing was executed or written.',
+    reason: 'This PRAMAN MCP server runs with PRAMAN_RELATIVE_PATHS=reject, so relative or defaulted paths '
+      + 'would resolve inside the server\'s own directory, not your project. '
+      + (missing.length ? `Supply ${missing.join(', ')} as an absolute path. ` : '')
+      + 'Pass absolute paths. Nothing was executed or written.',
     arguments: names,
+    ...(missing.length ? { missing } : {}),
   };
   return { content: [{ type: 'text' as const, text: JSON.stringify(payload, null, 2) }], isError: true };
 }

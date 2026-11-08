@@ -17,7 +17,7 @@ import { startDurableCampaign, resumeDurableCampaign } from '../core/durableCamp
 import { runAgentCampaign } from '../core/agentCampaign.js';
 import { previewChange, previewCommands } from '../core/preview.js';
 import { videoCutSchema } from '../case/composition.js';
-import { relativePathArguments, relativePathPolicy, relativePathRefusal } from './paths.js';
+import { missingPathArguments, relativePathArguments, relativePathPolicy, relativePathRefusal } from './paths.js';
 
 export async function startMcp() {
   const server = new McpServer({ name: 'praman', version: '0.1.0' });
@@ -27,10 +27,13 @@ export async function startMcp() {
   // any handler runs. With the default policy it is a pass-through.
   const register = server.tool.bind(server) as (...args: unknown[]) => unknown;
   const tool = ((...args: unknown[]) => {
+    const name = String(args[0]);
     const handler = args[args.length - 1] as (input: Record<string, unknown>, extra: unknown) => unknown;
     return register(...args.slice(0, -1), async (input: Record<string, unknown>, extra: unknown) => {
-      const refused = policy === 'reject' ? relativePathArguments(input) : [];
-      return refused.length ? relativePathRefusal(refused) : handler(input, extra);
+      if (policy !== 'reject') return handler(input, extra);
+      const relative = relativePathArguments(input);
+      const missing = missingPathArguments(name, input);
+      return relative.length || missing.length ? relativePathRefusal(relative, missing) : handler(input, extra);
     });
   }) as typeof server.tool;
   tool('praman_workflow_campaign', 'Run count- or duration-bounded command/HTTP campaigns with isolated, persistent per-worker or shared-service model state and private evidence/reports. Duration closes admission then drains active commands. Optional root-process resource observations; not a sandbox, distributed scheduler, autonomous tester or historical repair proof.', {

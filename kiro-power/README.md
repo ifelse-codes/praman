@@ -72,6 +72,14 @@ argument, before anything runs or is written. Give the agent absolute paths (as 
 
 - Only `command-verify` was exercised through the Power; browser scenarios need
   `npx playwright install chromium` in the PRAMAN checkout and a running target.
+- `praman_environment` needs an absolute `baseDir` through the Power (its default is
+  relative, so the Power refuses the call without one).
+- The narrated-video tools (`praman_demonstrate`, `praman_command_demonstrate`) cache
+  generated speech in `.praman/speech-cache/v1` relative to the server's directory, which
+  through the Power is the installed Power folder. That default is not a tool argument,
+  so the relative-path refusal cannot catch it. Avoid these tools through the Power;
+  use them from the workspace MCP config or the CLI in your project. (Confirmed from the
+  code path, not executed: it needs a speech provider, ffmpeg and a recording.)
 - The finish gate is a workspace hook, not part of the Power. To use it, copy
   `.kiro/hooks/praman-evidence-gate.json` from the PRAMAN repository and add a
   `praman-gate.json` (see the main README).
