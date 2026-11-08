@@ -1,6 +1,6 @@
-# PRAMAN — current roadmap (2026-11-05)
+# PRAMAN — current roadmap (2026-11-08)
 
-**Status: shipped and verified.** Public repository
+**Status: shipped and verified; next work is agent-facing fixes.** Public repository
 https://github.com/ifelse-codes/praman (MIT), CI green on Ubuntu and macOS, judge
 access via [TESTING.md](../TESTING.md) and Codespaces, project page
 https://ifelse-codes.github.io/praman/. Not submitted: the demo video and the Devpost
@@ -24,13 +24,43 @@ form are the remaining release blockers.
   the documented first-use route on Linux; static project page deployed.
 - Deterministic source packaging; per-build candidate identity recorded privately, not
   published.
+- Kiro integration (2026-11-08): workspace MCP wiring, a verification agent, an opt-in
+  finish gate that re-runs declared checks when an agent stops, and an installable Kiro
+  Power. The finish-gate script itself is agent-neutral; only its hook file is
+  Kiro-specific.
+- MCP path fix (2026-11-08): a server started outside the caller's project
+  (`PRAMAN_RELATIVE_PATHS=reject`) refuses relative paths instead of reading or writing
+  in its own folder.
+
+## Real-world use so far
+
+PRAMAN has been used on real software by more than one agent: Headlamp (Kubernetes UI),
+Kan (kanban app), Stern (Go CLI), jq (C CLI), Luma (todo app) and Lattice (a spreadsheet
+built and verified by a different agent, opencode, using only the public docs). The
+evidence is private and held outside this repository (see [ARCHIVE.md](ARCHIVE.md)).
+
+## Next: fix what every agent hits (planned 2026-11-08)
+
+Found by the opencode/Lattice session and our own testing. Each fix is app-independent,
+works the same for every agent and the CLI, and keeps existing declarations unchanged.
+
+| Order | Problem today | Planned fix | Size |
+| --- | --- | --- | --- |
+| 1 | Ctrl-C stops PRAMAN but leaves the tested program running | Stop every owned process on Ctrl-C or MCP cancel; record the run as not proven | M |
+| 2 | When a step fails, the summary does not say why (for example a selector that matched 12 elements) | Name the failure kind and safe counts in the summary, report and MCP result; selectors and values stay private | S |
+| 2 | The report has no overview of all checks | One pass/fail table at the top of `REPORT.md` | S |
+| 3 | Only 8 browser actions; agents write side scripts for double-click, select, typing, scroll and drag | Add `dblclick`, `selectOption`, `type`, `scroll`, `drag` | S–M |
+| 3 | `waitFor` only waits for "visible"; a half-rendered page can pass | `waitFor` state (`hidden`, `attached`, `detached`) or exact element count; a `count` check | S |
+| 4 | Checks point at steps by number, so inserting a step shifts them | Optional step names that checks can reference | M |
+
+This replaces the earlier "no new features" freeze for these items only. Other optional
+surfaces stay frozen.
 
 ## Frozen for this release window
 
 - Optional surfaces (preview, campaigns, managed environments, recording) are
   implemented and unit-tested, but frozen: no expansion and no new end-to-end claims
   before submission.
-- The product surface is frozen; no new features.
 
 ## Deferred
 
@@ -40,6 +70,8 @@ form are the remaining release blockers.
 - Native desktop automation.
 - Cross-host or distributed campaigns; machine-level Kubernetes campaigns.
 - Cached-audio movie review; Harbor adoption.
+- MCP project-folder discovery (`PRAMAN_WORKSPACE` or client roots); the speech-cache
+  default stays relative.
 - npm publishing, Windows support, and the final archive-retention decision.
 
 ## Next (owner)
@@ -51,8 +83,7 @@ form are the remaining release blockers.
 3. Publish the blog/social bonus posts during the submission window; decide archive
    retention and npm publishing.
 
-Optional: resolve Kiro credits/quota for one more logged session; run independent-human
-validation.
+Optional: run independent-human validation.
 
 ## Guardrails
 
