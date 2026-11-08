@@ -41,23 +41,31 @@ Under the Power, `cwd` is the installed Power, so they resolve to the wrong dire
 ## Expected behavior
 
 1. WHEN the server is started with `PRAMAN_RELATIVE_PATHS=reject` AND a tool receives any
-   relative path argument (including inline-scenario file paths), THEN the system SHALL
-   return a tool error (`isError: true`) naming the argument and saying absolute paths are
-   required, before executing anything or creating any file or directory.
-2. WHEN the server is started with `PRAMAN_WORKSPACE=<absolute dir>`, THEN the system SHALL
-   resolve every relative path argument against that directory.
-3. IF `PRAMAN_WORKSPACE` is set but is not an existing absolute directory, THEN MCP startup
-   SHALL fail visibly with a clear message.
-4. WHEN the connected client supports `roots` and lists exactly one `file://` root, AND
-   neither variable is set, THEN the system SHALL resolve relative paths against that root.
-5. THE Power's `mcp.json` SHALL set `PRAMAN_RELATIVE_PATHS=reject`, and the Power skill and
-   README SHALL state that absolute paths are required.
-6. THE error text SHALL NOT include raw declaration contents or environment values.
+   relative path argument (`specPath`, `planPath`, `tracePath`, `outDir`, `baseDir`, or an
+   inline scenario's upload path, `diffPath`, identity file path, or identity tool
+   executable containing a path separator), THEN the system SHALL return a tool error
+   (`isError: true`, verdict `insufficient_evidence`) naming the argument(s) and saying
+   absolute paths are required, before executing anything or creating any file or
+   directory.
+2. IF `PRAMAN_RELATIVE_PATHS` is set to any value other than `reject` (or empty), THEN MCP
+   startup SHALL fail visibly with a clear message.
+3. THE Power's `mcp.json` SHALL set `PRAMAN_RELATIVE_PATHS=reject`, and the Power skill and
+   READMEs SHALL state that absolute paths are required.
+4. THE error text SHALL name arguments only and SHALL NOT include their values, raw
+   declaration contents or environment values.
+
+## Deferred (owner decision 2026-11-08)
+
+Not part of this bug fix:
+
+- `PRAMAN_WORKSPACE=<dir>` to resolve relative paths against a declared project folder.
+- Resolving against a single project root reported by the MCP client (`roots/list`).
+  Kiro does not support `roots` (probe `sess_bf2efd93…`), so this cannot be proven in Kiro.
 
 ## Unchanged behavior
 
-1. WHEN neither variable is set and the client lists no single root, THEN the system SHALL
-   CONTINUE TO resolve relative paths against the server's `cwd` (workspace
+1. WHEN `PRAMAN_RELATIVE_PATHS` is unset, THEN the system SHALL CONTINUE TO resolve
+   relative paths against the server's `cwd` (workspace
    `.kiro/settings/mcp.json`, other MCP clients).
 2. WHEN all path arguments are absolute, THEN every tool SHALL CONTINUE TO produce the same
    verdicts, `isError` values and evidence layout.

@@ -34,6 +34,11 @@ general simulator and not a sandbox.
   agent; the agent never sees a passing gate verdict; the Power needs explicit
   `power`/`mcp` `praman*` allow rules for headless use and absolute paths. Session IDs:
   `docs/kiro-usage.md` usage log. `kiro-crew/` stub removed.
+- **Power path fix (2026-11-08, local branch `power-path-fix`, not pushed):** the Kiro
+  Power's MCP server runs from the installed Power's directory, so relative paths
+  resolved there. The Power now sets `PRAMAN_RELATIVE_PATHS=reject`; relative path
+  arguments are refused as `insufficient_evidence` before anything runs or is written.
+  Proven in Kiro (`sess_055fb96f…`). Full suite **204 tests / 30 files** locally.
 - **Open defect:** interrupting `command-verify` (SIGINT) leaves the declared command
   running (reproduced 2026-11-07; spec `verify-cancellation`).
 - **Docs clarification (2026-11-06):** added a one-page

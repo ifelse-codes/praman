@@ -65,9 +65,11 @@ fields are listed in the
 
 ## Step 3: Run it
 
-Pass **absolute paths** for `specPath` and `outDir`. The power's MCP server runs from
-the installed power's own directory, not the user's project, so relative paths resolve
-to the wrong place. Use a **fresh, unused** output directory under the project's
+Pass **absolute paths** for `specPath` and `outDir` (and for any upload, diff or
+identity file in an inline scenario). The power's MCP server runs from the installed
+power's own directory, not the user's project, so it refuses relative paths with an
+`insufficient_evidence` result that names the argument; nothing runs or is written. If
+you see that refusal, retry with absolute paths. Use a **fresh, unused** output directory under the project's
 `.praman/` for every run, for example `<project>/.praman/verify-<short-name>-<n>`.
 PRAMAN refuses a directory that already exists.
 

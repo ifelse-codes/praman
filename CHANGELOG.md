@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Kiro integration (2026-11-08): workspace MCP wiring, `praman-explorer` agent, lint
+  and `Stop`-hook finish gate, steering, and an installable Kiro Power (`kiro-power/`).
+
+### Fixed
+
+- MCP: `PRAMAN_RELATIVE_PATHS=reject` refuses relative path arguments with an
+  `insufficient_evidence` result before anything runs or is written. The Kiro Power sets
+  it, because its server runs from the installed Power's directory; relative paths had
+  resolved there. Default behavior (resolve against the server's working directory) is
+  unchanged.
+
 ## 0.1.0 — 2026-11-05
 
 Submission snapshot. Same-host verified; not published.

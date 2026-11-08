@@ -1,26 +1,25 @@
 # Tasks: Power path resolution
 
-- [ ] 1. Reproduce and scope
+Scope trimmed 2026-11-08 (owner): only `PRAMAN_RELATIVE_PATHS=reject` in the Power;
+`PRAMAN_WORKSPACE` and client roots deferred; ordinary unit tests, no property tests.
+
+- [x] 1. Reproduce and scope
   - [x] 1.1 Probe what Kiro gives a Power MCP server (2026-11-08, `sess_bf2efd93…`: cwd = installed Power, no `roots`, `PWD` inherited)
-  - [ ] 1.2 Failing tests: relative `specPath` resolves into the server cwd; absolute spec + relative `outDir` writes evidence under the server cwd; inline-scenario relative identity path
+  - [x] 1.2 Test showing that, without the variable, a relative `outDir` writes evidence under the server's cwd (`tests/mcpPaths.test.ts`, unchanged-default case)
   - _Bugfix: Current 1–3_
 
-- [ ] 2. Property tests P1–P4 (fast-check, dev dependency needs owner approval); confirm P1/P2 fail first
-  - _Design: correctness properties_
+- [x] 2. Implement `src/mcp/paths.ts` and the `server.tool` wrapper; startup validation
+  - _Bugfix: Expected 1, 2, 4_
 
-- [ ] 3. Implement `src/mcp/paths.ts` and route every MCP path argument through it
-  - [ ] 3.1 `resolvePathBase` with precedence reject > workspace > single root > cwd
-  - [ ] 3.2 `resolveArg` and the `insufficient_evidence` tool error
-  - [ ] 3.3 Startup validation of both variables
-  - _Bugfix: Expected 1–4, 6_
+- [x] 3. Unit tests `tests/mcpPaths.test.ts` (see design)
+  - _Bugfix: Expected 1, 2, 4; Unchanged 1, 2_
 
-- [ ] 4. Power: `env.PRAMAN_RELATIVE_PATHS=reject` in `kiro-power/mcp.json`; update skill and READMEs; reinstall
-  - _Bugfix: Expected 5_
+- [x] 4. Power: `env.PRAMAN_RELATIVE_PATHS=reject` in `kiro-power/mcp.json`; skill and READMEs; reinstall
+  - _Bugfix: Expected 3_
 
-- [ ] 5. Verify
-  - [ ] 5.1 Full suite, lint, first-use 12/12
-  - [ ] 5.2 Kiro: Power relative path → one clear error, then `passed`; nothing written into the installed Power
-  - [ ] 5.3 Kiro: workspace MCP relative paths still `passed`
+- [x] 5. Verify
+  - [x] 5.1 Lint, test typecheck, full suite (204 tests / 30 files), first-use 12/12
+  - [x] 5.2 Kiro (`sess_055fb96f…`): relative paths refused naming `specPath`, `outDir`; no new files in the installed Power; absolute paths → `passed`
   - _Bugfix: Unchanged 1–5_
 
-- [ ] 6. Document: README MCP section, CHANGELOG, STATUS, kiro-usage; small PR (identity check per `.kiro/steering/publishing.md`)
+- [ ] 6. Document: README, CHANGELOG, STATUS, kiro-usage (done locally). PR only after owner yes (identity check per `.kiro/steering/publishing.md`)

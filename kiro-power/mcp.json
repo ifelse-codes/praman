@@ -4,7 +4,8 @@
     "praman": {
       "type": "stdio",
       "command": "node",
-      "args": ["${PRAMAN_HOME}/dist/cli.js", "mcp"]
+      "args": ["${PRAMAN_HOME}/dist/cli.js", "mcp"],
+      "env": { "PRAMAN_RELATIVE_PATHS": "reject" }
     }
   }
 }

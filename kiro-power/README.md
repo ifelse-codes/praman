@@ -63,10 +63,10 @@ and browser actions you declare with your authority. PRAMAN is not a sandbox.
 
 ## 3. Use absolute paths
 
-The Power's MCP server runs from the installed Power's directory, not your project, so
-relative `specPath`/`outDir` values resolve to the wrong place and fail. Give the agent
-absolute paths (as above). In testing the agent tried relative paths first and then
-retried with absolute ones.
+The Power's MCP server runs from the installed Power's directory, not your project.
+`mcp.json` therefore sets `PRAMAN_RELATIVE_PATHS=reject`: a relative `specPath`, `outDir`
+or other path argument is refused with an `insufficient_evidence` result that names the
+argument, before anything runs or is written. Give the agent absolute paths (as above).
 
 ## Known limits
 

@@ -1951,6 +1951,12 @@ campaign tools: `praman_service_replay`, `praman_workflow_replay`,
 The legacy `praman_verify`, `praman_experience` and `praman_stimulate` tools
 were removed on 2026-11-05; they depended on the deleted checkout demo pipeline.
 
+Relative path arguments resolve against the server's working directory. A client that
+starts the server outside the caller's project should set `PRAMAN_RELATIVE_PATHS=reject`:
+every relative path argument (including inline-scenario upload, diff and identity paths)
+is then refused with an `insufficient_evidence` result naming the argument, before
+anything runs or is written. Any other non-empty value makes `praman mcp` exit at startup.
+
 ## Kiro integration
 
 PRAMAN plugs into Kiro in four ways. Each was exercised in recorded Kiro sessions; the
@@ -2010,7 +2016,8 @@ permissions:
 ```
 
 Pass absolute `specPath`/`outDir` values: the Power's server runs from the installed
-Power's directory. A full example agent and limits are in
+Power's directory, so the Power sets `PRAMAN_RELATIVE_PATHS=reject` and relative paths
+are refused (as `insufficient_evidence`, nothing run or written). A full example agent and limits are in
 [kiro-power/README.md](kiro-power/README.md). These rules let the agent run any
 `praman_*` tool with your authority; PRAMAN is not a sandbox.
 
