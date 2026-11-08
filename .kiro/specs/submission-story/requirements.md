@@ -43,7 +43,9 @@ of each Kiro feature used, so I can assess depth and variety.
 
 2.1 THE write-up SHALL cover each item the rules list: IDE/CLI/Web/Crew, custom agents,
 agent hooks, spec-driven versus vibe coding, steering, MCP, property-based testing and
-Powers, marking each as used (with evidence), tried, or not used.
+Powers, marking each as used (with evidence), tried, or not used. Owner decision
+2026-11-08: the Kiro IDE and property-based testing are not used for new work; the
+write-up says so plainly.
 2.2 THE write-up SHALL cite session IDs, dates and spec/task numbers for each claim.
 2.3 THE write-up SHALL keep the existing disclosure that Kiro did not build PRAMAN's
 original core.

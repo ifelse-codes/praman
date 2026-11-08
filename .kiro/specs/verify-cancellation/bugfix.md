@@ -2,7 +2,7 @@
 
 Spec type: bugfix. Ranked #2 for score impact. It gives the submission a real,
 application-independent PRAMAN defect that Kiro fixes through its bugfix-spec workflow,
-with property-based tests, and that PRAMAN proves fixed in `repair` mode. It is also the
+with regression tests, and that PRAMAN proves fixed in `repair` mode. It is also the
 "real failure → fix → same workflow working" story the video standard requires.
 
 ## Reproduction (observed 2026-11-07)

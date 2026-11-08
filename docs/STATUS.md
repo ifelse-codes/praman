@@ -12,8 +12,9 @@ general simulator and not a sandbox.
   is a squashed public snapshot under the owner identity (see the repository history),
   with CI green and judge access enabled.
 - **Checks:** `npm run build` and `npm run lint` pass; `npm run lint:tests` passes;
-  the **full suite passes 198 tests / 29 files** on the recorded host (2026-11-08,
-  `--maxWorkers=2`), including the 8 Kiro finish-gate tests. Parallel local runs
+  the **full suite passes 221 tests / 31 files** on the recorded host (2026-11-08,
+  `--maxWorkers=2`), including the 8 Kiro finish-gate tests and the 15 cancellation
+  tests. Parallel local runs
   are resource-sensitive while macOS Spotlight/MediaAnalysis indexing saturates the
   CPU; CI uses a bounded worker count. Earlier, an independent fresh-clone verification
   of the release-hardening commit reproduced the then-current results (npm ci, lint,
@@ -30,19 +31,19 @@ general simulator and not a sandbox.
   `passed`/`failed` (CLI interactive + headless; IDE listed 14 tools); the gate rejected a
   failing stop and released it after the agent's fix (interactive CLI, owner-approved
   edits); the Power ran a `passed` check from a separate project. Full suite **198 tests /
-  29 files**. Limits: IDE `Stop` behavior untested; save-hook results never reach the
+  29 files**. Limits (Kiro CLI is the target; the Kiro IDE is not, owner decision
+  2026-11-08): save-hook results never reach the
   agent; the agent never sees a passing gate verdict; the Power needs explicit
   `power`/`mcp` `praman*` allow rules for headless use and absolute paths. Session IDs:
   `docs/kiro-usage.md` usage log. `kiro-crew/` stub removed.
-- **Power path fix (2026-11-08, local branch `power-path-fix`, not pushed):** the Kiro
+- **Power path fix (2026-11-08, on public `main` since `762cee6`):** the Kiro
   Power's MCP server runs from the installed Power's directory, so relative paths
   resolved there. The Power now sets `PRAMAN_RELATIVE_PATHS=reject`; relative path
   arguments, and `praman_environment` without `baseDir`, are refused as
   `insufficient_evidence` before anything runs or is written. Proven in Kiro
   (`sess_055fb96f…`). Known limit: the demonstrate tools' speech cache stays relative.
   Full suite **206 tests / 30 files** locally.
-- **Cancellation fix (2026-11-08):** spec `verify-cancellation` closed except the owner's
-  property-test task 2. On public `main`: first fix `59090bf` (PR #4) and the follow-up
+- **Cancellation fix (2026-11-08):** spec `verify-cancellation` closed. On public `main`: first fix `59090bf` (PR #4) and the follow-up
   `7d2f4a7` plus a macOS cleanup fix `454c4ba` (PR #5), both by fast-forward; CI green
   on Ubuntu and macOS (205 passed / 16 skipped of 221). The follow-up covers the
   remaining paths. Ctrl-C/SIGTERM on `command-verify`,
@@ -55,15 +56,16 @@ general simulator and not a sandbox.
   `scenario-verify` and durable campaigns were not affected. Self-check
   (`examples/self-check/cancellation/`, repair mode): baseline `643fbe0` `orphan: yes`,
   current `orphan: no` 3/3, `passed`; also `passed` through the Kiro `Stop` gate
-  (`sess_c6010529…`). Full suite **221 tests / 31 files**; first-use 12/12. Waiting:
-  owner property tests P1–P5 in the Kiro IDE (task 2).
+  (`sess_c6010529…`). Full suite **221 tests / 31 files**; first-use 12/12. Properties
+  P1–P5 are covered by deterministic tests (owner decision: no Kiro IDE step, no
+  `fast-check`); abort timing is tested at fixed points, not randomized.
 - **Docs clarification (2026-11-06):** added a one-page
   [browser scenario cheat sheet](schema-cheatsheet.md) plus explicit
   selector/zero-based/private-evidence guidance in the README and browser guide;
   product behavior and test counts are unchanged.
-- **CI:** green on **Ubuntu and macOS** (Node 22) for public `main` `619a76e` — run
-  https://github.com/ifelse-codes/praman/actions/runs/42457432307. Each runner
-  reports 28/29 files and 182 passed / 16 skipped of 198 tests; the skips are the
+- **CI:** green on **Ubuntu and macOS** (Node 22) for public `main` `454c4ba` — run
+  https://github.com/ifelse-codes/praman/actions/runs/42495927884. Each runner
+  reports 205 passed / 16 skipped of 221 tests; the skips are the
   environment-guarded media/speech suites (no ffmpeg/ffprobe on the runners). The
   Ubuntu job also runs the judge route.
 - **Final verification (2026-11-05, historical):** an independent fresh clone of public
@@ -120,8 +122,8 @@ The shipped/frozen/deferred view is in [ROADMAP.md](ROADMAP.md).
    the remaining `<DEMO_VIDEO_URL>` in the Devpost draft; save and submit. Target
    Nov 26–27, deadline Dec 4, 2026.
 2. **Kiro:** spec `kiro-evidence-gate` is closed and merged to public `main` (PR #1).
-   Done: the Power path bugfix and spec `verify-cancellation` (except the owner's
-   property tests). Next: specs `agent-diagnostics`, `scenario-actions`, `named-steps`,
+   Done: the Power path bugfix and spec `verify-cancellation`. Next: specs
+   `agent-diagnostics`, `scenario-actions`, `named-steps`,
    then `submission-story` (video from this work only; the non-Kiro Headlamp clip is dropped).
 3. **Independent-human validation:** a person other than the owner following the
    first-use guide (CI already covers two operating systems).

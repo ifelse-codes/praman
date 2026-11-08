@@ -33,7 +33,10 @@ classification string, not a new verdict.
 | A watchdog process per run | Extra moving part; same result as an abort signal for in-process callers |
 | Exit 2 on interrupt | Conflates "verification completed without evidence" with "user stopped it"; shells expect 130/143 |
 
-## Correctness properties (property-based tests, fast-check)
+## Correctness properties
+
+Owner decision 2026-11-08: covered by deterministic tests, not `fast-check` and not the
+Kiro IDE. The mapping to tests is in `tasks.md` task 2.
 
 - **P1 No orphan:** for any abort delay in [0, run duration] and any repeats in [2, 10],
   after the verification promise settles no process in any owned group is alive.
@@ -49,8 +52,8 @@ classification string, not a new verdict.
   missing or whose declared identity input is missing, the verdict is
   `insufficient_evidence`. _Unchanged 1, product principle_
 
-Adds `fast-check` as a dev dependency (owner approval). Properties use short real
-`node -e` commands; process checks use `process.kill(pid, 0)`.
+Properties use short real `node -e` commands; process checks use `process.kill(-pid, 0)`
+on the owned process group.
 
 ## PRAMAN proves its own fix (repair mode)
 
@@ -70,5 +73,5 @@ Adds `fast-check` as a dev dependency (owner approval). Properties use short rea
 - Unit/integration: `tests/cancellation.test.ts` with P1–P5 plus one deterministic case per
   entry point found affected in task 1.
 - Full suite and `node examples/first-use/run.mjs` must still pass unchanged.
-- CI: unchanged worker settings; property runs bounded (e.g. 25 runs, 10 s timeout) to stay
-  deterministic on loaded runners.
+- CI: unchanged worker settings; no randomized runs, so results stay deterministic on
+  loaded runners.

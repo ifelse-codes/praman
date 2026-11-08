@@ -2005,7 +2005,7 @@ nothing):
 agent back at most `maxExtraTurns` times per session, then stops blocking but still
 reports "not proven". Kiro runs the hook once per turn, so a fix is checked on the next
 turn. The agent only sees failing verdicts; a pass is visible in `.praman/gate/`
-evidence. Tested in Kiro CLI V3; not yet in the IDE.
+evidence. Tested in Kiro CLI V3; the Kiro IDE is not a target.
 
 ### Installing the Power and the permissions it needs
 

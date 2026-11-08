@@ -35,7 +35,7 @@ Kiro did not build PRAMAN's original verification core.**
 | Kiro feature | Status | Evidence |
 | --- | --- | --- |
 | Kiro CLI (V3, interactive and headless) | Used | Usage log, every row |
-| Kiro IDE | Used for checks only (MCP tool listing, lint hook) | `sess_7732334c…`; one earlier run invalid (Restricted Mode) |
+| Kiro IDE | Used for checks only (MCP tool listing, lint hook). Not a target: PRAMAN is built for agents through the CLI and MCP (owner decision 2026-11-08) | `sess_7732334c…`; one earlier run invalid (Restricted Mode) |
 | Specs | Used: 2 feature specs, 1 bugfix spec. Written as files by the agent, not through `/spec new` | `.kiro/specs/` |
 | Steering | Used: always-on files, plus new `fileMatch` and `auto` files | `sess_1266542d…` |
 | Agent hooks | Used: `PostFileSave` (fires, result not shown to the agent) and `Stop` (finish gate) | `sess_2bee93f1…`, `sess_d3717c15…` |
@@ -43,7 +43,7 @@ Kiro did not build PRAMAN's original verification core.**
 | MCP | Used: workspace server, 14 tools | `sess_289994fb…`, `sess_cf1d826d…` |
 | Kiro Powers | Used: authored, installed, exercised from another project | `sess_ccfd7c6f…` |
 | Built-in subagent (`introspect`) | Used to look up current `.kiro` formats | Main session |
-| Property-based testing | Not yet used; planned for spec `verify-cancellation` in the IDE | — |
+| Property-based testing | Not used. Owner decision 2026-11-08: no Kiro IDE step; deterministic tests cover the planned properties of spec `verify-cancellation` | — |
 | Kiro Web, Kiro Crew | Not used; the old `kiro-crew/` stub was removed | — |
 
 **Non-claims and limits:**
@@ -52,7 +52,7 @@ Kiro did not build PRAMAN's original verification core.**
   engines, CLI, MCP server, reports, evidence model and the tests that existed by
   2026-11-05. That work was done by an AI coding assistant under the submitter's
   direction (see the history below).
-- Not yet tested in the IDE: the finish gate's `Stop` behavior.
+- Not tested in the Kiro IDE, which is not a target: the finish gate's `Stop` behavior.
 - Save-hook results never reach the agent, in the CLI or the IDE.
 - The agent never sees a passing gate verdict, only failing ones.
 - Headless use of the Power needs explicit allow rules and absolute paths.
@@ -257,3 +257,4 @@ session.
 | 2026-11-08 | sess_90d45003-fc3a-45b8-88cb-dc94739e0f80 | Git/GitHub delivery (PR #5) | After owner approval the Kiro CLI agent pushed the follow-up and opened PR #5. CI failed on macOS only (1 of 221: `kill EPERM` while cleaning up an already-exited process group in the command-demonstrate cancellation test). The agent did not merge; it made group cleanup treat `EPERM` like `ESRCH` (nothing left to stop), re-ran the cancellation tests 3 times (15/15 each) and the full suite (221/221), and pushed the fix for a new CI run |
 | 2026-11-08 | sess_90d45003-fc3a-45b8-88cb-dc94739e0f80 | Git/GitHub delivery (PR #5, merged) | Second CI run green on Ubuntu and macOS; `main` fast-forwarded from `59090bf` to `454c4ba` (no GitHub-made commit); PR #5 marked merged; CI green on `main` (run 42495927884, 205 passed / 16 skipped of 221) |
 | 2026-11-08 | sess_90d45003-fc3a-45b8-88cb-dc94739e0f80 | Kiro Power reinstall (owner-approved) | `kiro-cli powers install ./kiro-power` after the gate's timeout message changed; the installed copy in `~/.kiro/powers/installed/praman` is identical to `kiro-power/` |
+| 2026-11-08 | sess_90d45003-fc3a-45b8-88cb-dc94739e0f80 | Specs and docs (owner decision) | Owner: PRAMAN is not built for the Kiro IDE, so no IDE step. Kiro CLI agent closed `verify-cancellation` task 2 by mapping properties P1–P5 to the existing deterministic tests (no `fast-check`; gap kept: abort timing at fixed points, not randomized) and removed pending IDE items from the spec, STATUS, ROADMAP, README, this account and spec `submission-story` |

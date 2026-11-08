@@ -2,9 +2,10 @@
 
 Target: week 1 (Nov 9–15, 2026). Run every task in a recorded Kiro session.
 
-Status: closed 2026-11-08. Open limits: IDE `Stop` behavior untested; save-hook results
-never reach the agent (req 2.3); Power needs explicit permission rules and absolute paths
-(follow-up bugfix spec for path resolution, owner decision 2-A).
+Status: closed 2026-11-08. Open limits: save-hook results never reach the agent (req
+2.3); Power needs explicit permission rules and absolute paths (follow-up bugfix spec
+for path resolution, owner decision 2-A). IDE `Stop` behavior is untested and out of
+scope: the Kiro IDE is not a target (owner decision 2026-11-08).
 
 - [x] 1. Spike: confirm Kiro hook and MCP behavior on both surfaces
   - [x] 1.1 Record the Stop-hook stdin JSON fields and which exit code continues a turn (CLI V3 done 2026-11-07: exit 1 continues once. IDE Stop behavior not tested; carried as an open limit)
