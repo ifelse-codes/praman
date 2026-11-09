@@ -48,7 +48,7 @@ node dist/cli.js scenario-verify scenario.json -o .praman/run --summary
 | `identity` | no | Declared local files/tools to hash (execution identity, not target-app identity) |
 | `walkthrough` | no | Authored narration plan for `preview`/`demonstrate` |
 
-## Actions (8)
+## Actions (13)
 
 All actions require a `note`. Unknown fields are rejected (`.strict()`).
 
@@ -57,15 +57,29 @@ All actions require a `note`. Unknown fields are rejected (`.strict()`).
 | `goto` | `path`, `note` | Same-origin navigation; waits `networkidle`; requires a 2xx response |
 | `waitForURL` | `path`, `note` | Waits for the URL (15 s) |
 | `click` | `selector`, `note` | Clicks one element |
+| `dblclick` | `selector`, `note` | Double-clicks one element |
 | `hover` | `selector`, `note` | Hovers one element |
-| `waitFor` | `selector`, `note` | Waits for **visibility** (15 s) — this is the only `waitFor` state |
+| `waitFor` | `selector`, `note`, optional `state` **or** `count` | Waits (15 s) for `state`: `visible` (default), `hidden`, `attached`, `detached`; or until the selector matches exactly `count` elements (counts on purpose, no strict mode) |
 | `fill` | `selector`, `value`, `note` | Sets the value atomically (no per-key events) |
+| `type` | `selector`, `text`, `note`, optional `delayMs` (0–200) | Types key by key (real key events), unlike `fill` |
 | `press` | `selector`, `key`, `note` | Sends one key or chord (`Enter`, `Shift+ArrowRight`, …) |
+| `selectOption` | `selector`, exactly one of `value` or `label`, `note` | Selects one option of a `<select>` |
+| `scroll` | `selector` (a scroll container, or `"window"`), `to`, `note` | `to`: `"top"`, `"bottom"` or `{ "x": int, "y": int }` pixel deltas. Instant programmatic scroll: fires `scroll` events, not `wheel` events; a target that cannot scroll fails |
+| `drag` | `from`, `to` (selector or `{ "dx": int, "dy": int }`), `note` | Real pointer down, 10-step move and up from the source centre to the target centre or by the offset; also drives native HTML drag and drop in Chromium |
 | `upload` | `selector`, `path`, `note`, optional `completionSelector` | Sets file input; optional completion wait |
 
 Default Playwright action timeout is 3 s; `waitFor`/`waitForURL` get 15 s.
 
-## Checks (10)
+```json
+{"action": "waitFor", "selector": "#chart .bar", "count": 5, "note": "Wait for all five bars"}
+{"action": "dblclick", "selector": "#cell-B2", "note": "Open the cell editor"}
+{"action": "type", "selector": "#cell-editor", "text": "=SUM(A1:A3)", "note": "Type the formula"}
+{"action": "selectOption", "selector": "#currency", "label": "Euro", "note": "Choose euro"}
+{"action": "scroll", "selector": "#grid", "to": "bottom", "note": "Scroll to the last row"}
+{"action": "drag", "from": "#fill-handle", "to": {"dx": 0, "dy": 60}, "note": "Drag the fill handle down"}
+```
+
+## Checks (11)
 
 All checks require a unique `id`. `afterStep` is optional, zero-based, and not
 allowed for `pageErrors`/`network` (`network` uses its own `window`).
@@ -75,6 +89,7 @@ allowed for `pageErrors`/`network` (`network` uses its own `window`).
 | `text` | `selector`, `equals` | Rendered `innerText` (exact, including CSS casing) |
 | `value` | `selector`, `equals` | Form `inputValue()` |
 | `visible` | `selector`, `equals` (bool), optional `beforeEquals` (paired modes) | Visibility; absence reports `false` |
+| `count` | `selector`, `equals` (integer ≥ 0) | Number of matching elements (no strict mode; `0` asserts absence) |
 | `attribute` | `selector`, `name`, `equals` (string or `null`) | Exact attribute text; `null` means absent |
 | `class` | `selector`, `token`, `equals` (bool) | One complete class token |
 | `state` | `selector`, `state` (`hidden`/`enabled`/`checked`), `equals` (bool) | Playwright DOM state; element must be attached |
@@ -97,8 +112,9 @@ screenshot each. Checks without `afterStep` run at the end of the workflow.
   container instead of loosening the requirement.
 - **A visible container is not rendered content.** A `visible` check passes on
   the wrapper even when a chart, list or image is still empty. For asynchronous
-  content, assert the actual `text`/`value`/`state` (or add a `waitFor` for the
-  element that appears), not just the container.
+  content, wait for the real condition (`waitFor` with `count`, or with `state:
+  "detached"` on a spinner) and assert the actual `count`/`text`/`value`/`state`,
+  not just the container.
 - **Zero-based indexes shift when steps are inserted.** `afterStep`, network
   `window` steps and walkthrough `step`/`startStep` are zero-based. Validation
   rejects out-of-range values but cannot detect that an index now points at a
@@ -107,10 +123,11 @@ screenshot each. Checks without `afterStep` run at the end of the workflow.
   `failed` with observed `false`; missing elements for other element checks
   report `insufficient_evidence`. Pick the check whose meaning matches the
   requirement.
-- **`fill` is atomic; `press` is one key/chord.** There is no per-key typing in
-  the current DSL. `selectOption`, `dblclick`, `drag`, `scroll`/wheel and
-  arbitrary JS evaluation are also absent — cover direct-manipulation behavior
-  with unit/Playwright tests, or express the observable result as a declarative
+- **`fill` is atomic; `type` is key by key; `press` is one key/chord.** Use
+  `type` when the app reacts to each key (autocomplete, formula editors).
+  Arbitrary JS evaluation, coordinate-only clicks, canvas painting, touch
+  gestures and native file dialogs are absent — cover them with
+  unit/Playwright tests, or express the observable result as a declarative
   check.
 - **Same origin only.** `goto`, `waitForURL` and `json` must stay on the app
   origin; off-origin navigation is rejected.

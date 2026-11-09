@@ -5,15 +5,24 @@ import { identityDeclarationSchema, type IdentitySnapshot } from '../eval/identi
 import { sceneFramingSchema } from './framing.js';
 import { shortCompositionSchema, validateShortComposition } from './composition.js';
 
+const selector = z.string().min(1);
+const note = z.string().min(1);
 const stepSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('goto'), path: z.string().startsWith('/'), note: z.string().min(1) }).strict(),
   z.object({ action: z.literal('waitForURL'), path: z.string().startsWith('/'), note: z.string().min(1) }).strict(),
   z.object({ action: z.literal('click'), selector: z.string().min(1), note: z.string().min(1) }).strict(),
   z.object({ action: z.literal('hover'), selector: z.string().min(1), note: z.string().min(1) }).strict(),
-  z.object({ action: z.literal('waitFor'), selector: z.string().min(1), note: z.string().min(1) }).strict(),
+  // `state` and `count` are optional and mutually exclusive (checked below); absent means "visible".
+  z.object({ action: z.literal('waitFor'), selector: z.string().min(1), state: z.enum(['visible', 'hidden', 'attached', 'detached']).optional(),
+    count: z.number().int().nonnegative().optional(), note: z.string().min(1) }).strict(),
   z.object({ action: z.literal('fill'), selector: z.string().min(1), value: z.string(), note: z.string().min(1) }).strict(),
   z.object({ action: z.literal('press'), selector: z.string().min(1), key: z.string().min(1), note: z.string().min(1) }).strict(),
   z.object({ action: z.literal('upload'), selector: z.string().min(1), path: z.string().min(1), completionSelector: z.string().min(1).optional(), note: z.string().min(1) }).strict(),
+  z.object({ action: z.literal('dblclick'), selector, note }).strict(),
+  z.object({ action: z.literal('selectOption'), selector, value: z.string().optional(), label: z.string().optional(), note }).strict(),
+  z.object({ action: z.literal('type'), selector, text: z.string().min(1), delayMs: z.number().int().min(0).max(200).optional(), note }).strict(),
+  z.object({ action: z.literal('scroll'), selector, to: z.union([z.enum(['top', 'bottom']), z.object({ x: z.number().int(), y: z.number().int() }).strict()]), note }).strict(),
+  z.object({ action: z.literal('drag'), from: selector, to: z.union([selector, z.object({ dx: z.number().int(), dy: z.number().int() }).strict()]), note }).strict(),
 ]);
 const checkpoint = z.number().int().nonnegative().optional();
 const urlPattern = z.string().min(1).refine(value => { try { new RegExp(value); return true; } catch { return false; } }, 'Invalid URL regular expression');
@@ -27,6 +36,7 @@ const checkSchema = z.discriminatedUnion('kind', [
   z.object({ id: z.string().min(1), kind: z.literal('json'), path: z.string().startsWith('/'), field: z.array(z.union([z.string(), z.number().int().nonnegative()])), equals: z.union([z.string(), z.number(), z.boolean(), z.null()]), afterStep: checkpoint }).strict(),
   z.object({ id: z.string().min(1), kind: z.literal('pageErrors'), equals: z.literal(0), afterStep: checkpoint }).strict(),
   z.object({ id: z.string().min(1), kind: z.literal('image'), selector: z.string().min(1), equals: z.literal(true), afterStep: checkpoint }).strict(),
+  z.object({ id: z.string().min(1), kind: z.literal('count'), selector: z.string().min(1), equals: z.number().int().nonnegative(), afterStep: checkpoint }).strict(),
   z.object({
     id: z.string().min(1), kind: z.literal('network'),
     match: z.object({ urlPattern, method: z.string().regex(/^[A-Z]+$/).optional(), status: z.number().int().min(100).max(599).optional() }).strict(),
@@ -90,6 +100,8 @@ export const changeSpecSchema = z.object({
   }
   for (const [i, step] of spec.steps.entries()) {
     if ((step.action === 'goto' || step.action === 'waitForURL') && [spec.afterUrl, ...(spec.beforeUrl ? [spec.beforeUrl] : [])].some(url => new URL(step.path, url).origin !== new URL(url).origin)) ctx.addIssue({ code: 'custom', message: 'Navigation must remain on the app origin', path: ['steps', i] });
+    if (step.action === 'waitFor' && step.state !== undefined && step.count !== undefined) ctx.addIssue({ code: 'custom', message: 'waitFor accepts state or count, not both', path: ['steps', i] });
+    if (step.action === 'selectOption' && (step.value === undefined) === (step.label === undefined)) ctx.addIssue({ code: 'custom', message: 'selectOption requires exactly one of value or label', path: ['steps', i] });
   }
   for (const [i, check] of spec.checks.entries()) {
     if (check.kind === 'json' && [spec.afterUrl, ...(spec.beforeUrl ? [spec.beforeUrl] : [])].some(url => new URL(check.path, url).origin !== new URL(url).origin)) ctx.addIssue({ code: 'custom', message: 'JSON checks must remain on the app origin', path: ['checks', i] });

@@ -88,3 +88,13 @@ it('recognizes numeric credentials in sensitive fields without treating whitespa
   expect(value.password).toBe('[REDACTED]');
   expect(value.rows).toEqual([{ observed: '[REDACTED]' }, { observed: 0 }]);
 });
+
+it('keeps field names intact when a private input is a short substring of them', () => {
+  const spec = changeSpecSchema.parse({ mode: 'acceptance', title: 'Short input', change: 'Accept one letter', afterUrl: 'http://localhost:1',
+    steps: [{ action: 'fill', selector: '#x', value: 'a', note: 'Enter one letter' }],
+    checks: [{ id: 'x', kind: 'text', selector: '#x', equals: 'b' }] });
+  const value = safeFeedbackValue({ identityEvidence: { path: '/tmp/a/proof.json' }, sourceHashes: { '/src/a.ts': 'h' } }, spec);
+  expect(Object.keys(value.identityEvidence)).toEqual(['path']);
+  expect(value.identityEvidence.path).not.toContain('/a/');
+  expect(Object.keys(value.sourceHashes)).toEqual(['/src/[REDACTED].ts']);
+});

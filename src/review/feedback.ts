@@ -20,7 +20,11 @@ const privateText = /^(evidence|error|recordingError|body)$/i;
 /** Safe presentation only. Raw browser/network artifacts remain private, not sanitized exports. */
 export function safeFeedbackValue<T>(value: T, spec?: ChangeSpec, secrets: string[] = []): T {
   const hidden = new Set(secrets.filter(Boolean));
-  for (const step of spec?.steps ?? []) if (step.action === 'fill' && step.value) hidden.add(step.value);
+  for (const step of spec?.steps ?? []) {
+    // Typed text is a private input like a fill value; select options are application text, already withheld by field.
+    if (step.action === 'fill' && step.value) hidden.add(step.value);
+    if (step.action === 'type') hidden.add(step.text);
+  }
   function collect(item: unknown): void {
     if (!item || typeof item !== 'object') return;
     if ('name' in item && typeof item.name === 'string' && sensitive.test(item.name) && 'value' in item
@@ -51,7 +55,8 @@ export function safeFeedbackValue<T>(value: T, spec?: ChangeSpec, secrets: strin
     if (Array.isArray(item)) return item.map(visit);
     if (!item || typeof item !== 'object') return item;
     if ('name' in item && typeof item.name === 'string' && sensitive.test(item.name)) return { name: text(item.name), value: '[REDACTED]' };
-    return Object.fromEntries(Object.entries(item).map(([key, child]) => [text(key),
+    // Plain identifier keys are PRAMAN field names; redacting a short private value inside them broke the structure.
+    return Object.fromEntries(Object.entries(item).map(([key, child]) => [/^[A-Za-z_$][\w$]*$/.test(key) ? key : text(key),
       sensitive.test(key) ? '[REDACTED]'
         : /^(identityBefore|identityAfter)$/.test(key) ? { status: identityComplete(child as IdentitySnapshot) ? 'recorded' : 'unavailable', details: 'Inspect private proof/result identity entries.' }
         : /^(expected|observed)$/i.test(key) && child !== null && !['number', 'boolean', 'undefined'].includes(typeof child) ? '[Private value; inspect indexed evidence.]'

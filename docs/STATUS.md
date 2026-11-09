@@ -12,9 +12,9 @@ general simulator and not a sandbox.
   is a squashed public snapshot under the owner identity (see the repository history),
   with CI green and judge access enabled.
 - **Checks:** `npm run build` and `npm run lint` pass; `npm run lint:tests` passes;
-  the **full suite passes 242 tests / 33 files** on the recorded host (2026-11-09,
+  the **full suite passes 265 tests / 34 files** on the recorded host (2026-11-09,
   `--maxWorkers=2`), including the 8 Kiro finish-gate tests, the 15 cancellation
-  tests and the 21 new diagnosis tests. Parallel local runs
+  tests, the 21 diagnosis tests and the 22 browser-action tests. Parallel local runs
   are resource-sensitive while macOS Spotlight/MediaAnalysis indexing saturates the
   CPU; CI uses a bounded worker count. Earlier, an independent fresh-clone verification
   of the release-hardening commit reproduced the then-current results (npm ci, lint,
@@ -73,6 +73,17 @@ general simulator and not a sandbox.
   timeout state appears only when Playwright names it; `browser_closed` is tested with
   captured messages, not a real closing run; command runs are not classified; the finish
   gate still prints only the verdict and report path.
+- **Browser actions and waits (2026-11-09, spec `scenario-actions`):** before the fix a
+  real run passed a `visible` check on a chart container whose five bars had not
+  rendered (screenshot: no bars), and a scenario with `dblclick`/`drag` steps was
+  rejected by the schema. New steps `dblclick`, `selectOption`, `type`, `scroll`,
+  `drag`; `waitFor` with `state` or an exact `count`; a `count` check. The same
+  scenarios now pass with all five bars counted. Old declarations parse and hash the
+  same (pinned test). Proven through MCP in a headless Kiro session (`sess_1cf21d4c…`):
+  `dblclick` + `drag` scenario `passed`. Also fixed: redaction rewrote PRAMAN's own field
+  names when a private input was very short (a one-letter `fill` value), which crashed
+  report writing on public `main`. Limits: `scroll` is programmatic (no `wheel`
+  events); no coordinate-only clicks, canvas painting, touch gestures or JS evaluation.
 - **Docs clarification (2026-11-06):** added a one-page
   [browser scenario cheat sheet](schema-cheatsheet.md) plus explicit
   selector/zero-based/private-evidence guidance in the README and browser guide;
@@ -137,8 +148,8 @@ The shipped/frozen/deferred view is in [ROADMAP.md](ROADMAP.md).
    the remaining `<DEMO_VIDEO_URL>` in the Devpost draft; save and submit. Target
    Nov 26–27, deadline Dec 4, 2026.
 2. **Kiro:** spec `kiro-evidence-gate` is closed and merged to public `main` (PR #1).
-   Done: the Power path bugfix and specs `verify-cancellation` and `agent-diagnostics`.
-   Next: specs `scenario-actions`, `named-steps`,
+   Done: the Power path bugfix and specs `verify-cancellation`, `agent-diagnostics` and
+   `scenario-actions`. Next: spec `named-steps`,
    then `submission-story` (video from this work only; the non-Kiro Headlamp clip is dropped).
 3. **Independent-human validation:** a person other than the owner following the
    first-use guide (CI already covers two operating systems).

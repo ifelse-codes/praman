@@ -38,6 +38,9 @@ form are the remaining release blockers.
 - Failure diagnosis (2026-11-09, spec `agent-diagnostics`, PR #9): a failed browser step
   or check names its kind and safe counts (for example `locator_ambiguous (3 elements)`)
   with a matching next action; `REPORT.md` starts with a pass/fail table of all checks.
+- Browser actions and waits (2026-11-09, spec `scenario-actions`): `dblclick`,
+  `selectOption`, `type`, `scroll` and `drag` steps; `waitFor` with a `state` or an
+  exact element `count`; a `count` check. Old declarations keep their meaning and hash.
 
 ## Real-world use so far
 
@@ -56,12 +59,12 @@ works the same for every agent and the CLI, and keeps existing declarations unch
 | 1 | ~~Ctrl-C stops PRAMAN but leaves the tested program running~~ **Done 2026-11-08** | Stop every owned process on Ctrl-C or MCP cancel; record the run as not proven | `verify-cancellation` | M |
 | 2 | ~~When a step fails, the summary does not say why (for example a selector that matched 12 elements)~~ **Done 2026-11-09** | Name the failure kind and safe counts in the summary, report and MCP result; selectors and values stay private | `agent-diagnostics` | S |
 | 2 | ~~The report has no overview of all checks~~ **Done 2026-11-09** | One pass/fail table at the top of `REPORT.md` | `agent-diagnostics` | S |
-| 3 | Only 8 browser actions; agents write side scripts for double-click, select, typing, scroll and drag | Add `dblclick`, `selectOption`, `type`, `scroll`, `drag` | `scenario-actions` | S–M |
-| 3 | `waitFor` only waits for "visible"; a half-rendered page can pass | `waitFor` state (`hidden`, `attached`, `detached`) or exact element count; a `count` check | `scenario-actions` | S |
+| 3 | ~~Only 8 browser actions; agents write side scripts for double-click, select, typing, scroll and drag~~ **Done 2026-11-09** | Add `dblclick`, `selectOption`, `type`, `scroll`, `drag` | `scenario-actions` | S–M |
+| 3 | ~~`waitFor` only waits for "visible"; a half-rendered page can pass~~ **Done 2026-11-09** | `waitFor` state (`hidden`, `attached`, `detached`) or exact element count; a `count` check | `scenario-actions` | S |
 | 4 | Checks point at steps by number, so inserting a step shifts them | Optional step names that checks can reference | `named-steps` | M |
 | 5 | No demo video yet | A video of under 3 minutes made only from this Kiro work (the earlier non-Kiro Headlamp clip is dropped) | `submission-story` | M |
 
-Next session starts with order 3: spec `scenario-actions`, shown first on a real
+Next session starts with order 4: spec `named-steps`, shown first on a real
 failing check, then fixed.
 
 ### Carried over from the 2026-11-08 session (resolved 2026-11-09)

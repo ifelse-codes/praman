@@ -12,11 +12,21 @@
   and exit codes are unchanged.
 - `REPORT.md` for browser and command verification starts with a `## Checks` pass/fail
   table: one row per check with its verdict in every run.
+- Browser actions (spec `scenario-actions`): `dblclick`, `selectOption` (`value` or
+  `label`), `type` (key by key, optional `delayMs`), `scroll` (container or `window`;
+  `top`, `bottom` or pixel deltas) and `drag` (real pointer moves to a target or by an
+  offset). `waitFor` accepts `state` (`visible`, `hidden`, `attached`, `detached`) or
+  an exact element `count`; new `count` check. Existing declarations parse and hash
+  the same.
 - Kiro integration (2026-11-08): workspace MCP wiring, `praman-explorer` agent, lint
   and `Stop`-hook finish gate, steering, and an installable Kiro Power (`kiro-power/`).
 
 ### Fixed
 
+- Feedback redaction no longer rewrites PRAMAN's own field names. A short private input
+  (for example a one-letter `fill` value) used to be replaced inside keys such as
+  `path`, so `scenario-verify` crashed while writing `REPORT.md` instead of recording the
+  run.
 - Interruption (spec `verify-cancellation`): Ctrl-C or SIGTERM during `command-verify`,
   `workflow-replay`, `coverage-review`, `workflow-campaign` (not durable),
   `command-preview` or `command-demonstrate`, and MCP request cancellation, stdin close

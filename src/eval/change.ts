@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 import { mkdirSync, writeFileSync, existsSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { chromium, type Browser, type Request } from 'playwright';
+import { chromium, type Browser, type JSHandle, type Page, type Request } from 'playwright';
 import { changeSpecSchema, type ChangeSpec, type ChangeProof, type ScenarioRun, type ScenarioOptions, type CheckEvidence } from '../case/change.js';
 import type { Verdict } from './eval.js';
 import { z } from 'zod';
@@ -50,6 +50,62 @@ export function assessProof(spec: ChangeSpec, before: ScenarioRun | undefined, a
     return { verdict: 'insufficient_evidence', reason: 'Previous-version evidence contains failures beyond the named regression.' };
   }
   return { verdict: 'passed', reason: `Previous regression reproduced; all declared checks passed in ${spec.repeats} isolated current-version runs. Recording may now begin.` };
+}
+
+type Step = ChangeSpec['steps'][number];
+
+/** Non-strict on purpose: counting is the requirement. The message keeps the classifier's timeout shape. */
+async function waitForCount(page: Page, selector: string, expected: number, timeoutMs: number) {
+  const until = Date.now() + timeoutMs;
+  let observed = await page.locator(selector).count();
+  while (observed !== expected) {
+    if (Date.now() >= until) throw new Error(`locator.waitFor: Timeout ${timeoutMs}ms exceeded.\nwaiting for locator count ${expected}; last count ${observed}`);
+    await page.waitForTimeout(50);
+    observed = await page.locator(selector).count();
+  }
+}
+
+/** Browser-side shape of a scroll container; the project compiles without DOM types. */
+interface Scrollable {
+  scrollHeight: number; clientHeight: number; scrollWidth: number; clientWidth: number; scrollLeft: number;
+  scrollTo(options: { left: number; top: number; behavior: string }): void;
+  scrollBy(options: { left: number; top: number; behavior: string }): void;
+}
+
+/** Programmatic, instant scroll of one strict container or the document; fires scroll events, not wheel events. */
+async function scrollStep(page: Page, step: Extract<Step, { action: 'scroll' }>) {
+  const scroll = (element: Scrollable, to: 'top' | 'bottom' | { x: number; y: number }) => {
+    if (element.scrollHeight <= element.clientHeight && element.scrollWidth <= element.clientWidth) throw new Error('Scroll target is not scrollable');
+    const behavior = 'instant';
+    if (to === 'top') element.scrollTo({ left: element.scrollLeft, top: 0, behavior });
+    else if (to === 'bottom') element.scrollTo({ left: element.scrollLeft, top: element.scrollHeight, behavior });
+    else element.scrollBy({ left: to.x, top: to.y, behavior });
+  };
+  if (step.selector === 'window') {
+    const root = await page.evaluateHandle('document.scrollingElement || document.documentElement') as unknown as JSHandle<Scrollable>;
+    try { await root.evaluate(scroll, step.to); } finally { await root.dispose(); }
+  } else await page.locator(step.selector).evaluate(scroll, step.to);
+  // Let scroll listeners run before the next step or check observes the page.
+  await page.evaluate('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
+}
+
+/** Real pointer down, ten-step move and up, from the source centre to the target centre or by an offset. */
+async function dragStep(page: Page, step: Extract<Step, { action: 'drag' }>) {
+  const source = page.locator(step.from);
+  await source.scrollIntoViewIfNeeded();
+  const box = await source.boundingBox();
+  if (!box) throw new Error('Drag source has no visible box');
+  const start = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  let end = typeof step.to === 'string' ? undefined : { x: start.x + step.to.dx, y: start.y + step.to.dy };
+  if (typeof step.to === 'string') {
+    const target = await page.locator(step.to).boundingBox();
+    if (!target) throw new Error('Drag target has no visible box');
+    end = { x: target.x + target.width / 2, y: target.y + target.height / 2 };
+  }
+  await page.mouse.move(start.x, start.y);
+  await page.mouse.down();
+  await page.mouse.move(end!.x, end!.y, { steps: 10 });
+  await page.mouse.up();
 }
 
 export async function executeScenario(spec: ChangeSpec, url: string, outDir: string, options: ScenarioOptions = {}): Promise<ScenarioRun> {
@@ -144,6 +200,14 @@ export async function executeScenario(spec: ChangeSpec, url: string, outDir: str
                 if (row.observed === expected || Date.now() >= until) break;
                 await page.waitForTimeout(50);
               } while (true);
+            } else if (check.kind === 'count') {
+              // Counts all matches on purpose (no strict mode); retries briefly for asynchronous rendering.
+              const until = Date.now() + 1500;
+              do {
+                row.observed = await locator.count();
+                if (row.observed === expected || Date.now() >= until) break;
+                await page.waitForTimeout(50);
+              } while (true);
             } else if (check.kind === 'image') {
               await locator.waitFor({ state: 'visible', timeout: 5000 });
               const until = Date.now() + 5000;
@@ -202,16 +266,29 @@ export async function executeScenario(spec: ChangeSpec, url: string, outDir: str
           if (!response?.ok()) throw new Error(`Step ${i + 1} navigation failed`);
         } else if (step.action === 'waitForURL') {
           await page.waitForURL(new URL(step.path, url).href, { timeout: 15_000 });
+        } else if (step.action === 'drag') {
+          await dragStep(page, step);
+        } else if (step.action === 'scroll') {
+          await scrollStep(page, step);
         } else {
           const locator = page.locator(step.selector);
           if (step.action === 'click') await locator.click();
+          else if (step.action === 'dblclick') await locator.dblclick();
           else if (step.action === 'hover') await locator.hover();
           else if (step.action === 'fill') await locator.fill(step.value);
+          else if (step.action === 'type') await locator.pressSequentially(step.text, { delay: step.delayMs ?? 0 });
+          else if (step.action === 'selectOption') {
+            const chosen = await locator.selectOption(step.value !== undefined ? { value: step.value } : { label: step.label! });
+            if (!chosen.length) throw new Error('selectOption selected no option');
+          }
           else if (step.action === 'upload') {
             await locator.setInputFiles(step.path);
             if (step.completionSelector) await page.locator(step.completionSelector).waitFor({ state: 'visible', timeout: 15_000 });
           }
-          else if (step.action === 'waitFor') await locator.waitFor({ state: 'visible', timeout: 15_000 });
+          else if (step.action === 'waitFor') {
+            if (step.count !== undefined) await waitForCount(page, step.selector, step.count, 15_000);
+            else await locator.waitFor({ state: step.state ?? 'visible', timeout: 15_000 });
+          }
           else await locator.press(step.key);
         }
         const actionEnded = performance.now();

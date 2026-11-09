@@ -1817,11 +1817,14 @@ node dist/cli.js demonstrate ./scenario.json -o ./.praman/change-report
   an app defect, and the raw cause is in the private `after-<run>/result.json`.
   Indexes (`afterStep`, network windows, walkthrough steps) are zero-based and
   shift when a step is inserted; renumber them. A visible container is not
-  rendered content: for asynchronous UI, assert the actual text/value/state, not
-  only a wrapper's visibility. `waitFor` waits for visibility only; `fill` is
-  atomic and `press` sends one key/chord. Drag, scroll, double-click,
-  `selectOption`, per-key typing and JS evaluation are not part of the current
-  DSL — use unit/Playwright tests for direct manipulation. See the
+  rendered content: for asynchronous UI, wait for the real condition (`waitFor`
+  with `count`, or `state: "detached"` on a spinner) and assert the actual
+  count/text/value/state, not only a wrapper's visibility. Actions are `goto`,
+  `waitForURL`, `click`, `dblclick`, `hover`, `waitFor`, `fill` (atomic), `type`
+  (key by key), `press` (one key/chord), `selectOption`, `scroll` (programmatic,
+  fires `scroll` not `wheel` events), `drag` (real pointer down/move/up) and
+  `upload`. JS evaluation, coordinate-only clicks, canvas painting and touch
+  gestures are not part of the DSL — use unit/Playwright tests for those. See the
   [browser scenario cheat sheet](docs/schema-cheatsheet.md), including the
   one-line `jq` private-evidence debug recipe.
 
