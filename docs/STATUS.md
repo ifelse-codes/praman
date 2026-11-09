@@ -121,7 +121,8 @@ general simulator and not a sandbox.
   (`docs/video-script.md`, rewritten 2026-11-09; the non-Kiro Headlamp clip is dropped)
   and a submission-ready Devpost draft with the public repository URL filled in and a
   `<DEMO_VIDEO_URL>` placeholder (`docs/devpost-draft.md`). Blog and social drafts match
-  the same account.
+  the same account. Rehearsal 2026-11-09: a fresh clone of public `main` `3c37ec3`
+  passed `npm ci`, build and the judge route 12/12.
 - **Release candidate:** rebuilt and sanitized. Packaging is deterministic and the
   procedure is in [release validation](release-validation.md);
   [release-identity.json](../release-identity.json) documents the per-build procedure

@@ -31,3 +31,4 @@ Target: weeks 3–4 (Nov 23 – Dec 2, 2026); submit by Nov 27, buffer to Dec 4 
   - _Requirements: 3.1, 3.3, 3.4_
 
 - [ ] 6. Final check: fresh public clone passes the judge route 12/12 the day of submission
+  - Rehearsed 2026-11-09: fresh clone of public `main` `3c37ec3`, `npm ci`, build, `examples/first-use/run.mjs` → 12/12, exit 0. Repeat on the day of submission

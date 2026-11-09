@@ -17,7 +17,7 @@ and publishing decision. Kiro did not build PRAMAN's original verification core
   `sess_c1fcf2e4-6dba-4de9-8370-e464f14df771` (2026-11-09). Headless proof runs and
   owner-run interactive CLI and IDE sessions are listed in the
   [usage log](#usage-log-2026-11-07-onward), each with what it showed (27 distinct
-  sessions, 79 rows on 2026-11-09).
+  sessions, 80 rows on 2026-11-09).
 - **What Kiro built (spec `kiro-evidence-gate`, closed 2026-11-08):**
   - the `praman-explorer` custom agent with a permission rule allowing only `praman/*`;
   - a v1 `PostFileSave` lint hook, replacing an invalid hook file;
@@ -312,3 +312,4 @@ session.
 | 2026-11-09 | sess_fc0aef1b-ee8e-49fd-8802-299bf14010ce | Headless V3 + custom agent + MCP (`named-steps` task 4) | `--agent praman-explorer`, inline scenario with step ids and an inserted step. One `@praman/praman_scenario_verify` call: `passed`; the agent reported the checks ran after steps 1 and 2. The MCP response contained no step ids (indexes only) |
 | 2026-11-09 | sess_c1fcf2e4-6dba-4de9-8370-e464f14df771 | Git/GitHub delivery (PR #12) | Kiro CLI agent checked the commit's public no-reply identity and the private primary email, pushed `plan-agent-gaps`, opened PR #12 and waited for CI (Ubuntu and macOS green). It fast-forwarded `main` and local `main` from `e559992` to `3c37ec3` (no GitHub-made commit); PR #12 marked merged |
 | 2026-11-09 | sess_c1fcf2e4-6dba-4de9-8370-e464f14df771 | Specs and docs (`submission-story` tasks 1–3, 5.2 copy) | Kiro CLI agent rewrote `.kiro/specs/praman-core` requirements in EARS form and corrected its task list and design (no `src/observation/`), updated the current state of this account (spec-driven versus vibe table, feature table with session IDs), rewrote the video storyboard as a repair story of `verify-cancellation` plus the finish gate using only recorded Kiro work (the non-Kiro Headlamp clip dropped), and brought the Devpost, blog, social and rules-digest copy in line with this account. Recording, upload and submission stay with the owner |
+| 2026-11-09 | sess_c1fcf2e4-6dba-4de9-8370-e464f14df771 | Video dry run and judge-route rehearsal (`submission-story` tasks 3 and 6) | Kiro CLI agent dry-ran the storyboard takes: the repair self-check `passed` (baseline `orphan: yes`, current `orphan: no` 3/3) and the `## Checks` table shows the baseline failure. A fresh clone of public `main` `3c37ec3` passed `npm ci`, build and the judge route 12/12 (exit 0). The gate take was not dry-run, because a gate file in this checkout would also gate the working session |
