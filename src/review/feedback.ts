@@ -60,7 +60,7 @@ export function safeFeedbackValue<T>(value: T, spec?: ChangeSpec, secrets: strin
       sensitive.test(key) ? '[REDACTED]'
         : /^(identityBefore|identityAfter)$/.test(key) ? { status: identityComplete(child as IdentitySnapshot) ? 'recorded' : 'unavailable', details: 'Inspect private proof/result identity entries.' }
         : /^(expected|observed)$/i.test(key) && child !== null && !['number', 'boolean', 'undefined'].includes(typeof child) ? '[Private value; inspect indexed evidence.]'
-        : (/^(selector|target|title|scenario|requirement|change|note|text|url|checkId)$/i.test(key) && typeof child === 'string') || (key === 'id' && 'expected' in item) ? '[Private declaration field; inspect indexed evidence.]'
+        : (/^(selector|target|title|scenario|requirement|change|note|text|url|checkId|afterStepId|failedStepId)$/i.test(key) && typeof child === 'string') || (key === 'id' && 'expected' in item) ? '[Private declaration field; inspect indexed evidence.]'
         : privateText.test(key) && typeof child === 'string' ? '[Private raw detail; inspect the referenced evidence locally.]' : visit(child)]));
   }
   return visit(value) as T;

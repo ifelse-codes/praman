@@ -191,10 +191,10 @@ live replays. Do not treat these examples as permission to create a movie.
 - **A container can be visible while empty.** For charts, lists and other
   asynchronous content, assert the rendered text/value/state (or wait for the
   element that appears), not only the wrapper's visibility.
-- **Zero-based indexes shift on insertion.** `afterStep`, network `window` steps
-  and walkthrough `step`/`startStep` are zero-based. Validation rejects
-  out-of-range values but cannot tell that an index now points at a different
-  action — renumber after inserting steps.
+- **Name steps instead of counting them.** `afterStep`, network `window` steps
+  and walkthrough `step`/`startStep` accept a zero-based index or a step `id`.
+  Indexes shift when a step is inserted; ids do not. An unknown or duplicate id
+  is rejected before anything runs.
 - **Read the diagnosis, then private evidence, when a step fails.** `--summary` and
   `REPORT.md` are redacted by design but name the failure kind and safe counts, for
   example `locator_ambiguous (3 elements)` or `locator_timeout (visible, 15000 ms)`;

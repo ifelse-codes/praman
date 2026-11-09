@@ -248,6 +248,8 @@ export async function executeScenario(spec: ChangeSpec, url: string, outDir: str
         const screenshot = join(outDir, `check-${result.checks.length + 1}.png`);
         await page.screenshot({ path: screenshot, animations: 'disabled' });
         row.screenshot = screenshot;
+        const checkpointId = row.afterStep === undefined ? undefined : spec.steps[row.afterStep]?.id;
+        if (checkpointId) row.afterStepId = checkpointId;
         result.screenshots.push(screenshot);
         result.checks.push(row);
       }
@@ -257,6 +259,7 @@ export async function executeScenario(spec: ChangeSpec, url: string, outDir: str
       if (!initial?.ok()) throw new Error(`App navigation returned ${initial?.status() ?? 'no response'}`);
       for (const [i, step] of spec.steps.entries()) {
         result.failedStep = i;
+        if (step.id) result.failedStepId = step.id; else delete result.failedStepId;
         await options.beforeStep?.(page, step, i);
         for (const check of spec.checks) if (check.kind === 'network' && check.window.fromStep === i) windows.set(check.id, { start: performance.now() });
         if (step.action === 'goto') {
@@ -300,6 +303,7 @@ export async function executeScenario(spec: ChangeSpec, url: string, outDir: str
         await options.afterStep?.(page, step, i);
         result.completedSteps = i + 1;
         delete result.failedStep;
+        delete result.failedStepId;
       }
       await runChecks(spec.checks.filter(check => check.kind !== 'network' && check.afterStep === undefined));
       if (errors.length && !spec.checks.some(check => check.kind === 'pageErrors')) throw new Error(`Unasserted app runtime errors: ${errors.join('; ')}`);

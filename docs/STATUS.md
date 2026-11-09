@@ -12,9 +12,9 @@ general simulator and not a sandbox.
   is a squashed public snapshot under the owner identity (see the repository history),
   with CI green and judge access enabled.
 - **Checks:** `npm run build` and `npm run lint` pass; `npm run lint:tests` passes;
-  the **full suite passes 265 tests / 34 files** on the recorded host (2026-11-09,
+  the **full suite passes 276 tests / 35 files** on the recorded host (2026-11-09,
   `--maxWorkers=2`), including the 8 Kiro finish-gate tests, the 15 cancellation
-  tests, the 21 diagnosis tests and the 22 browser-action tests. Parallel local runs
+  tests, the 21 diagnosis tests, the 22 browser-action tests and the 11 step-id tests. Parallel local runs
   are resource-sensitive while macOS Spotlight/MediaAnalysis indexing saturates the
   CPU; CI uses a bounded worker count. Earlier, an independent fresh-clone verification
   of the release-hardening commit reproduced the then-current results (npm ci, lint,
@@ -84,13 +84,23 @@ general simulator and not a sandbox.
   names when a private input was very short (a one-letter `fill` value), which crashed
   report writing on public `main`. Limits: `scroll` is programmatic (no `wheel`
   events); no coordinate-only clicks, canvas painting, touch gestures or JS evaluation.
+- **Step ids (2026-11-09, spec `named-steps`):** before the fix, inserting a help step at
+  the start of a real two-click counter scenario made both index checkpoints run one step
+  early (observed `0` and `1` instead of `1` and `2`, verdict `failed`), and step ids were
+  rejected by the schema. Steps now take an optional `id`; `afterStep`, network windows,
+  `walkthrough.startStep` and beat `step` accept it. The same inserted-step scenario with
+  ids passes (checks after steps 1 and 2). Unknown or duplicate ids are rejected before
+  execution with the field path. Ids stay in private evidence; safe output shows indexes.
+  Index-only declarations keep their meaning and hash. Proven through MCP in a headless
+  Kiro session (`sess_fc0aef1b…`). Limit: no automatic renumbering of existing index
+  references.
 - **Docs clarification (2026-11-06):** added a one-page
   [browser scenario cheat sheet](schema-cheatsheet.md) plus explicit
   selector/zero-based/private-evidence guidance in the README and browser guide;
   product behavior and test counts are unchanged.
-- **CI:** green on **Ubuntu and macOS** (Node 22) for public `main` `fa9e18e` — run
-  https://github.com/ifelse-codes/praman/actions/runs/42566057306. Each runner reports
-  226 passed / 16 skipped of 242 tests; the skips are the environment-guarded
+- **CI:** green on **Ubuntu and macOS** (Node 22) for public `main` `e559992` — run
+  https://github.com/ifelse-codes/praman/actions/runs/42594982427. Each runner reports
+  249 passed / 16 skipped of 265 tests; the skips are the environment-guarded
   media/speech suites (no ffmpeg/ffprobe on the runners). The
   Ubuntu job also runs the judge route. `tests/networkPolicy.test.ts` failed once on
   macOS CI (PR #8) and passed on rerun; it has passed since, locally and in CI.
@@ -148,9 +158,9 @@ The shipped/frozen/deferred view is in [ROADMAP.md](ROADMAP.md).
    the remaining `<DEMO_VIDEO_URL>` in the Devpost draft; save and submit. Target
    Nov 26–27, deadline Dec 4, 2026.
 2. **Kiro:** spec `kiro-evidence-gate` is closed and merged to public `main` (PR #1).
-   Done: the Power path bugfix and specs `verify-cancellation`, `agent-diagnostics` and
-   `scenario-actions`. Next: spec `named-steps`,
-   then `submission-story` (video from this work only; the non-Kiro Headlamp clip is dropped).
+   Done: the Power path bugfix and specs `verify-cancellation`, `agent-diagnostics`,
+   `scenario-actions` and `named-steps`. Next: spec
+   `submission-story` (video from this work only; the non-Kiro Headlamp clip is dropped).
 3. **Independent-human validation:** a person other than the owner following the
    first-use guide (CI already covers two operating systems).
 4. **Post-submission backlog:** npm publish pipeline, Windows support, deferred

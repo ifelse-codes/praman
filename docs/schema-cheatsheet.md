@@ -50,7 +50,9 @@ node dist/cli.js scenario-verify scenario.json -o .praman/run --summary
 
 ## Actions (13)
 
-All actions require a `note`. Unknown fields are rejected (`.strict()`).
+All actions require a `note` and accept an optional `id` (letters, digits, `-`,
+`_`; unique per scenario) that checks and story beats can reference instead of
+the step index. Unknown fields are rejected (`.strict()`).
 
 | Action | Fields | Behavior |
 | --- | --- | --- |
@@ -81,8 +83,9 @@ Default Playwright action timeout is 3 s; `waitFor`/`waitForURL` get 15 s.
 
 ## Checks (11)
 
-All checks require a unique `id`. `afterStep` is optional, zero-based, and not
-allowed for `pageErrors`/`network` (`network` uses its own `window`).
+All checks require a unique `id`. `afterStep` is optional, a zero-based index or
+a step `id`, and not allowed for `pageErrors`/`network` (`network` uses its own
+`window`, whose `fromStep`/`throughStep` also accept step ids).
 
 | `kind` | Fields | Observes |
 | --- | --- | --- |
@@ -115,10 +118,14 @@ screenshot each. Checks without `afterStep` run at the end of the workflow.
   content, wait for the real condition (`waitFor` with `count`, or with `state:
   "detached"` on a spinner) and assert the actual `count`/`text`/`value`/`state`,
   not just the container.
-- **Zero-based indexes shift when steps are inserted.** `afterStep`, network
-  `window` steps and walkthrough `step`/`startStep` are zero-based. Validation
-  rejects out-of-range values but cannot detect that an index now points at a
-  different action — renumber after inserting steps.
+- **Name steps instead of counting them.** `afterStep`, network `window` steps
+  and walkthrough `step`/`startStep` accept a zero-based index **or a step `id`**.
+  Indexes shift when a step is inserted, and validation cannot tell that an
+  index now points at a different action. Give steps an `id` (letters, digits,
+  `-`, `_`; unique) and reference it; ids resolve to indexes when the
+  declaration is read, nothing is renumbered, and an unknown or duplicate id is
+  rejected before anything runs. Safe output and `REPORT.md` show the index;
+  the id stays in private evidence (`afterStepId`, `failedStepId`).
 - **Missing vs mismatched.** `visible: true` on a missing selector reports
   `failed` with observed `false`; missing elements for other element checks
   report `insufficient_evidence`. Pick the check whose meaning matches the

@@ -7,24 +7,29 @@ import { shortCompositionSchema, validateShortComposition } from './composition.
 
 const selector = z.string().min(1);
 const note = z.string().min(1);
+/** Optional step name, unique per scenario; checks and stories may reference it instead of an index. */
+const stepIdPattern = /^[A-Za-z0-9_-]+$/;
+const stepId = z.string().regex(stepIdPattern, 'Step ids use letters, digits, "-" and "_"').optional();
+/** A zero-based step index or a step id; ids resolve to indexes when the declaration is parsed. */
+const stepRef = z.union([z.number().int().nonnegative(), z.string().regex(stepIdPattern, 'Step references are an index or a step id')]);
 const stepSchema = z.discriminatedUnion('action', [
-  z.object({ action: z.literal('goto'), path: z.string().startsWith('/'), note: z.string().min(1) }).strict(),
-  z.object({ action: z.literal('waitForURL'), path: z.string().startsWith('/'), note: z.string().min(1) }).strict(),
-  z.object({ action: z.literal('click'), selector: z.string().min(1), note: z.string().min(1) }).strict(),
-  z.object({ action: z.literal('hover'), selector: z.string().min(1), note: z.string().min(1) }).strict(),
+  z.object({ action: z.literal('goto'), id: stepId, path: z.string().startsWith('/'), note: z.string().min(1) }).strict(),
+  z.object({ action: z.literal('waitForURL'), id: stepId, path: z.string().startsWith('/'), note: z.string().min(1) }).strict(),
+  z.object({ action: z.literal('click'), id: stepId, selector: z.string().min(1), note: z.string().min(1) }).strict(),
+  z.object({ action: z.literal('hover'), id: stepId, selector: z.string().min(1), note: z.string().min(1) }).strict(),
   // `state` and `count` are optional and mutually exclusive (checked below); absent means "visible".
-  z.object({ action: z.literal('waitFor'), selector: z.string().min(1), state: z.enum(['visible', 'hidden', 'attached', 'detached']).optional(),
+  z.object({ action: z.literal('waitFor'), id: stepId, selector: z.string().min(1), state: z.enum(['visible', 'hidden', 'attached', 'detached']).optional(),
     count: z.number().int().nonnegative().optional(), note: z.string().min(1) }).strict(),
-  z.object({ action: z.literal('fill'), selector: z.string().min(1), value: z.string(), note: z.string().min(1) }).strict(),
-  z.object({ action: z.literal('press'), selector: z.string().min(1), key: z.string().min(1), note: z.string().min(1) }).strict(),
-  z.object({ action: z.literal('upload'), selector: z.string().min(1), path: z.string().min(1), completionSelector: z.string().min(1).optional(), note: z.string().min(1) }).strict(),
-  z.object({ action: z.literal('dblclick'), selector, note }).strict(),
-  z.object({ action: z.literal('selectOption'), selector, value: z.string().optional(), label: z.string().optional(), note }).strict(),
-  z.object({ action: z.literal('type'), selector, text: z.string().min(1), delayMs: z.number().int().min(0).max(200).optional(), note }).strict(),
-  z.object({ action: z.literal('scroll'), selector, to: z.union([z.enum(['top', 'bottom']), z.object({ x: z.number().int(), y: z.number().int() }).strict()]), note }).strict(),
-  z.object({ action: z.literal('drag'), from: selector, to: z.union([selector, z.object({ dx: z.number().int(), dy: z.number().int() }).strict()]), note }).strict(),
+  z.object({ action: z.literal('fill'), id: stepId, selector: z.string().min(1), value: z.string(), note: z.string().min(1) }).strict(),
+  z.object({ action: z.literal('press'), id: stepId, selector: z.string().min(1), key: z.string().min(1), note: z.string().min(1) }).strict(),
+  z.object({ action: z.literal('upload'), id: stepId, selector: z.string().min(1), path: z.string().min(1), completionSelector: z.string().min(1).optional(), note: z.string().min(1) }).strict(),
+  z.object({ action: z.literal('dblclick'), id: stepId, selector, note }).strict(),
+  z.object({ action: z.literal('selectOption'), id: stepId, selector, value: z.string().optional(), label: z.string().optional(), note }).strict(),
+  z.object({ action: z.literal('type'), id: stepId, selector, text: z.string().min(1), delayMs: z.number().int().min(0).max(200).optional(), note }).strict(),
+  z.object({ action: z.literal('scroll'), id: stepId, selector, to: z.union([z.enum(['top', 'bottom']), z.object({ x: z.number().int(), y: z.number().int() }).strict()]), note }).strict(),
+  z.object({ action: z.literal('drag'), id: stepId, from: selector, to: z.union([selector, z.object({ dx: z.number().int(), dy: z.number().int() }).strict()]), note }).strict(),
 ]);
-const checkpoint = z.number().int().nonnegative().optional();
+const checkpoint = stepRef.optional();
 const urlPattern = z.string().min(1).refine(value => { try { new RegExp(value); return true; } catch { return false; } }, 'Invalid URL regular expression');
 const checkSchema = z.discriminatedUnion('kind', [
   z.object({ id: z.string().min(1), kind: z.literal('text'), selector: z.string().min(1), equals: z.string(), afterStep: checkpoint }).strict(),
@@ -40,7 +45,7 @@ const checkSchema = z.discriminatedUnion('kind', [
   z.object({
     id: z.string().min(1), kind: z.literal('network'),
     match: z.object({ urlPattern, method: z.string().regex(/^[A-Z]+$/).optional(), status: z.number().int().min(100).max(599).optional() }).strict(),
-    window: z.object({ fromStep: z.number().int().nonnegative(), throughStep: z.number().int().nonnegative(), settleMs: z.number().int().min(0).max(10000) }).strict(),
+    window: z.object({ fromStep: stepRef, throughStep: stepRef, settleMs: z.number().int().min(0).max(10000) }).strict(),
     equals: z.number().int().nonnegative(), afterStep: z.never().optional(),
   }).strict(),
 ]);
@@ -48,7 +53,7 @@ const httpUrl = z.string().url().refine(value => ['http:', 'https:'].includes(ne
 const narrationText = z.string().min(1).refine(value => value.trim().length > 0, 'Narration must contain non-whitespace text');
 
 const storyBeatSchema = z.object({
-  step: z.number().int().nonnegative(), at: z.enum(['before', 'after']).default('after'),
+  step: stepRef, at: z.enum(['before', 'after']).default('after'),
   text: narrationText, selector: z.string().min(1).optional(),
   shortText: narrationText.optional(),
   framing: sceneFramingSchema.optional(),
@@ -68,13 +73,13 @@ export const codeStorySchema = z.object({
 }).strict();
 export type CodeStory = z.infer<typeof codeStorySchema>;
 const walkthroughSchema = z.object({
-  startStep: z.number().int().nonnegative(),
+  startStep: stepRef,
   before: z.array(storyBeatSchema).min(1).optional(), after: z.array(storyBeatSchema).min(1),
   code: codeStorySchema.optional(),
   short: shortCompositionSchema.optional(),
 }).strict();
 
-export const changeSpecSchema = z.object({
+const rawSpecSchema = z.object({
   title: z.string().min(1),
   mode: z.enum(['acceptance', 'repair', 'comparison']),
   baselineKind: z.enum(['historical', 'synthetic', 'unattested']).optional(),
@@ -88,7 +93,46 @@ export const changeSpecSchema = z.object({
   diffPath: z.string().min(1).optional(),
   walkthrough: walkthroughSchema.optional(),
   identity: identityDeclarationSchema.optional(),
-}).strict().superRefine((spec, ctx) => {
+}).strict();
+
+type RawSpec = z.output<typeof rawSpecSchema>;
+/** Replace step-id references with indexes in the named keys, keeping optional modifiers. */
+type Indexed<T, K extends PropertyKey> = T extends unknown ? { [P in keyof T]: P extends K ? Exclude<T[P], string> : T[P] } : never;
+type ResolvedCheck<C> = C extends { kind: 'network'; window: infer W } ? { [P in keyof C]: P extends 'window' ? Indexed<W, 'fromStep' | 'throughStep'> : C[P] } : Indexed<C, 'afterStep'>;
+type ResolvedBeats<A> = A extends Array<infer B> ? Array<Indexed<B, 'step'>> : A;
+type ResolvedWalkthrough<W> = W extends undefined ? W : { [P in keyof W]: P extends 'startStep' ? number : P extends 'before' | 'after' ? ResolvedBeats<W[P]> : W[P] };
+type ResolvedSpec = { [P in keyof RawSpec]: P extends 'checks' ? Array<ResolvedCheck<RawSpec['checks'][number]>>
+  : P extends 'walkthrough' ? ResolvedWalkthrough<RawSpec['walkthrough']> : RawSpec[P] };
+
+/** Resolve step ids to indexes once, at parse time; indexes pass through unchanged and nothing is renumbered. */
+function resolveStepRefs(spec: RawSpec, ctx: z.RefinementCtx): ResolvedSpec {
+  const index = new Map<string, number>();
+  let invalid = false;
+  for (const [i, step] of spec.steps.entries()) {
+    if (step.id === undefined) continue;
+    if (index.has(step.id)) { invalid = true; ctx.addIssue({ code: 'custom', path: ['steps', i, 'id'], message: `Duplicate step id "${step.id}"; step ids must be unique` }); }
+    else index.set(step.id, i);
+  }
+  const resolve = (value: number | string, path: Array<string | number>): number => {
+    if (typeof value === 'number') return value;
+    const found = index.get(value);
+    if (found !== undefined) return found;
+    invalid = true;
+    ctx.addIssue({ code: 'custom', path, message: `${path.join('.')} refers to unknown step id "${value}"` });
+    return -1;
+  };
+  const checks = spec.checks.map((check, i) => check.kind === 'network'
+    ? { ...check, window: { ...check.window, fromStep: resolve(check.window.fromStep, ['checks', i, 'window', 'fromStep']), throughStep: resolve(check.window.throughStep, ['checks', i, 'window', 'throughStep']) } }
+    : check.afterStep === undefined ? check : { ...check, afterStep: resolve(check.afterStep, ['checks', i, 'afterStep']) });
+  const story = spec.walkthrough;
+  const beats = (version: 'before' | 'after') => story?.[version]?.map((beat, i) => ({ ...beat, step: resolve(beat.step, ['walkthrough', version, i, 'step']) }));
+  const walkthrough = story && { ...story, startStep: resolve(story.startStep, ['walkthrough', 'startStep']),
+    ...(story.before ? { before: beats('before') } : {}), after: beats('after')! };
+  if (invalid) return z.NEVER;
+  return { ...spec, checks, ...(walkthrough ? { walkthrough } : {}) } as ResolvedSpec;
+}
+
+export const changeSpecSchema = rawSpecSchema.transform(resolveStepRefs).superRefine((spec, ctx) => {
   const ids = spec.checks.map(check => check.id);
   if (new Set(ids).size !== ids.length) ctx.addIssue({ code: 'custom', message: 'Check ids must be unique', path: ['checks'] });
   if (spec.mode === 'acceptance') {
@@ -140,6 +184,8 @@ export interface CheckEvidence {
   evidence: string;
   screenshot?: string;
   afterStep?: number;
+  /** Private: the id of the checkpoint step, when the declaration named it. */
+  afterStepId?: string;
 }
 export interface ScenarioRun {
   url: string;
@@ -148,6 +194,8 @@ export interface ScenarioRun {
   screenshots: string[];
   error?: string;
   failedStep?: number;
+  /** Private: the id of the failed step, when the declaration named it. */
+  failedStepId?: string;
   completedSteps?: number;
   video?: string;
   recordingStartedAt?: number;

@@ -41,6 +41,9 @@ form are the remaining release blockers.
 - Browser actions and waits (2026-11-09, spec `scenario-actions`): `dblclick`,
   `selectOption`, `type`, `scroll` and `drag` steps; `waitFor` with a `state` or an
   exact element `count`; a `count` check. Old declarations keep their meaning and hash.
+- Step ids (2026-11-09, spec `named-steps`): checks and story beats can point at a step
+  by `id`, so inserting a step no longer moves them; unknown ids are rejected before
+  anything runs.
 
 ## Real-world use so far
 
@@ -61,11 +64,11 @@ works the same for every agent and the CLI, and keeps existing declarations unch
 | 2 | ~~The report has no overview of all checks~~ **Done 2026-11-09** | One pass/fail table at the top of `REPORT.md` | `agent-diagnostics` | S |
 | 3 | ~~Only 8 browser actions; agents write side scripts for double-click, select, typing, scroll and drag~~ **Done 2026-11-09** | Add `dblclick`, `selectOption`, `type`, `scroll`, `drag` | `scenario-actions` | S–M |
 | 3 | ~~`waitFor` only waits for "visible"; a half-rendered page can pass~~ **Done 2026-11-09** | `waitFor` state (`hidden`, `attached`, `detached`) or exact element count; a `count` check | `scenario-actions` | S |
-| 4 | Checks point at steps by number, so inserting a step shifts them | Optional step names that checks can reference | `named-steps` | M |
+| 4 | ~~Checks point at steps by number, so inserting a step shifts them~~ **Done 2026-11-09** | Optional step names that checks can reference | `named-steps` | M |
 | 5 | No demo video yet | A video of under 3 minutes made only from this Kiro work (the earlier non-Kiro Headlamp clip is dropped) | `submission-story` | M |
 
-Next session starts with order 4: spec `named-steps`, shown first on a real
-failing check, then fixed.
+Next session starts with order 5: spec `submission-story` (the demo video). It needs
+the owner for the story, the recording decision and the YouTube upload.
 
 ### Carried over from the 2026-11-08 session (resolved 2026-11-09)
 

@@ -1816,7 +1816,10 @@ node dist/cli.js demonstrate ./scenario.json -o ./.praman/change-report
   element — Playwright strict-mode ambiguity returns `insufficient_evidence`, not
   an app defect, and the raw cause is in the private `after-<run>/result.json`.
   Indexes (`afterStep`, network windows, walkthrough steps) are zero-based and
-  shift when a step is inserted; renumber them. A visible container is not
+  shift when a step is inserted. Give steps an `id` and reference the id instead
+  (`"afterStep": "add-item"`); ids resolve to indexes when the declaration is read,
+  an unknown or duplicate id is rejected before anything runs, and safe output
+  shows the index only. A visible container is not
   rendered content: for asynchronous UI, wait for the real condition (`waitFor`
   with `count`, or `state: "detached"` on a spinner) and assert the actual
   count/text/value/state, not only a wrapper's visibility. Actions are `goto`,

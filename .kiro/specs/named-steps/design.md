@@ -4,9 +4,13 @@
   replaces the plain index in the listed fields.
 - A load-time pass in `src/case/change.ts` builds `id → index`, rejects duplicates and
   missing references, and rewrites refs to numbers in the parsed object used for execution.
-  The original declaration (with ids) is what `specHash` covers, so a declaration that
-  uses ids hashes differently from its index-only form, and an index-only declaration hashes
-  exactly as today.
+  As built (2026-11-09): the pass is a zod `transform` between the strict object schema
+  and the existing cross-field `superRefine`, so the existing range checks run on
+  indexes and every caller still receives numbers. `specHash` covers the parsed
+  declaration: step ids are kept on their steps, references are indexes. An index-only
+  declaration hashes exactly as before; adding ids changes the hash; writing a reference
+  as an id or as the index it resolves to gives the same hash. Parsing is idempotent.
+  The MCP input schema (generated from the input side) accepts ids.
 - Privacy: check IDs are withheld from safe output today. Step ids are declaration
   fields of the same kind, so safe outputs show the index only; private evidence keeps
   both. (Owner may choose to treat step ids as safe; default is private.)

@@ -18,6 +18,12 @@
   offset). `waitFor` accepts `state` (`visible`, `hidden`, `attached`, `detached`) or
   an exact element `count`; new `count` check. Existing declarations parse and hash
   the same.
+- Step ids (spec `named-steps`): any step may have an `id`; `afterStep`, network
+  `window.fromStep`/`throughStep`, walkthrough `startStep` and beat `step` accept the id
+  instead of an index, so inserting a step no longer moves checks. Ids resolve to
+  indexes at parse time; unknown or duplicate ids are rejected before execution with
+  the field path. Safe output shows indexes; ids stay in private evidence. Index-only
+  declarations keep their meaning and hash.
 - Kiro integration (2026-11-08): workspace MCP wiring, `praman-explorer` agent, lint
   and `Stop`-hook finish gate, steering, and an installable Kiro Power (`kiro-power/`).
 
