@@ -279,7 +279,11 @@ export async function executeScenario(spec: ChangeSpec, url: string, outDir: str
           else if (step.action === 'dblclick') await locator.dblclick();
           else if (step.action === 'hover') await locator.hover();
           else if (step.action === 'fill') await locator.fill(step.value);
-          else if (step.action === 'type') await locator.pressSequentially(step.text, { delay: step.delayMs ?? 0 });
+          else if (step.action === 'type') {
+            // The 3 s action limit covers finding the element; typing itself gets time for every key on top.
+            const delay = step.delayMs ?? 0;
+            await locator.pressSequentially(step.text, { delay, timeout: 3000 + step.text.length * (delay + 50) });
+          }
           else if (step.action === 'selectOption') {
             const chosen = await locator.selectOption(step.value !== undefined ? { value: step.value } : { label: step.label! });
             if (!chosen.length) throw new Error('selectOption selected no option');

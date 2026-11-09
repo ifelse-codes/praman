@@ -29,6 +29,9 @@
 
 ### Fixed
 
+- `type` steps no longer time out while typing: the 3 s action limit applied to the whole
+  key sequence, so 20 keys at the allowed 200 ms delay always failed as
+  `insufficient_evidence`. Typing now gets time for every key on top of the 3 s.
 - Feedback redaction no longer rewrites PRAMAN's own field names. A short private input
   (for example a one-letter `fill` value) used to be replaced inside keys such as
   `path`, so `scenario-verify` crashed while writing `REPORT.md` instead of recording the

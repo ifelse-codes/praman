@@ -129,12 +129,24 @@ it('runs every new action and wait in real Chromium and keeps typed text and opt
   });
   const outDir = join(dir, 'pass');
   const result = await proveChange(spec, outDir);
+  // Name the stopped step and its failure kind, so a slow-runner failure is diagnosable from CI output.
+  const stops = result.proof.after.map(run => ({ verdict: run.verdict, failedStep: run.failedStep, completedSteps: run.completedSteps, checks: run.checks.length, error: run.error?.split('\n')[0] }));
+  expect(stops).toEqual(result.proof.after.map(() => ({ verdict: 'passed', failedStep: undefined, completedSteps: spec.steps.length, checks: spec.checks.length, error: undefined })));
   const rows = result.proof.after.flatMap(run => run.checks.map(row => `${row.id}=${row.verdict}:${JSON.stringify(row.observed)}`));
   expect(rows.filter(row => !row.includes('=passed'))).toEqual([]);
   expect(result.verdict).toBe('passed');
   const shown = JSON.stringify(safeFeedbackValue(result, spec)) + readFileSync(join(outDir, 'feedback.json'), 'utf8') + readFileSync(join(outDir, 'REPORT.md'), 'utf8');
   expect(shown).not.toContain(typed);
   expect(shown).not.toContain(label);
+}, 90_000);
+
+it('types a long text at the largest allowed key delay without hitting the action timeout', async () => {
+  // 20 keys at 200 ms take about 4 s, longer than the 3 s limit of a single action.
+  const text = 'abcdefghijklmnopqrst';
+  const spec = scenario({ steps: [{ action: 'type', selector: '#keys', text, delayMs: 200, note: 'Type slowly' }],
+    checks: [{ id: 'keys', kind: 'text', selector: '#key-count', equals: String(text.length) }] });
+  const result = await proveChange(spec, join(dir, 'slow-type'));
+  expect(result.proof.after.map(run => [run.verdict, run.error?.split('\n')[0]])).toEqual([['passed', undefined], ['passed', undefined]]);
 }, 90_000);
 
 it('records a count mismatch as failed, not as unavailable', async () => {
