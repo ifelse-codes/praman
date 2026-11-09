@@ -4,6 +4,14 @@
 
 ### Added
 
+- Failure diagnosis (spec `agent-diagnostics`): when a browser step or check cannot
+  run, `--summary`, `feedback.json`, `REPORT.md` and MCP results name the kind
+  (`locator_ambiguous` with the matched count, `locator_timeout` with the timeout and
+  any named state, `navigation_failed`, `browser_closed`, `unknown`) and give a next
+  action for that kind. Selectors, URLs, values and raw errors stay private. Verdicts
+  and exit codes are unchanged.
+- `REPORT.md` for browser and command verification starts with a `## Checks` pass/fail
+  table: one row per check with its verdict in every run.
 - Kiro integration (2026-11-08): workspace MCP wiring, `praman-explorer` agent, lint
   and `Stop`-hook finish gate, steering, and an installable Kiro Power (`kiro-power/`).
 

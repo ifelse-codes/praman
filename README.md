@@ -1607,6 +1607,24 @@ the implicit command exit check. `references` contain an absolute private local
 hold expected/observed values. Command expectations live in `declaration.json`;
 result rows link directly to captured stdout/stderr/artifacts.
 
+Browser `execution_unavailable` and `evidence_unavailable` entries also carry a
+`diagnosis` from the private Playwright error: `locator_ambiguous` (with
+`facts.matched`, the number of matched elements), `locator_timeout` (with
+`facts.timeoutMs`, and `facts.state` only when Playwright names it, as for `waitFor`),
+`navigation_failed`, `browser_closed` or `unknown`. The summary line reads, for
+example, `execution_unavailable: current run 1 step[0]; diagnosis: locator_ambiguous
+(3 elements)`, and the next action is specific to the kind; `unknown` keeps the general
+next action. Only the kind and these numbers or the state word leave private evidence;
+selectors, URLs, values and the raw message do not. The diagnosis never changes a verdict
+or exit code. Command runs are not classified.
+
+`REPORT.md` starts with a `## Checks` table right after the `Outcome:` line: one row
+per check with its index, kind, checkpoint step (browser), verdict per run (`Before`
+for paired modes) and the diagnosis. A check that never ran shows the diagnosis of the
+step that stopped its run. The command report uses the same table without the step
+column; kinds are `exit`, `stdout`, `stderr` or `artifact`, and a run that did not exit
+shows its status (`run timeout`, `run interrupted`, `run unavailable`).
+
 Recording failures expose only structurally reached positions, never selectors,
 DOM text or exception excerpts. Unknown positions are omitted. Successful
 preflight positions are not reused as later failure locations. Recording outcome

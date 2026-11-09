@@ -195,9 +195,11 @@ live replays. Do not treat these examples as permission to create a movie.
   and walkthrough `step`/`startStep` are zero-based. Validation rejects
   out-of-range values but cannot tell that an index now points at a different
   action — renumber after inserting steps.
-- **Read private evidence when a step fails.** `--summary` and `REPORT.md` are
-  redacted by design; the exact error and observed values are in
-  `after-<run>/result.json` and `proof.json`. See the
+- **Read the diagnosis, then private evidence, when a step fails.** `--summary` and
+  `REPORT.md` are redacted by design but name the failure kind and safe counts, for
+  example `locator_ambiguous (3 elements)` or `locator_timeout (visible, 15000 ms)`;
+  the exact error and observed values are in `after-<run>/result.json` and
+  `proof.json`. See the
   [schema cheat sheet](schema-cheatsheet.md#debug-a-failed-run-private-evidence)
   for the short `jq` recipe; do not publish private evidence.
 

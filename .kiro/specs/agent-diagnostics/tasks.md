@@ -10,5 +10,6 @@
   - _Requirements: 2.1–2.4_
 - [x] 5. Integration and privacy tests; full suite; first-use 12/12
   - 2026-11-09: `tests/classify.test.ts` (17), `tests/agentDiagnostics.test.ts` (4), command table in `tests/diagnostics.test.ts`; the 5 changed/new integration tests fail on the old code. Full suite 242 tests / 33 files; first-use 12/12
-- [ ] 6. Prove in a Kiro session: an ambiguous selector gives `locator_ambiguous (N)` in the agent's view; log in `docs/kiro-usage.md`
-- [ ] 7. README and cheat sheet; CHANGELOG; STATUS
+- [x] 6. Prove in a Kiro session: an ambiguous selector gives `locator_ambiguous (N)` in the agent's view; log in `docs/kiro-usage.md`
+  - 2026-11-09, headless `sess_0db97c0c…` with `--agent praman-explorer`: the MCP result held `locator_ambiguous`, `matched: 3`, and no selector, raw error or URL. A first attempt (`sess_cc38cc09…`) could not read the scenario file (headless read permission) and ran nothing
+- [x] 7. README and cheat sheet; CHANGELOG; STATUS

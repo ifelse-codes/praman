@@ -1,4 +1,4 @@
-# PRAMAN — current project status (2026-11-05, release hardening)
+# PRAMAN — current project status (2026-11-09, agent-facing fixes)
 
 PRAMAN (प्रमाण, "evidence") is an evidence-driven verification toolkit for AI coding
 agents. An agent supplies an authored browser scenario or command declaration through
@@ -12,9 +12,9 @@ general simulator and not a sandbox.
   is a squashed public snapshot under the owner identity (see the repository history),
   with CI green and judge access enabled.
 - **Checks:** `npm run build` and `npm run lint` pass; `npm run lint:tests` passes;
-  the **full suite passes 221 tests / 31 files** on the recorded host (2026-11-08,
-  `--maxWorkers=2`), including the 8 Kiro finish-gate tests and the 15 cancellation
-  tests. Parallel local runs
+  the **full suite passes 242 tests / 33 files** on the recorded host (2026-11-09,
+  `--maxWorkers=2`), including the 8 Kiro finish-gate tests, the 15 cancellation
+  tests and the 21 new diagnosis tests. Parallel local runs
   are resource-sensitive while macOS Spotlight/MediaAnalysis indexing saturates the
   CPU; CI uses a bounded worker count. Earlier, an independent fresh-clone verification
   of the release-hardening commit reproduced the then-current results (npm ci, lint,
@@ -59,15 +59,30 @@ general simulator and not a sandbox.
   (`sess_c6010529…`). Full suite **221 tests / 31 files**; first-use 12/12. Properties
   P1–P5 are covered by deterministic tests (owner decision: no Kiro IDE step, no
   `fast-check`); abort timing is tested at fixed points, not randomized.
+- **Failure diagnosis (2026-11-09, spec `agent-diagnostics`, PR #9, public `main`
+  `fa9e18e` by fast-forward):** before the fix, a real run with a selector matching 3
+  buttons printed only `execution_unavailable: current run 1 step[0]` and a generic next
+  action. Browser step and check failures now carry a fixed `diagnosis`
+  (`locator_ambiguous` + matched count, `locator_timeout` + ms and any named state,
+  `navigation_failed`, `browser_closed`, `unknown`) in `--summary`, `feedback.json`,
+  `REPORT.md` and MCP results, with a next action for each kind. `REPORT.md` (browser
+  and command) starts with a `## Checks` pass/fail table. Verdicts and exit codes are
+  unchanged; only kinds and numbers leave private evidence. Proven in a headless Kiro
+  session (`sess_0db97c0c…`, `praman-explorer`): the agent's MCP result held
+  `locator_ambiguous`, `matched: 3`, and no selector, raw error or URL. Limits: the
+  timeout state appears only when Playwright names it; `browser_closed` is tested with
+  captured messages, not a real closing run; command runs are not classified; the finish
+  gate still prints only the verdict and report path.
 - **Docs clarification (2026-11-06):** added a one-page
   [browser scenario cheat sheet](schema-cheatsheet.md) plus explicit
   selector/zero-based/private-evidence guidance in the README and browser guide;
   product behavior and test counts are unchanged.
-- **CI:** green on **Ubuntu and macOS** (Node 22) for public `main` `454c4ba` — run
-  https://github.com/ifelse-codes/praman/actions/runs/42495927884. Each runner
-  reports 205 passed / 16 skipped of 221 tests; the skips are the
-  environment-guarded media/speech suites (no ffmpeg/ffprobe on the runners). The
-  Ubuntu job also runs the judge route.
+- **CI:** green on **Ubuntu and macOS** (Node 22) for public `main` `fa9e18e` — run
+  https://github.com/ifelse-codes/praman/actions/runs/42566057306. Each runner reports
+  226 passed / 16 skipped of 242 tests; the skips are the environment-guarded
+  media/speech suites (no ffmpeg/ffprobe on the runners). The
+  Ubuntu job also runs the judge route. `tests/networkPolicy.test.ts` failed once on
+  macOS CI (PR #8) and passed on rerun; it has passed since, locally and in CI.
 - **Final verification (2026-11-05, historical):** an independent fresh clone of public
   HEAD `a84788e` passed `npm ci`, lint, lint:tests, build, the then-current full suite
   (190/190) and the judge route (12/12). A deterministic candidate (101 members) built
@@ -122,8 +137,8 @@ The shipped/frozen/deferred view is in [ROADMAP.md](ROADMAP.md).
    the remaining `<DEMO_VIDEO_URL>` in the Devpost draft; save and submit. Target
    Nov 26–27, deadline Dec 4, 2026.
 2. **Kiro:** spec `kiro-evidence-gate` is closed and merged to public `main` (PR #1).
-   Done: the Power path bugfix and spec `verify-cancellation`. Next: specs
-   `agent-diagnostics`, `scenario-actions`, `named-steps`,
+   Done: the Power path bugfix and specs `verify-cancellation` and `agent-diagnostics`.
+   Next: specs `scenario-actions`, `named-steps`,
    then `submission-story` (video from this work only; the non-Kiro Headlamp clip is dropped).
 3. **Independent-human validation:** a person other than the owner following the
    first-use guide (CI already covers two operating systems).

@@ -91,8 +91,9 @@ screenshot each. Checks without `afterStep` run at the end of the workflow.
 
 - **One element per selector.** Playwright strict mode rejects selectors that
   match 0 or 2+ elements for actions and most checks. Ambiguity yields
-  `insufficient_evidence` (not a pass and not a proven app defect); the exact
-  cause lives in the private `after-<run>/result.json`. Target the single group
+  `insufficient_evidence` (not a pass and not a proven app defect). The summary
+  names it, for example `diagnosis: locator_ambiguous (12 elements)`, and the raw
+  message stays in the private `after-<run>/result.json`. Target the single group
   container instead of loosening the requirement.
 - **A visible container is not rendered content.** A `visible` check passes on
   the wrapper even when a chart, list or image is still empty. For asynchronous
@@ -121,10 +122,20 @@ screenshot each. Checks without `afterStep` run at the end of the workflow.
 
 ## Debug a failed run (private evidence)
 
-`--summary` and `REPORT.md` show category, zero-based step and private evidence
-paths; they are redacted by design (application text, selectors, expected and
-observed values, and raw errors are withheld). The unredacted details are in the
-private run artifacts:
+`--summary` and `REPORT.md` show category, zero-based step or check index, a
+diagnosis and private evidence paths. `REPORT.md` starts with a `## Checks` table of
+every check and its verdict per run. Both are redacted by design: application text,
+selectors, expected and observed values, URLs and raw errors are withheld.
+
+| Diagnosis | Meaning | Usual fix |
+| --- | --- | --- |
+| `locator_ambiguous (N elements)` | The selector matched N elements | Make it match exactly one |
+| `locator_timeout ([state, ]N ms)` | No matching element was ready in time | Check the selector and when the element appears |
+| `navigation_failed` | Navigation failed, timed out, returned non-2xx or left the origin | Check the URL, the path and that the app runs |
+| `browser_closed` | The page, context or browser closed or crashed | Check for app code that closes or crashes the tab |
+| `unknown` | No known pattern | Read the private error below |
+
+The unredacted details are in the private run artifacts:
 
 ```sh
 out=.praman/run

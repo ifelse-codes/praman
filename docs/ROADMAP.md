@@ -1,4 +1,4 @@
-# PRAMAN — current roadmap (2026-11-08)
+# PRAMAN — current roadmap (2026-11-09)
 
 **Status: shipped and verified; next work is agent-facing fixes.** Public repository
 https://github.com/ifelse-codes/praman (MIT), CI green on Ubuntu and macOS, judge
@@ -35,6 +35,9 @@ form are the remaining release blockers.
   an MCP cancel stops every program PRAMAN started, starts no further runs, and records
   the run as not proven (CLI exit 130/143). PRAMAN checks this fix on itself in repair
   mode (`examples/self-check/cancellation/`).
+- Failure diagnosis (2026-11-09, spec `agent-diagnostics`, PR #9): a failed browser step
+  or check names its kind and safe counts (for example `locator_ambiguous (3 elements)`)
+  with a matching next action; `REPORT.md` starts with a pass/fail table of all checks.
 
 ## Real-world use so far
 
@@ -51,25 +54,23 @@ works the same for every agent and the CLI, and keeps existing declarations unch
 | Order | Problem today | Planned fix | Spec | Size |
 | --- | --- | --- | --- | --- |
 | 1 | ~~Ctrl-C stops PRAMAN but leaves the tested program running~~ **Done 2026-11-08** | Stop every owned process on Ctrl-C or MCP cancel; record the run as not proven | `verify-cancellation` | M |
-| 2 | When a step fails, the summary does not say why (for example a selector that matched 12 elements) | Name the failure kind and safe counts in the summary, report and MCP result; selectors and values stay private | `agent-diagnostics` | S |
-| 2 | The report has no overview of all checks | One pass/fail table at the top of `REPORT.md` | `agent-diagnostics` | S |
+| 2 | ~~When a step fails, the summary does not say why (for example a selector that matched 12 elements)~~ **Done 2026-11-09** | Name the failure kind and safe counts in the summary, report and MCP result; selectors and values stay private | `agent-diagnostics` | S |
+| 2 | ~~The report has no overview of all checks~~ **Done 2026-11-09** | One pass/fail table at the top of `REPORT.md` | `agent-diagnostics` | S |
 | 3 | Only 8 browser actions; agents write side scripts for double-click, select, typing, scroll and drag | Add `dblclick`, `selectOption`, `type`, `scroll`, `drag` | `scenario-actions` | S–M |
 | 3 | `waitFor` only waits for "visible"; a half-rendered page can pass | `waitFor` state (`hidden`, `attached`, `detached`) or exact element count; a `count` check | `scenario-actions` | S |
 | 4 | Checks point at steps by number, so inserting a step shifts them | Optional step names that checks can reference | `named-steps` | M |
 | 5 | No demo video yet | A video of under 3 minutes made only from this Kiro work (the earlier non-Kiro Headlamp clip is dropped) | `submission-story` | M |
 
-Next session starts with order 2: spec `agent-diagnostics`, shown first on a real
+Next session starts with order 3: spec `scenario-actions`, shown first on a real
 failing check, then fixed.
 
-### Carried over from the 2026-11-08 session
+### Carried over from the 2026-11-08 session (resolved 2026-11-09)
 
-- Local `main` still points to the old private commit `b7f11d0`; it shares no history
-  with public `main`. Moving it (`git branch -f main <public main>`) needs the owner's
-  yes. Work continues on `plan-agent-gaps`, which matches public `main`.
-- `docs/kiro-usage.md` has no row yet for PR #8 (docs only) and its CI rerun; add it
-  with the next real commit.
-- `tests/networkPolicy.test.ts` failed once on macOS CI (PR #8, docs-only change) and
-  passed on rerun. Treat as flaky; if it fails again, investigate and fix it.
+- Local `main` moved to public `main` with the owner's yes; the old private commit
+  `b7f11d0` stays reachable from branch `kiro-evidence-gate`.
+- `docs/kiro-usage.md` has the PR #8 row.
+- `tests/networkPolicy.test.ts` has passed since (local full suite and PR #9 CI on
+  Ubuntu and macOS). Still treated as flaky; if it fails again, investigate and fix it.
 
 This replaces the earlier "no new features" freeze for these items only. Other optional
 surfaces stay frozen.
