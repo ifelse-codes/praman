@@ -15,4 +15,5 @@
   - `preview` of a walkthrough over `dblclick`, `drag` and `waitFor` `count`: `passed`, scenes at steps 0–2. `demonstrate` replays the same `executeScenario` steps; no separate movie was made
 - [x] 7. Full suite; first-use 12/12; prove one new action through a Kiro session; log it
   - 2026-11-09: full suite 264 tests / 34 files before the docs; headless `sess_1cf21d4c…` (`praman-explorer`) verified a `dblclick` + `drag` scenario through MCP: `passed`, both checks `yes` in both runs
+  - Real apps, 2026-11-09: Lattice (all five actions, `waitFor` `count`, `count` checks; 12/12 in both runs; also through MCP in `sess_8d9c7ba5…`) and Luma (`type`, `dblclick`, `waitFor` `count`/`detached`/`visible`/`hidden`, `count`; 8/8 in both runs), both from unmodified local checkouts; negative controls `failed` and `locator_ambiguous`
 - [x] 8. Cheat sheet, README, CHANGELOG, STATUS

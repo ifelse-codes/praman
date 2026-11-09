@@ -94,6 +94,21 @@ general simulator and not a sandbox.
   Index-only declarations keep their meaning and hash. Proven through MCP in a headless
   Kiro session (`sess_fc0aef1b…`). Limit: no automatic renumbering of existing index
   references.
+- **Real-app check of the new browser features (2026-11-09):** run against two real
+  apps used before, served locally from their unmodified checkouts. **Lattice**
+  (spreadsheet, where the gaps were first found): one scenario with `dblclick` to edit a
+  cell, `type` of a formula, a fill-handle `drag` to J5, `selectOption` of font size 18,
+  `scroll` of the grid to the bottom and back, and `waitFor` with `count` for 12 chart
+  bars; 12 checks, all with step-id checkpoints: `passed`, 12/12 in both runs. Controls:
+  a zero-distance drag gave `failed` (J4, J5 not filled) and an ambiguous double-click
+  selector gave `locator_ambiguous (312 elements)`. **Luma** (todo app): tasks added with
+  `type`, `waitFor` `count` 3, `dblclick` rename, `waitFor` `detached`/`visible`/`hidden`
+  for the editor and quick-actions palette, `count` checks; 8 checks `passed` in both
+  runs; an ambiguous control gave `locator_ambiguous (3 elements)`. The same Lattice
+  scenario also `passed` 12/12 through MCP in a headless Kiro session
+  (`sess_8d9c7ba5…`). Scenarios and evidence are private under `.praman/real-apps/`.
+  Not covered: Kan and Headlamp (need their databases or clusters); `selectOption`,
+  `drag` and `scroll` were exercised on Lattice only, since Luma has none of them.
 - **Docs clarification (2026-11-06):** added a one-page
   [browser scenario cheat sheet](schema-cheatsheet.md) plus explicit
   selector/zero-based/private-evidence guidance in the README and browser guide;
