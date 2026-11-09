@@ -97,8 +97,8 @@ is still alive two seconds later, it forces it to stop. The run is then marked
 ### 1:55–2:15 — Same action after the fix
 
 **On screen:** the same check, same declaration. Current build: `orphan: no` in all
-3 repeats, `Outcome: passed`, exit 0; then the top of `REPORT.md`, the `## Checks`
-table.
+3 repeats, `Outcome: passed`, exit 0; then the `## Checks` table in `REPORT.md`
+(dry run 2026-11-09: `stdout` check `failed` on the baseline, `passed` in runs 1–3).
 
 **Narration:** "Same action, after the fix. Three fresh runs, and nothing is left
 behind. PRAMAN only says 'passed' because the old build failed this exact check and
@@ -144,6 +144,12 @@ under `/tmp`. Stop any server you start.
    the `kiro-evidence-gate` usage-log rows if missing); the agent finishes, is sent
    back, fixes, finishes. Remove the gate file afterwards.
 6. Judge take: `node examples/first-use/run.mjs /tmp/first-use` → 12 lines, exit 0.
+
+Dry run on 2026-11-09 (current `main` plus this branch): takes 3, 4 and 6 work as
+written (self-check `passed`, baseline `orphan: yes`, current `orphan: no` 3/3; judge
+route 12/12). Take 1 is what the self-check harness does automatically; it was not
+rehearsed by hand. Take 5 was not dry-run, because a gate file in this checkout would
+also gate the working session; it was shown in `sess_d3717c15…`.
 
 Optional: produce segments 1:05–2:15 with PRAMAN's own proof-gated
 `command-demonstrate`. That surface is frozen since the 2026-11-05 cleanup, so it needs
