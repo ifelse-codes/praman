@@ -78,13 +78,13 @@ public repository as the test build, a one-click Codespaces route and explicit
 | Public repo + detectable MIT license | Published: github.com/ifelse-codes/praman (MIT) |
 | /.kiro at root, not ignored | Present and tracked |
 | Text description | Draft ready ([devpost-draft.md](devpost-draft.md)) |
-| Video <=3 min on YouTube | Script ready ([video-script.md](video-script.md)); recording pending |
-| Kiro usage write-up | Ready ([kiro-usage.md](kiro-usage.md)); genuinely narrow |
-| Blog / social bonus | Drafts being prepared |
+| Video <=3 min on YouTube | Storyboard rewritten 2026-11-09 from recorded Kiro work only ([video-script.md](video-script.md)); recording pending (owner) |
+| Kiro usage write-up | Ready ([kiro-usage.md](kiro-usage.md)): integration plus six spec-driven changes in recorded Kiro CLI sessions |
+| Blog / social bonus | Drafts updated 2026-11-09; posting needs the owner's yes |
 | Judge access (website/demo/test build) | Public repo test build + Codespaces + [TESTING.md](../TESTING.md) |
 
-**Biggest risk:** Technological Implementation is 20% and Kiro-centric; the truthful
-evidence is one real IDE session plus one authenticated CLI attempt blocked by the
-monthly usage limit. Mitigation: keep the account precise, show the .kiro
-spec/steering/hook/agent assets, and explain where Kiro genuinely helped — never
-inflate.
+**Biggest risk (updated 2026-11-09):** no video yet; presentation is 20% and the video
+is required. Technological Implementation now rests on recorded Kiro CLI work (specs,
+hooks, custom agent, MCP, Power and the spec-driven PRAMAN changes); keep the account
+precise and never inflate it. The 2026-11-05 risk (one IDE session plus a quota-blocked
+CLI attempt) no longer describes the evidence.

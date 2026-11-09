@@ -18,8 +18,8 @@
 - `src/gateway/` — declared finite-state HTTP test service and authored replay.
 - `src/report/` — proof-gated recording: video, command video, speech cache,
   spotlight, code excerpts.
-- `src/review/` — feedback, diagnostics, coverage review.
-- `src/observation/` — intentionally small; observations live in run evidence.
+- `src/review/` — feedback, diagnostics (failure classification in `classify.ts`),
+  coverage review.
 
 ## Proof gates
 Browser: declared checks only, required fresh repeats, stable recorded identity,

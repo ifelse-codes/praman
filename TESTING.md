@@ -19,7 +19,7 @@ build; everything below runs from the public source without private data or cred
    for both command and browser, over both the CLI and a real stdio MCP client.
    Evidence is written under `/tmp/first-use` (outside the repository).
 
-## Local route (macOS/Linux, Node >= 22.12)
+## Local route (macOS/Linux, Node >= 22.13 within 22.x, or >= 24)
 
 ```sh
 git clone https://github.com/ifelse-codes/praman

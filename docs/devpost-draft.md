@@ -72,13 +72,23 @@ The submitted repository is the product, not that campaign. Target-specific inte
 
 ### How Kiro was used
 
-Kiro was used for one bounded, real engineering session — not as the builder of Praman itself.
+Kiro did not build Praman's original engine. It built Praman's Kiro integration, and then it fixed and extended Praman itself, spec first, in recorded Kiro CLI sessions.
 
-On 1 November 2026 I gave Kiro one task: implement a single useful, bounded Headlamp improvement, then prove it with Praman against a real Kubernetes environment. Kiro worked in its IDE; a recorded Kiro spec session named “editor-dryrun-preview” maps to that session, with requirements, design and task notes for the feature. The session ran for 86 minutes (16:07–17:33 UTC) and made 189 recorded tool calls — file reads, searches, shell commands and edits — plus 34 workspace snapshots, touching Headlamp’s editor dialog and test and the Praman example and environment wiring that connected the feature to the Kubernetes-backed check.
+**The integration (spec `kiro-evidence-gate`).** A Kiro CLI agent wrote a custom agent, `praman-explorer`, that may call only Praman's tools. It also wrote a save hook, steering files and an installable Kiro Power that brings Praman's MCP server to any project. The most useful piece is an opt-in finish gate on Kiro's `Stop` hook. When the agent says it is done, the gate runs the declared checks again. If a check fails, the agent is sent back to work. In a recorded session the gate refused to let the agent stop on an off-by-one bug and released it only after the fix.
 
-The session ended when Kiro hit its monthly usage limit (session status: failed, quota exhausted). I completed the remaining work with an AI coding assistant, so authorship of that feature is mixed and is disclosed here. Praman’s core engine, CLI, MCP server, reports and verification logic were not written by Kiro. Praman’s own `.kiro` specs, steering, save hook and custom agent were created by the assistant on 31 October 2026 and refreshed on 5 November 2026 to match the delivered product; they are configuration, not evidence of Kiro development.
+**Praman, improved with Praman.** Each later change started the same way: show the problem on a real run, write a Kiro spec, fix it, then prove the fix with Praman in a Kiro session (through its MCP tools, or through the finish gate).
 
-The full observed-evidence account — session facts, tool-call counts, changed paths, attribution and limits — is in `docs/kiro-usage.md` in the repository.
+- *Bugfix `verify-cancellation`:* pressing Ctrl-C during a check left the tested program running. The agent fixed it and Praman proved the fix in repair mode against the old build (`orphan: yes` before, `orphan: no` in 3 of 3 runs after).
+- *Bugfix `power-path-resolution`:* the Power's server resolved relative paths in its own folder; it now refuses them.
+- *Feature `agent-diagnostics`:* a failed step now says why, for example `locator_ambiguous (3 elements)`, without leaking selectors or values. Reports start with a pass/fail table.
+- *Feature `scenario-actions`:* double-click, select, typing, scrolling, dragging, and waits for an exact element count, so a half-rendered chart can no longer pass.
+- *Feature `named-steps`:* checks can point at a step by name, so inserting a step no longer moves them.
+
+Work that was conversation rather than spec (onboarding, CI fixes, delivery) is marked as such in the write-up. The Kiro IDE was used only for checks, and property-based testing was not used (owner decision). The owner created Kiro's MCP configuration by hand, chose every scope and approved every push.
+
+Kiro's earlier history with this project is also disclosed: one 86-minute IDE session on 1 November 2026 on a Headlamp feature, which ended at the monthly usage limit.
+
+The full account, with a session ID for every claim, is in `docs/kiro-usage.md` in the repository.
 
 ### Challenges I ran into
 
@@ -109,6 +119,9 @@ Verified on the recorded host and in Ubuntu/macOS CI:
 - Three declared modes: `acceptance` (current only), `repair` (declared historical baseline with a named regression) and `comparison` (explicit baseline attribution).
 - Honest verdicts and exits: `passed` / `failed` / `insufficient_evidence`; CLI exits 0/1/2; MCP sets `isError` on non-pass.
 - A public first-use runner that exercises **12 expected CLI and MCP outcomes** — pass, intentional mismatch and unavailable execution for both the browser and command routes — with matching proof verdicts. All twelve behaved as documented; the deliberate negative controls stayed red.
+- The Kiro integration, also usable by any MCP client: a custom agent, an installable Kiro Power and an opt-in `Stop`-hook finish gate that re-runs declared checks when the agent says it is done.
+- Failure diagnosis that names what went wrong (for example `locator_ambiguous (3 elements)`) with a next action, while keeping selectors and values private; a pass/fail table at the top of every report.
+- Thirteen browser actions (including double-click, select, typing, scroll and drag), waits for a state or an exact element count, a `count` check, and step ids that checks can reference.
 - A 14-tool stdio MCP server; a CLI; optional proof-gated narrated walkthroughs that require live replays to match the stored proof.
 - Managed kind/Docker environment lifecycle plus declared HTTP service, workflow, coverage and campaign tooling, implemented and documented. These paths are not part of the validated public first-use route in this submission.
 
@@ -116,7 +129,7 @@ Explicit limits:
 
 - **Not a sandbox.** Commands and browser actions run with your user’s authority and can mutate external systems.
 - **Authored checks, not autonomous testing.** Praman verifies declared requirements; it does not discover requirements, prove whole-application correctness or guarantee security.
-- **Same-host validation only.** The evidenced environment is macOS arm64 with Node 26. Another machine, OS, browser matrix or independent user has not been validated.
+- **Same-host validation plus CI.** The evidenced environment is macOS arm64 with Node 26, and CI runs the full suite on Ubuntu and macOS. An independent person has not yet run the guide.
 - **No published package.** The source is at https://github.com/ifelse-codes/praman; no npm install route is claimed.
 - **Raw evidence is private.** Reports, screenshots, stdout and network observations can contain local paths; they are for local review, not a sanitized public export.
 - **The caller owns state.** Fresh browser contexts do not reset backend data or side effects; seeding, reset and teardown are the caller’s job.
@@ -128,13 +141,13 @@ Explicit limits:
 
 The environment layer is now part of the product: declaration-selected Docker/kind lifecycles can provision real dependencies, exercise workloads, inject controlled failures, reset and tear down owned resources. That is the direction I described, and it is documented, and it is not part of the verified public first-use route; independent-human validation is still pending.
 
-The next steps are hardening and independent validation: repeat the verified flow on another machine and OS with someone who did not build it, publish a clean source candidate, and keep widening real-target evidence without letting a demo dictate the product’s architecture.
+The next steps are hardening and independent validation: have someone who did not build it follow the first-use guide, publish a package, and keep widening real-target evidence without letting a demo dictate the product’s architecture.
 
 The goal is simple: **give coding agents somewhere to test their work — and evidence strong enough to know what to fix next.**
 
 ## Maintainer checklist (do not paste into Devpost)
 
-- [ ] Replace `https://github.com/ifelse-codes/praman` everywhere with the real public repository URL; confirm it is public, MIT-licensed and opens without authentication.
+- [x] Repository URL is the real public repository (`https://github.com/ifelse-codes/praman`); confirm it still opens without authentication.
 - [ ] Replace `<DEMO_VIDEO_URL>` with the public YouTube URL; confirm the video is ≤3:00 and public.
 - [ ] Confirm `docs/kiro-usage.md` and `docs/video-script.md` are committed in the public repository and their internal links resolve.
 - [ ] Re-check this copy against [STATUS.md](STATUS.md): verified capabilities, limits and “no submission made” status.

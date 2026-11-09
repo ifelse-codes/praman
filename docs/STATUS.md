@@ -116,9 +116,12 @@ general simulator and not a sandbox.
   demo video under 3 minutes on public YouTube, Kiro usage write-up, and **judge access**
   (a link to a website, functioning demo or test build; failure may disqualify). PRAMAN
   provides the public repository as the test build, Codespaces and [testing instructions](../TESTING.md).
-- **Submission copy:** truthful Kiro account (`docs/kiro-usage.md`), ≤3-minute video
-  script (`docs/video-script.md`) and submission-ready Devpost draft with the public
-  repository URL filled in and a `<DEMO_VIDEO_URL>` placeholder (`docs/devpost-draft.md`).
+- **Submission copy:** truthful Kiro account (`docs/kiro-usage.md`, current through
+  2026-11-09), ≤3-minute storyboard built only from recorded Kiro work
+  (`docs/video-script.md`, rewritten 2026-11-09; the non-Kiro Headlamp clip is dropped)
+  and a submission-ready Devpost draft with the public repository URL filled in and a
+  `<DEMO_VIDEO_URL>` placeholder (`docs/devpost-draft.md`). Blog and social drafts match
+  the same account.
 - **Release candidate:** rebuilt and sanitized. Packaging is deterministic and the
   procedure is in [release validation](release-validation.md);
   [release-identity.json](../release-identity.json) documents the per-build procedure
@@ -154,13 +157,14 @@ The shipped/frozen/deferred view is in [ROADMAP.md](ROADMAP.md).
 
 ## Remaining before release / submission
 
-1. **Video and submission (owner):** record and upload the ≤3-minute video; replace
-   the remaining `<DEMO_VIDEO_URL>` in the Devpost draft; save and submit. Target
-   Nov 26–27, deadline Dec 4, 2026.
-2. **Kiro:** spec `kiro-evidence-gate` is closed and merged to public `main` (PR #1).
-   Done: the Power path bugfix and specs `verify-cancellation`, `agent-diagnostics`,
-   `scenario-actions` and `named-steps`. Next: spec
-   `submission-story` (video from this work only; the non-Kiro Headlamp clip is dropped).
+1. **Video and submission (owner):** record the takes in `docs/video-script.md`, edit to
+   under 3 minutes, upload publicly to YouTube; replace `<DEMO_VIDEO_URL>` in the Devpost
+   draft and social post; save and submit. Target Nov 26–27, deadline Dec 4, 2026.
+2. **Kiro:** done: specs `kiro-evidence-gate`, `power-path-resolution`,
+   `verify-cancellation`, `agent-diagnostics`, `scenario-actions` and `named-steps`.
+   Spec `submission-story`: documents, Kiro write-up, storyboard and submission copy are
+   done (tasks 1–3, 5.2 copy); recording, upload, submission and the final fresh-clone
+   check are left (tasks 4, 5, 6).
 3. **Independent-human validation:** a person other than the owner following the
    first-use guide (CI already covers two operating systems).
 4. **Post-submission backlog:** npm publish pipeline, Windows support, deferred

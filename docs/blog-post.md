@@ -18,16 +18,18 @@ To move beyond a toy, I ran PRAMAN against Headlamp, an open-source Kubernetes d
 
 ## What was verified
 
-- **190 tests / 28 files**, with build, lint and test-typecheck passing.
+- **276 tests / 35 files** on the recorded host (2026-11-09), with build, lint and test-typecheck passing; CI runs the suite on Ubuntu and macOS.
 - The public first-use runner exercises **12 expected CLI and MCP outcomes** — pass, deliberate mismatch and unavailable execution on both routes — and all twelve behave as documented; the negative controls stay red.
 - **14 MCP tools** and **16 CLI commands**.
-- **Six narrated walkthroughs** from development (Headlamp, Kan, Stern and jq campaigns) are preserved in a private external archive, not the repository, because they contain local paths and infrastructure data.
+- **Six narrated walkthroughs** from earlier development (Headlamp, Kan, Stern and jq campaigns) are preserved in a private external archive, not the repository, because they contain local paths and infrastructure data.
 
 ## How Kiro was used
 
-Kiro was genuinely used, but narrowly — said plainly rather than inflated. On 1 November 2026 I gave Kiro one bounded task in its IDE: implement a useful Headlamp improvement, then prove it with PRAMAN against a real Kubernetes environment. Kiro ran for 86 minutes with a recorded spec session and made real edits and tool calls; the session ended when Kiro hit the monthly usage limit.
+Kiro did not build PRAMAN's original engine; an AI coding assistant did, under my direction, before 5 November 2026. What Kiro did is the part I care about most: from 7 November, Kiro CLI agents built PRAMAN's Kiro integration and then used PRAMAN to fix and extend PRAMAN itself, spec first, in recorded sessions.
 
-An AI coding assistant completed the remaining work. PRAMAN's core engine, CLI, MCP server, reports, tests and documentation were built by the assistant under my direction — not by Kiro. PRAMAN's own `/.kiro` specs, steering, save hook and custom agent are configuration created by the assistant, not evidence of Kiro development. Kiro CLI was installed and authenticated, but the same monthly limit blocked a second real session. The full account is in the [Kiro usage write-up](kiro-usage.md).
+The integration is a custom agent that may call only PRAMAN's tools, an installable Kiro Power, steering, and an opt-in finish gate on Kiro's `Stop` hook. When the agent says "done", the gate runs the declared checks again and sends the agent back if one fails. In a recorded session it refused to let the agent stop on an off-by-one bug and released it after the fix.
+
+Then came five changes to PRAMAN, each shown first on a real failing run: Ctrl-C no longer leaves the tested program running (proven in repair mode against the old build), the Power refuses relative paths, failed steps name their cause (`locator_ambiguous (3 elements)`), scenarios gained double-click, select, typing, scroll and drag plus element-count waits, and checks can point at steps by name. My earlier, narrower Kiro use (one 86-minute IDE session on 1 November that ended at the monthly usage limit) is disclosed too. The full account, with session IDs, is in the [Kiro usage write-up](kiro-usage.md).
 
 ## Limits
 

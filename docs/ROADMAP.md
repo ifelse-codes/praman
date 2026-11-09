@@ -65,10 +65,11 @@ works the same for every agent and the CLI, and keeps existing declarations unch
 | 3 | ~~Only 8 browser actions; agents write side scripts for double-click, select, typing, scroll and drag~~ **Done 2026-11-09** | Add `dblclick`, `selectOption`, `type`, `scroll`, `drag` | `scenario-actions` | S–M |
 | 3 | ~~`waitFor` only waits for "visible"; a half-rendered page can pass~~ **Done 2026-11-09** | `waitFor` state (`hidden`, `attached`, `detached`) or exact element count; a `count` check | `scenario-actions` | S |
 | 4 | ~~Checks point at steps by number, so inserting a step shifts them~~ **Done 2026-11-09** | Optional step names that checks can reference | `named-steps` | M |
-| 5 | No demo video yet | A video of under 3 minutes made only from this Kiro work (the earlier non-Kiro Headlamp clip is dropped) | `submission-story` | M |
+| 5 | No demo video yet (storyboard and submission copy done 2026-11-09; recording is the owner's) | A video of under 3 minutes made only from this Kiro work (the earlier non-Kiro Headlamp clip is dropped) | `submission-story` | M |
 
-Next session starts with order 5: spec `submission-story` (the demo video). It needs
-the owner for the story, the recording decision and the YouTube upload.
+Next session starts with order 5: the owner records the takes listed in
+`docs/video-script.md` (spec `submission-story` task 4); the agent can dry-run every take
+first and review the cut against `docs/video-guidelines.md`.
 
 ### Carried over from the 2026-11-08 session (resolved 2026-11-09)
 

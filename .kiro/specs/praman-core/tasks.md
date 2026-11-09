@@ -17,17 +17,19 @@
 - [x] CI green on Ubuntu and macOS; CI also runs the documented first-use route on Linux
 - [x] Judge access: TESTING.md, one-click Codespaces devcontainer, expected 12/12 outcomes
 - [x] Official Kiroween 2026 rules captured, including the judge-access (testing) clause
-- [x] Truthful Kiro usage account with a per-session usage log (quota block lifted by 2026-11-07)
+- [x] Truthful Kiro usage account with a per-session usage log
 - [x] Submission video script, Devpost draft, blog/social drafts, static project page
 - [x] Platform matrix and explicit deferred-capability list
-- [x] Node floor aligned with the locked toolchain (>=22.12) and documented
+- [x] Node floor aligned with the locked toolchain (>=22.13 within 22.x, or >=24) and documented
 - [x] Release identity is procedural and excluded from the candidate (no stale hash)
+- [x] Bugfix: Power relative paths resolve against the installed Power directory (`PRAMAN_RELATIVE_PATHS=reject`, 2026-11-08)
+- [x] Spec `verify-cancellation`: interrupted verification no longer leaves the declared command running (PR #4, #5)
+- [x] Spec `agent-diagnostics`: failure kinds and safe counts; pass/fail table in reports (PR #9, #10)
+- [x] Spec `scenario-actions`: dblclick, selectOption, type, scroll, drag; waitFor state/count; count check (PR #11)
+- [x] Spec `named-steps`: step ids that checks and stories can reference (PR #12)
 
 ## Remaining (owner-executed)
-- [ ] Record and upload the <=3 min demo video; replace <DEMO_VIDEO_URL> in the Devpost draft
-- [ ] Save and submit the Devpost form (target Nov 26-27; deadline Dec 4, 2026)
+- [ ] Spec `submission-story`: record and upload the <=3 min demo video; replace <DEMO_VIDEO_URL> in the Devpost draft
+- [ ] Save and submit the Devpost form (target Nov 26-27; deadline Dec 4, 2026 2:00 pm PT)
 - [ ] Independent-human first-use validation (CI covers two operating systems)
-- [ ] Spec `verify-cancellation`: interrupted verification leaves the declared command running (reproduced 2026-11-07)
-- [ ] Bugfix: Power relative paths resolve against the installed Power directory (owner decision 2-A)
-- [ ] Spec `submission-story`: video, Kiro write-up rewrite, Devpost
 - [ ] Private-archive retention decision after the submission is final

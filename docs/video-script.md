@@ -1,256 +1,191 @@
 # PRAMAN submission video — storyboard (≤3:00)
 
 **Status:** recording plan, not a recording. No video has been recorded or uploaded;
-`<DEMO_VIDEO_URL>` is a placeholder for the Devpost field. Nothing here authorizes
-publishing — record only when the submission work is approved.
+`<DEMO_VIDEO_URL>` is a placeholder for the Devpost field. Recording and upload need
+the owner's explicit yes (spec `submission-story`, requirement 1.6).
 
-**Format:** public YouTube video, hard limit 3:00 (target 2:55), 16:9,
-1920×1080 or 2560×1440, 30 fps, H.264/AAC, one conversational speaker, captions
-optional (burned-in or YouTube). Follow the [video standard](video-guidelines.md):
-explain what is wrong, what changed and what was delivered in plain language; no
-action-note narration, no raw logs, no full diff, no green-check montage.
+Rewritten 2026-11-09 (spec `submission-story` task 3). The earlier plan reused an
+archived Headlamp clip that Kiro did not produce; it is dropped. Every scene below is a
+fresh take of work that was done and proven in recorded Kiro CLI sessions (session IDs in
+[kiro-usage.md](kiro-usage.md)). Follow the [video standard](video-guidelines.md):
+the real failure first, one small code focus, the same action after the fix, evidence
+and limits at the end, in plain conversational speech.
 
-**Honesty rules:** every frame of live software is a real run. The repair segment
-uses the archived 2:49 Headlamp walkthrough (real PRAMAN recording) with a new
-voice-over. On-screen paths use `$PRAMAN` and `/tmp`; never show home directories,
-usernames, session IDs, email addresses, credentials or private infrastructure.
+**Mode:** repair. The story is spec `verify-cancellation`: PRAMAN's own Ctrl-C bug,
+fixed by a Kiro CLI agent and proven by PRAMAN in `repair` mode against the historical
+baseline `643fbe0` (the parent of the fix). That baseline is caller-declared history,
+not signed provenance; say so on screen.
+
+**Format:** public YouTube video, under 3:00 (target 2:45), 16:9, 1920×1080, 30 fps,
+H.264/AAC, one conversational speaker, captions on. Terminal font ≥18 pt. No music
+with third-party rights, no trademarks beyond names used to describe the tools.
+
+**Honesty rules:** every terminal frame is a real run of the command shown. Kiro scenes
+are fresh Kiro CLI takes recorded for the video; label them *Kiro CLI, recorded
+<date>*. Never show home directories, usernames, emails, credentials or full session
+IDs on screen (use `$PRAMAN` and `/tmp`). Never say Kiro built PRAMAN.
 
 ## Summary timeline
 
-| Time | Segment | Spoken words (guide) |
-| --- | --- | --- |
-| 0:00–0:25 | Problem: AI code, trust gap | 57 |
-| 0:25–0:50 | What PRAMAN is: agent writes, PRAMAN verifies | 60 |
-| 0:50–1:35 | Live demo: `scenario-verify` + `command-verify` and evidence | 77 |
-| 1:35–2:05 | Real repair excerpt: archived Headlamp walkthrough | 69 |
-| 2:05–2:30 | MCP + evidence model: 12 expected outcomes | 53 |
-| 2:30–2:50 | Honest limits | 45 |
-| 2:50–3:00 | Closing card | 19 |
+| Time | Segment | What the viewer must understand | Words |
+| --- | --- | --- | --- |
+| 0:00–0:20 | The problem | Agents say "done"; nothing checked it | 45 |
+| 0:20–0:45 | The real bug | Stopping a check left the tested program running | 55 |
+| 0:45–1:05 | The Kiro spec | The bugfix spec names current, expected and unchanged behavior | 45 |
+| 1:05–1:30 | PRAMAN proves the old build is broken | Repair proof on the baseline prints `orphan: yes` | 50 |
+| 1:30–1:55 | The code fix, one focus | Stop the whole process group, then force it after 2 s | 55 |
+| 1:55–2:15 | Same action after the fix | `orphan: no` in 3 of 3 runs, verdict `passed` | 40 |
+| 2:15–2:35 | The finish gate | The `Stop` hook sends the agent back while a check fails | 45 |
+| 2:35–2:50 | Limits and where to try it | Judge route 12/12; not a sandbox; authored checks | 40 |
 
-**Narration total: 380 words ≈ 2:27–2:43 at 140–155 words per minute.** The
-remaining time is scene holds and live execution; do not pad with filler. If a
-take runs long, cut setup, never explanations and never checks.
+**Narration total ≈ 375 words ≈ 2:25–2:40 at 140–155 words per minute.** The rest is
+scene holds. If a take runs long, cut setup footage, never an explanation or a check.
 
 ## Segment detail
 
-### 0:00–0:25 — Problem: AI code and the trust gap
+### 0:00–0:20 — The problem
 
-**On screen:** quiet montage. A real build log line (`build passed`) over dimmed
-code; cut to the release page from the demo; title overlay: *AI wrote it. Does it
-work?* No fabricated incident, no fake dashboard.
+**On screen:** a Kiro CLI session where the agent ends with a confident "done"
+message (fresh take of any small task). Title overlay: *The agent says it's done. Is it?*
 
-**Narration:** "AI can write a lot of code now. The hard part is knowing whether it
-actually works. A clean build and a few passing tests can still hide a broken
-screen or a wrong value. So we end up trusting the agent's summary instead of the
-software. That trust gap is what PRAMAN is built to close."
+**Narration:** "Coding agents are fast, and they sound sure of themselves. But a
+finished message is not evidence. PRAMAN is a tool the agent calls to run real checks
+against the software it changed, and to bring back what actually happened."
 
-**Edit notes:** no music sting or marketing tone; leave 0.5 s of silence before
-the next line.
+### 0:20–0:45 — The real bug
 
-### 0:25–0:50 — What PRAMAN is
+**On screen:** terminal. Build commit `643fbe0` (the self-check's
+`prepare-baseline.sh` does this), start `command-verify` on a declaration whose command
+sleeps, press Ctrl-C, then `ps` shows the declared command still running.
 
-**On screen:** animated loop diagram — *coding agent → PRAMAN → passed / failed /
-insufficient_evidence* — then a readable excerpt of a real `REPORT.md` verdict line.
-Text overlay: *Agent writes. PRAMAN verifies.*
+**Narration:** "Here's a real bug from PRAMAN itself. I start a check, then press
+Ctrl-C. PRAMAN exits, but look: the program it was testing is still running. Left
+alone, that program keeps using the machine, and the next run can trip over it. A
+verification tool must clean up after itself."
 
-**Narration:** "PRAMAN is an evidence-first verification layer for AI coding
-agents. The agent still writes and fixes the code. PRAMAN runs declared browser or
-command checks against the real software, repeats them in fresh sessions, and
-returns a verdict you can inspect: passed, failed, or insufficient evidence. It
-shows what it observed — and missing evidence never becomes a green check."
+**Lower-third:** *Old build 643fbe0 — before the fix.*
 
-### 0:50–1:35 — Live demo: browser and command verification
+### 0:45–1:05 — The Kiro spec
 
-**On screen (real terminal, font ≥18 pt):**
+**On screen:** Kiro CLI with `.kiro/specs/verify-cancellation/bugfix.md` open; focus
+in turn on *current behavior*, *expected behavior* and *unchanged behavior*.
 
-```sh
-export PRAMAN=/path/to/praman
-node "$PRAMAN/dist/cli.js" scenario-verify \
-  /tmp/praman-demo/site/release-acceptance.json -o /tmp/praman-demo/browser-01 --summary
-# Outcome: passed      (exit 0)
+**Narration:** "I asked a Kiro agent to fix it, spec first. The bugfix spec says what
+happens now, what should happen, and what must not change: a run that is not
+interrupted behaves exactly as before."
 
-node "$PRAMAN/dist/cli.js" command-verify \
-  /tmp/praman-demo/command-pass.json -o /tmp/praman-demo/command-01 --summary
-# Outcome: passed      (exit 0)
-```
+### 1:05–1:30 — PRAMAN proves the old build is broken
 
-Then cut to the same runs' artifacts in an editor: `REPORT.md` (*Verdict: passed*,
-declared checks, scope line), `feedback.json` (`"verdict": "passed"`) and the
-`verdict` field in the run's private `proof.json` (show the verdict/check lines
-locally; do not present private proof as a sanitized public export). Add one real
-evidence screenshot from `browser-01/after-1/check-1.png`, labeled as evidence from
-this run. Optionally flash the target page briefly before the run.
+**On screen:** the Kiro agent runs the repair check through PRAMAN's MCP tool
+`praman_command_verify` on `examples/self-check/cancellation/commands.json`. Show the
+baseline line `orphan: yes` from that run's report, not a raw JSON dump.
 
-**Narration:** "Here's the browser route. I declare a small release page and what it
-should show, then run scenario-verify. Two fresh Chromium sessions run the same
-steps and checks. The verdict is passed, exit zero. Next, command-verify. Same
-contract: explicit executable, expected exit, stdout and artifact checks, two
-repeats. Passed again. The REPORT and feedback files hold the verdict, the observed
-checks, and the next action. I'm not trusting a summary; I'm looking at what the
-run recorded."
+**Narration:** "Before touching code, the agent asks PRAMAN to prove the bug. This is
+repair mode: PRAMAN runs the old build and the new one with the same check. The old
+build prints 'orphan: yes'. The bug is real, and the check can see it."
 
-**Edit notes:** jump-cut between invocation and result is allowed; the shown output
-must be from that same invocation. Keep each verdict line on screen ≥3 s. If a run
-unexpectedly fails, show it and say so — do not splice a different output.
+### 1:30–1:55 — The code fix, one focus
 
-### 1:35–2:05 — Real repair evidence from the archived Headlamp walkthrough
+**On screen:** `src/eval/command.ts`, the `onAbort` handler (current `main`, lines
+94–99), one focus only, readable font, file name and line numbers visible.
 
-**On screen:** a 30–45 s excerpt of the archived 2:49 narrated Headlamp walkthrough
-(real PRAMAN recording, 1280×720 — pad/scale to 16:9, keep text uncropped). Order:
-the real failure, one focused code scene, the fixed tooltip. Mute the clip's
-original narration and play this segment's voice-over instead.
+**Narration:** "Here's the fix. When a stop is requested, PRAMAN sends a polite stop
+signal to the whole group of processes it started, not just the first one. If anything
+is still alive two seconds later, it forces it to stop. The run is then marked
+'not proven', because it never finished."
 
-**Narration:** "This clip comes from an earlier PRAMAN Headlamp cycle, not from
-Kiro's recorded session. Headlamp's link crashed when a tooltip was used — the
-error says getName is not a function. The fix called getName on the right object
-and forwarded the DOM reference the tooltip needed. Same action afterwards: the
-tooltip opens, no crash. Before, code, after — the walkthrough is generated only
-after the repair passes verification."
+### 1:55–2:15 — Same action after the fix
 
-**Required lower-third (full duration of the clip):**
-*Earlier PRAMAN Headlamp cycle — not Kiro's recorded session. Source: archived
-2:49 narrated walkthrough.*
+**On screen:** the same check, same declaration. Current build: `orphan: no` in all
+3 repeats, `Outcome: passed`, exit 0; then the top of `REPORT.md`, the `## Checks`
+table.
 
-See [the clip map](#archived-headlamp-clip-map) below for candidate in/out points.
+**Narration:** "Same action, after the fix. Three fresh runs, and nothing is left
+behind. PRAMAN only says 'passed' because the old build failed this exact check and
+every new run passed it."
 
-### 2:05–2:30 — MCP and the evidence model
+### 2:15–2:35 — The finish gate
 
-**On screen:** split screen. Left: a real MCP client config fragment
-(`mcpServers → praman → command/args: node …/dist/cli.js mcp`) and a short,
-readable list of the 14 tools. Right: a real run of
-the public first-use runner showing its 12 outcome lines (pass / mismatch /
-unavailable, browser and command). If the run is shown sped up or jump-cut, label
-it *shortened playback*; never edit the outcome lines.
+**On screen:** Kiro CLI with the opt-in `Stop`-hook gate (`praman-gate.json`) naming a
+small failing check (the off-by-one sum demo). The agent says it's finished, the gate
+answers *FAILED*, the agent fixes the sum, and the gate lets it stop.
 
-**Narration:** "The same engines run over MCP. I add PRAMAN as a stdio server and
-the agent calls the tools directly. PRAMAN's public first-use runner exercises
-twelve expected outcomes across CLI and MCP — pass, mismatch, and unavailable.
-All twelve behave as documented, and the negative controls stay red. Missing
-evidence never becomes green."
+**Narration:** "Kiro hooks close the loop. With the finish gate on, when the agent says
+'done', PRAMAN runs the declared checks again. A failing check sends the agent back to
+work. Here it fixes an off-by-one, and only then may it stop."
 
-**On-screen note to keep visible:** *12 expected outcomes — the red lines are
-deliberate negative controls, not bugs. Exit codes 0/1/2.*
+**Lower-third:** *Separate small demo of the gate (sum script), not the Ctrl-C fix.*
 
-### 2:30–2:50 — Honest limits
+### 2:35–2:50 — Limits and where to try it
 
-**On screen:** three plain text cards over a dimmed real PRAMAN screen:
-*Not a sandbox — commands run with your authority* · *Authored checks, not
-autonomous discovery* · *Same-host validation · no published package yet*.
+**On screen:** the judge route `node examples/first-use/run.mjs` finishing with its 12
+outcome lines (shortened playback labeled as such), then a closing card:
+*github.com/ifelse-codes/praman · MIT · Kiro usage: docs/kiro-usage.md*.
 
-**Narration:** "Limits, honestly. PRAMAN is not a sandbox — commands run with your
-user's authority. The checks are authored, not discovered automatically.
-Validation covers the recorded host and Ubuntu/macOS CI; there is no published package. The demo is
-evidence of the checks it shows, not proof of whole-application correctness."
+**Narration:** "You can run the same twelve checks from the repository. To be clear
+about limits: PRAMAN is not a sandbox, and it checks only what you declare, not the
+whole app. Evidence before you ship."
 
-### 2:50–3:00 — Closing
+## Takes to record (owner)
 
-**On screen:** closing card: *PRAMAN (प्रमाण) — evidence*; **Source:
-`https://github.com/ifelse-codes/praman`**; *Kiro usage write-up in `docs/kiro-usage.md`*; *Thanks for
-watching.* Fade out. Do not put `<DEMO_VIDEO_URL>` on the video itself; that
-placeholder belongs in the Devpost field.
+Run everything from a clean checkout of public `main`. Use fresh output directories
+under `/tmp`. Stop any server you start.
 
-**Narration:** "PRAMAN — evidence before you ship. Source and the full Kiro usage
-write-up are linked below. Thanks for watching."
+1. Bug take: `sh examples/self-check/cancellation/prepare-baseline.sh`, then the
+   baseline build's `command-verify` on a sleeping command, Ctrl-C, `ps`.
+2. Spec take: Kiro CLI, open the three sections of
+   `.kiro/specs/verify-cancellation/bugfix.md`.
+3. Proof take: Kiro CLI with `--agent praman-explorer`; ask it to run
+   `praman_command_verify` on `examples/self-check/cancellation/commands.json` with an
+   absolute `outDir`. Show the baseline and current lines from `REPORT.md`.
+4. Code take: `src/eval/command.ts` lines 94–99 in a large font.
+5. Gate take: a temporary `praman-gate.json` naming the sum demo declaration (private
+   `.praman/gate-demo/`, an off-by-one `sum.mjs` and its `sum.json`; recreate it from
+   the `kiro-evidence-gate` usage-log rows if missing); the agent finishes, is sent
+   back, fixes, finishes. Remove the gate file afterwards.
+6. Judge take: `node examples/first-use/run.mjs /tmp/first-use` → 12 lines, exit 0.
 
-## Demo setup (plan once, before recording)
-
-Run everything outside the repository; do not create `.praman/` in the PRAMAN
-checkout.
-
-1. Build PRAMAN and install Chromium (see [first use](first-use.md#1-setup-once)):
-   `npm ci && npm run build`, `npx playwright install chromium`.
-2. Create a disposable fixture under `/tmp/praman-demo/site` from the runnable
-   delayed-navigation example in
-   [static browser acceptance](static-browser-acceptance.md#runnable-delayed-navigation-example):
-   `index.html`, `release.html` and `release-acceptance.json` with
-   `afterUrl: "http://127.0.0.1:8080"`.
-3. Create `/tmp/praman-demo/command-pass.json` from the public JSON-total
-   declaration in [README's tested source setup](../README.md#tested-source-setup).
-4. Start the owned loopback server from the fixture directory:
-   `python3 -m http.server 8080 --bind 127.0.0.1`. Stop it afterwards; never adopt
-   or kill someone else's server.
-5. Dry-run both commands into throwaway output directories and confirm
-   `Outcome: passed` with exit 0. For the recorded take use fresh directories
-   (existing output directories are refused).
-
-## Archived Headlamp clip map
-
-Planning anchors only — confirm exact in/out points on the archived 2:49 encode
-and trim on real scene boundaries. Previously inspected frames: 0:12 (failure),
-0:50, 1:40, 2:30.
-
-| Clip intent | Approx. range in 2:49 movie | What must be visible |
-| --- | --- | --- |
-| Failure | ≈0:08–0:22 | Real Headlamp UI with the red error text `props.getName is not a function`; start on the visible symptom, not a stack dump |
-| Code | ≈0:50–1:20, one of the movie's five code scenes | One focused source beat: the wrong receiver and the DOM-reference plumbing, readable lines, one idea |
-| Fixed | ≈2:30–2:45 | Same action showing the link and the working tooltip (`praman-proof`); no re-created UI |
-
-Total excerpt target 30–45 s. The movie's own narration and captions may be kept
-only if the narration still matches this script; otherwise mute it and re-record.
-Do not imply this clip is a fresh run made for the submission video or that Kiro
-performed this repair.
-
-## Optional alternative: archived jq 0:52 short cut
-
-The external archive also holds an accepted **0:52 short command walkthrough for a
-jq repair** (a real recorded command verification) and a longer jq cut.
-
-- Use it only if a live CLI capture for 0:50–1:35 is blocked.
-- Trim it to ≈45 s to keep the timeline, or extend that segment by ≤7 s and trim
-  the closing/limits time; total must stay ≤3:00.
-- Required lower-third: *Archived command walkthrough — recorded earlier, not a
-  fresh run for this video.*
-- It demonstrates the command route only, not browser verification; keep the
-  MCP/12-outcome segment so the evidence model is still shown.
-- The archive is external (see [ARCHIVE.md](ARCHIVE.md)); do not claim a public
-  link until the clip is actually uploaded.
+Optional: produce segments 1:05–2:15 with PRAMAN's own proof-gated
+`command-demonstrate`. That surface is frozen since the 2026-11-05 cleanup, so it needs
+a dry run with `command-preview` first and the owner's approval.
 
 ## Recording checklist
 
 ### Before recording
 
 - [ ] Read [video-guidelines.md](video-guidelines.md) and this storyboard end to end.
-- [ ] Build, install Chromium, and finish a clean dry run of both demo commands.
-- [ ] Create fresh `/tmp` output directories for the recorded take; no `.praman/` in the repo.
-- [ ] Rehearse the 380-word narration with a timer; target 2:45–2:55 including pauses.
-- [ ] Confirm the archived 2:49 Headlamp movie and the 0:52 jq short cut are available; write down the exact trims you will use.
-- [ ] Clean the desktop: no notifications, chat windows, bookmarks, tabs or personal files visible; terminal prompt generic (no username/hostname); no home paths, session IDs, emails or credentials on screen.
-- [ ] Set 16:9 resolution, 30 fps, terminal font ≥18 pt, browser zoom 100 %, consistent light/dark theme.
-- [ ] Test the microphone and screen-capture levels; no music needed.
+- [ ] `npm ci && npm run build`; Chromium installed; dry-run every take into `/tmp`.
+- [ ] Rehearse the narration with a timer; target 2:40–2:50 with pauses.
+- [ ] Clean desktop: no notifications, personal tabs, usernames, home paths, emails
+  or credentials on screen; generic prompt.
 
 ### While recording
 
-- [ ] Record each segment as a separate take; real output only, no fabricated success.
-- [ ] If a demo run fails, show it or retry into a fresh directory and say so in narration; never splice a different run's output under the command.
-- [ ] Keep verdict lines and the report's `Verdict: passed` readable for ≥3 s.
-- [ ] Show `REPORT.md`, `feedback.json` and the `proof.json` verdict from the same run as the command on screen.
-- [ ] Add the required lower-third on the archived repair clip and on any shortened playback; label archived material.
-- [ ] Keep narration conversational and matched to what is on screen; do not read test IDs or dump logs.
+- [ ] Real output only; if a run fails, show it or retry into a fresh directory and
+  say so. Never splice another run's output under a command.
+- [ ] Keep each verdict line readable for at least 3 seconds.
+- [ ] Label the baseline as caller-declared history and the gate demo as separate.
 
 ### After recording
 
-- [ ] Watch the full video with sound; check every claim against
-  [STATUS.md](STATUS.md) and [kiro-usage.md](kiro-usage.md). No "Kiro built PRAMAN",
-  no sandbox claim, no whole-application correctness, no invented links.
-- [ ] Verify encoded duration ≤180.0 s (target ≈2:55), audio present, captions
-  accurate, 1080p, no private data in any frame.
-- [ ] Replace `https://github.com/ifelse-codes/praman` on the closing card with the real public URL and
-  confirm it opens.
-- [ ] Upload as a public YouTube video, then set `<DEMO_VIDEO_URL>` in
-  [the Devpost copy](devpost-draft.md); do not claim an upload before the URL exists.
-- [ ] Stop the owned server and clean up `/tmp` demo directories as desired;
-  preserve the archived source clips.
+- [ ] Watch the whole video with sound. Can a new viewer answer: what was broken, why
+  does this code fix it, what was delivered? If not, rewrite and re-record.
+- [ ] Check every claim against [STATUS.md](STATUS.md) and
+  [kiro-usage.md](kiro-usage.md). No "Kiro built PRAMAN", no sandbox claim, no
+  whole-application claim.
+- [ ] Encoded duration under 180 s, audio present, captions accurate, 1080p, no
+  private data in any frame.
+- [ ] Upload as public on YouTube, then set `<DEMO_VIDEO_URL>` in
+  [the Devpost copy](devpost-draft.md) and [the social post](social-post.md).
 
 ## Claims: keep, label, avoid
 
-**Keep:** one real Kiro IDE session on one bounded Headlamp feature, disclosed in
-[kiro-usage.md](kiro-usage.md); PRAMAN verifies with authored checks and repeated
-runs; missing evidence never becomes green.
+**Keep:** a Kiro CLI agent fixed this PRAMAN bug, spec first; PRAMAN proved it in
+repair mode (baseline `orphan: yes`, current `orphan: no` 3/3); the finish gate sends
+an agent back on a failing check.
 
-**Label:** the repair clip is an earlier PRAMAN cycle, not Kiro's session; the jq
-clip is archived, not fresh; the 12-outcome matrix includes deliberate negative
-controls.
+**Label:** the baseline is caller-declared history; the gate scene is a separate small
+demo; any sped-up playback.
 
 **Avoid:** "Kiro built PRAMAN", "sandbox", "autonomous testing", "proves the app is
-correct", "zero-config", or any link that does not resolve. The submission's
-verified-capability and limit lists live in [devpost-draft.md](devpost-draft.md).
+correct", "zero-config", or a link that does not resolve.

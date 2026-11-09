@@ -3,43 +3,77 @@
 This is the truthful usage account for the Kiroween submission. It separates what
 Kiro actually did from what an AI coding assistant and the submitter did.
 
-## Current state (2026-11-07 onward)
+## Current state (2026-11-07 onward, updated 2026-11-09)
 
-**Short version: from 2026-11-07, Kiro built and proved PRAMAN's Kiro integration in
-recorded Kiro CLI sessions, with the owner running the interactive CLI and IDE checks.
-Kiro did not build PRAMAN's original verification core.**
+**Short version: from 2026-11-07, Kiro CLI agents built and proved PRAMAN's Kiro
+integration, and then fixed and extended PRAMAN itself through six spec-driven changes,
+in recorded Kiro CLI sessions. The owner ran the interactive checks and made every scope
+and publishing decision. Kiro did not build PRAMAN's original verification core
+(everything that existed by 2026-11-05).**
 
 - **Where:** Kiro CLI 2.37.1 with the V3 agent, in this repository. The main working
-  session is `sess_bdb9debc-8d36-4e92-bbd9-095eeb828b60`; headless proof runs and
+  sessions are `sess_bdb9debc-8d36-4e92-bbd9-095eeb828b60` (2026-11-07/08),
+  `sess_90d45003-fc3a-45b8-88cb-dc94739e0f80` (2026-11-08) and
+  `sess_c1fcf2e4-6dba-4de9-8370-e464f14df771` (2026-11-09). Headless proof runs and
   owner-run interactive CLI and IDE sessions are listed in the
-  [usage log](#usage-log-2026-11-07-onward), each with what it showed.
+  [usage log](#usage-log-2026-11-07-onward), each with what it showed (27 distinct
+  sessions, 79 rows on 2026-11-09).
 - **What Kiro built (spec `kiro-evidence-gate`, closed 2026-11-08):**
   - the `praman-explorer` custom agent with a permission rule allowing only `praman/*`;
   - a v1 `PostFileSave` lint hook, replacing an invalid hook file;
   - the opt-in `Stop`-hook finish gate (`kiro-power/scripts/praman-gate.mjs`) and its
     8 tests;
   - two steering files (`fileMatch` and `auto`);
-  - the installable Kiro Power in `kiro-power/` (manifest, MCP config, skill, README);
-  - the three specs `kiro-evidence-gate`, `verify-cancellation` (bugfix) and
-    `submission-story`, plus the documentation updates.
+  - the installable Kiro Power in `kiro-power/` (manifest, MCP config, skill, README).
+- **What Kiro changed in PRAMAN itself (2026-11-08/09, each started by reproducing the
+  problem on a real run, then fixed, tested and proven in a Kiro session):**
+  - bugfix `power-path-resolution`: the Power's MCP server refuses relative paths
+    (`PRAMAN_RELATIVE_PATHS=reject`) instead of resolving them in its own folder;
+  - bugfix `verify-cancellation`: Ctrl-C, SIGTERM or an MCP cancel stops every program
+    PRAMAN started and records the run as not proven; PRAMAN checks this fix on itself
+    in repair mode (`examples/self-check/cancellation/`);
+  - feature `agent-diagnostics`: failure kinds and safe counts (for example
+    `locator_ambiguous (3 elements)`) and a pass/fail table in reports;
+  - feature `scenario-actions`: `dblclick`, `selectOption`, `type`, `scroll`, `drag`,
+    `waitFor` state/count and a `count` check, plus a redaction crash found on the way;
+  - feature `named-steps`: step ids that checks and story beats can reference.
+  - Delivered to the public repository in PRs #3–#5, #9, #11 and #12 (with docs in
+    #6–#8 and #10), with the owner's yes for each push and merge. Since PR #4 every merge
+    was a fast-forward after green CI on Ubuntu and macOS.
 - **What the owner did:** created `.kiro/settings/mcp.json` by hand (Kiro does not let
   the agent change its own MCP configuration), ran the interactive CLI and IDE
-  sessions, approved each edit in the recorded gate demo, and made every scope
-  decision.
-- **Observed in Kiro:** MCP calls returned `passed` and `failed` verdicts in the CLI
-  (interactive and headless); the IDE listed all 14 `praman_*` tools; the finish gate
-  rejected a stop on a failing check and released it after the agent's fix
-  (interactive CLI, owner-approved edits); the Power ran a `passed` check from a
-  separate project.
+  sessions, approved each edit in the recorded gate demo, chose the scope of every spec
+  and approved every push and merge.
+- **Observed in Kiro:** MCP calls returned `passed`, `failed` and `insufficient_evidence`
+  verdicts in the CLI (interactive and headless); the IDE listed all 14 `praman_*`
+  tools; the finish gate rejected a stop on a failing check and released it after the
+  agent's fix (interactive CLI, owner-approved edits); the Power ran a `passed` check
+  from a separate project; a headless agent saw `locator_ambiguous`, `matched: 3` in its
+  MCP result with no selector text.
+
+### Spec-driven versus vibe work
+
+| Work | How | Evidence |
+| --- | --- | --- |
+| Kiro integration (agent, hooks, gate, steering, Power) | Spec `kiro-evidence-gate` (feature) | `.kiro/specs/kiro-evidence-gate/` |
+| Power path bug | Spec `power-path-resolution` (bugfix: current, expected and unchanged behavior) | `.kiro/specs/power-path-resolution/` |
+| Orphaned processes on Ctrl-C | Spec `verify-cancellation` (bugfix) | `.kiro/specs/verify-cancellation/` |
+| Failure diagnosis, new actions, step ids | Specs `agent-diagnostics`, `scenario-actions`, `named-steps` (feature, requirements → design → tasks) | `.kiro/specs/` |
+| Submission material | Spec `submission-story` (feature) | `.kiro/specs/submission-story/` |
+| Onboarding, CI fixes, Git/GitHub delivery, docs updates | Vibe (conversation in the CLI) | Usage log rows marked Git/GitHub or docs |
+
+Specs were written as Markdown files by the agent, not through `/spec new`. Each spec's
+tasks were ticked only after the change ran on a real target; tests that fail on the old
+code are recorded in the spec tasks.
 
 | Kiro feature | Status | Evidence |
 | --- | --- | --- |
 | Kiro CLI (V3, interactive and headless) | Used | Usage log, every row |
 | Kiro IDE | Used for checks only (MCP tool listing, lint hook). Not a target: PRAMAN is built for agents through the CLI and MCP (owner decision 2026-11-08) | `sess_7732334c…`; one earlier run invalid (Restricted Mode) |
-| Specs | Used: 2 feature specs, 1 bugfix spec. Written as files by the agent, not through `/spec new` | `.kiro/specs/` |
+| Specs | Used: 5 feature specs (`kiro-evidence-gate`, `agent-diagnostics`, `scenario-actions`, `named-steps`, `submission-story`), 2 bugfix specs (`power-path-resolution`, `verify-cancellation`). Written as files by the agent, not through `/spec new` | `.kiro/specs/` |
 | Steering | Used: always-on files, plus new `fileMatch` and `auto` files | `sess_1266542d…` |
-| Agent hooks | Used: `PostFileSave` (fires, result not shown to the agent) and `Stop` (finish gate) | `sess_2bee93f1…`, `sess_d3717c15…` |
-| Custom agents | Used: `praman-explorer` with capability permissions | `sess_cf1d826d…` |
+| Agent hooks | Used: `PostFileSave` (fires, result not shown to the agent) and `Stop` (finish gate) | `sess_2bee93f1…`, `sess_d3717c15…`, `sess_c6010529…` |
+| Custom agents | Used: `praman-explorer` with capability permissions, including the proof runs for each 2026-11-09 spec | `sess_cf1d826d…`, `sess_0db97c0c…`, `sess_1cf21d4c…`, `sess_fc0aef1b…` |
 | MCP | Used: workspace server, 14 tools | `sess_289994fb…`, `sess_cf1d826d…` |
 | Kiro Powers | Used: authored, installed, exercised from another project | `sess_ccfd7c6f…` |
 | Built-in subagent (`introspect`) | Used to look up current `.kiro` formats | Main session |
@@ -51,7 +85,8 @@ Kiro did not build PRAMAN's original verification core.**
 - Kiro did not build PRAMAN's original verification core: the browser and command
   engines, CLI, MCP server, reports, evidence model and the tests that existed by
   2026-11-05. That work was done by an AI coding assistant under the submitter's
-  direction (see the history below).
+  direction (see the history below). The 2026-11-08/09 changes listed above extend
+  that core; they did not create it.
 - Not tested in the Kiro IDE, which is not a target: the finish gate's `Stop` behavior.
 - Save-hook results never reach the agent, in the CLI or the IDE.
 - The agent never sees a passing gate verdict, only failing ones.
@@ -275,3 +310,5 @@ session.
 | 2026-11-09 | sess_c1fcf2e4-6dba-4de9-8370-e464f14df771 | Git/GitHub delivery (PR #11) | Kiro CLI agent checked the commit's public no-reply identity and the private primary email, pushed `plan-agent-gaps`, opened PR #11 and waited for CI (Ubuntu and macOS green). It fast-forwarded `main` and local `main` from `d62f645` to `e559992` (no GitHub-made commit); PR #11 marked merged; CI green on `main` (run 42594982427, 249 passed / 16 skipped of 265) |
 | 2026-11-09 | sess_c1fcf2e4-6dba-4de9-8370-e464f14df771 | Spec-driven implementation (`named-steps` tasks 1–5) | Kiro CLI agent first reproduced the problem on real runs: after inserting a help step into a two-click counter scenario, both index checkpoints ran one step early (observed `0` and `1`, verdict `failed`), and step ids were rejected by the schema. It added optional step ids and id references for `afterStep`, network windows and walkthrough steps, resolved at parse time with field-named errors for unknown or duplicate ids. The same inserted-step scenario with ids passes. 10 of 11 new tests fail on the old code; full suite 276 tests / 35 files; first-use 12/12; MCP still lists 14 tools |
 | 2026-11-09 | sess_fc0aef1b-ee8e-49fd-8802-299bf14010ce | Headless V3 + custom agent + MCP (`named-steps` task 4) | `--agent praman-explorer`, inline scenario with step ids and an inserted step. One `@praman/praman_scenario_verify` call: `passed`; the agent reported the checks ran after steps 1 and 2. The MCP response contained no step ids (indexes only) |
+| 2026-11-09 | sess_c1fcf2e4-6dba-4de9-8370-e464f14df771 | Git/GitHub delivery (PR #12) | Kiro CLI agent checked the commit's public no-reply identity and the private primary email, pushed `plan-agent-gaps`, opened PR #12 and waited for CI (Ubuntu and macOS green). It fast-forwarded `main` and local `main` from `e559992` to `3c37ec3` (no GitHub-made commit); PR #12 marked merged |
+| 2026-11-09 | sess_c1fcf2e4-6dba-4de9-8370-e464f14df771 | Specs and docs (`submission-story` tasks 1–3, 5.2 copy) | Kiro CLI agent rewrote `.kiro/specs/praman-core` requirements in EARS form and corrected its task list and design (no `src/observation/`), updated the current state of this account (spec-driven versus vibe table, feature table with session IDs), rewrote the video storyboard as a repair story of `verify-cancellation` plus the finish gate using only recorded Kiro work (the non-Kiro Headlamp clip dropped), and brought the Devpost, blog, social and rules-digest copy in line with this account. Recording, upload and submission stay with the owner |
