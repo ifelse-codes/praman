@@ -133,12 +133,40 @@ Dec 4, 2026, 2:00 pm PT.
     force-push, a GitHub-made merge, or any push outside this flow still needs the
     owner's yes.
 
+### Handoff for the next session (step 1, Worlds; written 2026-11-10)
+
+- **State:** step 0 is merged (`main` `1832643`, PR #18; CI on `main` run 42786511955,
+  262 passed / 16 skipped of 278 on Ubuntu and macOS). Colima profiles are all stopped;
+  docker context is `default`.
+- **Private setup is ready** under `.praman/real-apps/`: `HANDOFF.md` (runner, app
+  sources, seeds, workloads, the exact route commands and pitfalls), plus `kan/` and
+  `shiori/` with a declaration, integration module, read-only seed scenario and
+  evidence. Kan runs from a clean export of its checkout's HEAD; Shiori from a binary
+  built from `../shiori` at `v1.8.0`. Rebuild nothing unless a source changes.
+- **Runner:** declarations name Colima profile `praman-headlamp`; PRAMAN starts it.
+  Stop it at the end. A kind container from earlier work starts with that profile; it
+  is not owned by this plan, leave it alone.
+- **Known traps:** Kan allows 3 sign-ins per 10 s (HTTP 429 gives
+  `insufficient_evidence`), so wait 12 s between Kan verifies. Do not pass
+  `--require-mcp-startup` to headless Kiro: the installed Power's server fails to start.
+  Repeats share one database today, so step 0 scenarios are read-only; Worlds is what
+  should make a mutating scenario safe to repeat.
+- **Where step 1 starts in code:** `provisionDocker` in `src/environments/docker.ts`
+  (plain `docker run`, no volumes, `rm -fv` on teardown), the reset path in
+  `src/environments/manager.ts`, and the repeat loop in `proveChange`
+  (`src/eval/change.ts`). Data paths for the proof apps: Postgres
+  `/var/lib/postgresql/data`, RustFS `/data`; they belong in the declaration, not core.
+- **Show the gap first:** a mutating scenario (for example "add one bookmark, then
+  count 2") fails on repeat 2 today because the repeats share state. Record that on
+  both apps before building.
+
 ### Kick-off prompt for the next session
 
 ```
 Continue PRAMAN. Read AGENTS.md, docs/STATUS.md and docs/ROADMAP.md
-("Plan: Hue-style environments and stimulation"). Do the next step in the
-table that is not marked done, and only that step. Follow "Rules for every
+("Plan: Hue-style environments and stimulation", including "Handoff for the
+next session"), then the private .praman/real-apps/HANDOFF.md. Do the next
+step in the table that is not marked done, and only that step. Follow "Rules for every
 session in this plan", including the PR, green CI and fast-forward of main.
 Docker/Colima may be started for this work; return it to its starting state.
 ```

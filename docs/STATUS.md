@@ -14,7 +14,8 @@ general simulator and not a sandbox.
   4 recorded outside APIs, then the video and blog. One step per Kiro session; each
   session ends with a green PR fast-forwarded to `main`. Real-app proof uses Kan and
   Shiori (Shiori replaced Miniflux on 2026-11-10, owner decision; see below). Next:
-  step 1, Worlds.
+  step 1, Worlds; the handoff is in ROADMAP.md ("Handoff for the next session") and
+  the private `.praman/real-apps/HANDOFF.md`.
 - **Environment re-check (2026-11-10, plan step 0, spec `environment-recheck`):**
   before the fix, managed `environment verify` returned `insufficient_evidence`
   ("Managed preflight unavailable") on real Miniflux, Kan and Shiori and no browser
@@ -147,10 +148,10 @@ general simulator and not a sandbox.
   [browser scenario cheat sheet](schema-cheatsheet.md) plus explicit
   selector/zero-based/private-evidence guidance in the README and browser guide;
   product behavior and test counts are unchanged.
-- **CI:** green on **Ubuntu and macOS** (Node 22) for public `main` `e559992` — run
-  https://github.com/ifelse-codes/praman/actions/runs/42594982427. Each runner reports
-  249 passed / 16 skipped of 265 tests; the skips are the environment-guarded
-  media/speech suites (no ffmpeg/ffprobe on the runners). The
+- **CI:** green on **Ubuntu and macOS** (Node 22) for public `main` `1832643` (plan
+  step 0, PR #18) — run https://github.com/ifelse-codes/praman/actions/runs/42786511955.
+  Each runner reports 262 passed / 16 skipped of 278 tests; the skips are the
+  environment-guarded media/speech suites (no ffmpeg/ffprobe on the runners). The
   Ubuntu job also runs the judge route. `tests/networkPolicy.test.ts` failed once on
   macOS CI (PR #8) and passed on rerun; it has passed since, locally and in CI.
 - **Final verification (2026-11-05, historical):** an independent fresh clone of public
