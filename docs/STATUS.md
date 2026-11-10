@@ -8,19 +8,47 @@ general simulator and not a sandbox.
 
 ## Current state
 
-- **Plan (2026-11-10):** the owner lifted the feature freeze. Next work is the
-  Hue-style environment plan in [ROADMAP.md](ROADMAP.md): step 0 environment re-check,
-  1 Worlds, 2 real network faults, 3 many users and invariants, 4 recorded outside
-  APIs, then the video and blog. One step per Kiro session; each session ends with a
-  green PR fast-forwarded to `main`. Real-app proof uses Kan and Miniflux. Nothing in
-  the plan is built yet.
+- **Plan (2026-11-10):** the owner lifted the feature freeze. Work follows the
+  Hue-style environment plan in [ROADMAP.md](ROADMAP.md): step 0 environment re-check
+  (**done 2026-11-10**), 1 Worlds, 2 real network faults, 3 many users and invariants,
+  4 recorded outside APIs, then the video and blog. One step per Kiro session; each
+  session ends with a green PR fast-forwarded to `main`. Real-app proof uses Kan and
+  Shiori (Shiori replaced Miniflux on 2026-11-10, owner decision; see below). Next:
+  step 1, Worlds.
+- **Environment re-check (2026-11-10, plan step 0, spec `environment-recheck`):**
+  before the fix, managed `environment verify` returned `insufficient_evidence`
+  ("Managed preflight unavailable") on real Miniflux, Kan and Shiori and no browser
+  ran. The hidden cause: the manager wrote `scenario.json` and `declaration.json`
+  into the run folder before the proof engine, which refuses a used folder.
+  `demonstrate` had the same problem. The copies are now written after the engine
+  runs; a new test (fake `docker` on `PATH`, no daemon) fails on the old code. With
+  the fix, on Kan `927bf2fe` (clean export of the checkout's HEAD; Postgres and RustFS
+  containers; app on the host) and Shiori `v1.8.0` (Postgres container; binary built
+  from the unmodified checkout): `create`, seed scenario `passed`, a data-changing
+  workload made it `failed`, `reset` (new containers and ports), `passed` again,
+  `destroy` with no container carrying the ownership label and no owned process
+  left. The same order ran through `praman_environment` in headless Kiro
+  (`sess_ec6f85f4…` Kan, `sess_50cf2e81…` Shiori) with the same results, except one
+  Kan run that was `insufficient_evidence` because Kan's sign-in rate limit answered
+  HTTP 429 (not counted as a failure; the CLI run waits 12 s between verifies). MCP
+  output held no seeded password or secret. Colima profile `praman-headlamp` was
+  started by PRAMAN and stopped again afterwards. Limits: no Docker network (apps
+  run on the host); `readinessWorkloads` run before the app restarts on reset;
+  `destroy` does not sweep other labelled containers or remove images; kind not
+  re-checked. Found, not fixed: on Miniflux v2.3.5, PRAMAN's Playwright request
+  routing (its same-origin navigation guard) makes Chromium abort the CSS page
+  transition after each in-app navigation and report `InvalidStateError`; PRAMAN
+  counts it as an app runtime error, so no Miniflux scenario can pass (2 of 2 probes
+  with routing, 0 of 2 without). Miniflux was dropped; the fix is deferred to its own
+  spec. Private inputs and evidence: `.praman/real-apps/{kan,shiori,miniflux}/`.
 - **History:** the private working history ends at `cc83be3`; the **public repository**
   is a squashed public snapshot under the owner identity (see the repository history),
   with CI green and judge access enabled.
 - **Checks:** `npm run build` and `npm run lint` pass; `npm run lint:tests` passes;
-  the **full suite passes 277 tests / 35 files** on the recorded host (2026-11-10,
+  the **full suite passes 278 tests / 35 files** on the recorded host (2026-11-10,
   `--maxWorkers=2`), including the 8 Kiro finish-gate tests, the 15 cancellation
-  tests, the 21 diagnosis tests, the 22 browser-action tests and the 11 step-id tests. Parallel local runs
+  tests, the 21 diagnosis tests, the 22 browser-action tests, the 11 step-id tests and
+  the managed-verify test. Parallel local runs
   are resource-sensitive while macOS Spotlight/MediaAnalysis indexing saturates the
   CPU; CI uses a bounded worker count. Earlier, an independent fresh-clone verification
   of the release-hardening commit reproduced the then-current results (npm ci, lint,
@@ -138,7 +166,7 @@ general simulator and not a sandbox.
   (a link to a website, functioning demo or test build; failure may disqualify). PRAMAN
   provides the public repository as the test build, Codespaces and [testing instructions](../TESTING.md).
 - **Submission copy:** truthful Kiro account (`docs/kiro-usage.md`, current through
-  2026-11-09), ≤3-minute storyboard built only from recorded Kiro work
+  2026-11-10), ≤3-minute storyboard built only from recorded Kiro work
   (`docs/video-script.md`, rewritten 2026-11-09; the non-Kiro Headlamp clip is dropped)
   and a submission-ready Devpost draft with the public repository URL filled in and a
   `<DEMO_VIDEO_URL>` placeholder (`docs/devpost-draft.md`). Blog and social drafts match
@@ -179,14 +207,15 @@ The shipped/frozen/deferred view is in [ROADMAP.md](ROADMAP.md).
 
 ## Remaining before release / submission
 
-1. **Build plan (Nov 11–24):** steps 0–4 of the Hue-style environment plan in
-   [ROADMAP.md](ROADMAP.md), one Kiro session each; a step that misses its date is cut,
+1. **Build plan (Nov 11–24):** steps 1–4 of the Hue-style environment plan in
+   [ROADMAP.md](ROADMAP.md) (step 0 done 2026-11-10), one Kiro session each; a step that misses its date is cut,
    not claimed.
 2. **Video and submission (owner):** record the takes in `docs/video-script.md`, edit to
    under 3 minutes, upload publicly to YouTube; replace `<DEMO_VIDEO_URL>` in the Devpost
    draft and social post; save and submit. Target Nov 25–27, deadline Dec 4, 2026.
 3. **Kiro:** done: specs `kiro-evidence-gate`, `power-path-resolution`,
-   `verify-cancellation`, `agent-diagnostics`, `scenario-actions` and `named-steps`.
+   `verify-cancellation`, `agent-diagnostics`, `scenario-actions`, `named-steps` and
+   `environment-recheck`.
    Spec `submission-story`: documents, Kiro write-up, storyboard and submission copy are
    done (tasks 1–3, 5.2 copy); recording, upload, submission and the final fresh-clone
    check are left (tasks 4, 5, 6).

@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import { appendFileSync, closeSync, mkdirSync, openSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
+import { appendFileSync, closeSync, existsSync, mkdirSync, openSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { hashSpec, proveChange } from '../eval/change.js';
@@ -62,11 +62,13 @@ export async function manageEnvironment(action: EnvironmentAction, request: Envi
     ? join(state.directory, 'runs', `${Date.now()}-${action}`) : undefined;
   const feedbackContext = { environmentId: state.id, generation: state.generation, sourceHashes: state.sourceHashes,
     declarationPath: join(verificationOutput ?? state.directory, 'declaration.json'), operationLog: join(state.directory, 'operations.jsonl') };
+  // Private replay copies. The proof engines own the run directory and refuse one that already
+  // holds a run, so these are written after the engine returns (or when it never started).
   const saveDeclaration = () => {
     if (!verificationOutput || !state.scenario) return;
     mkdirSync(verificationOutput, { recursive: true, mode: 0o700 });
     const scenarioPath = join(verificationOutput, 'scenario.json');
-    writeFileSync(scenarioPath, JSON.stringify(state.scenario, null, 2), { mode: 0o600 });
+    if (!existsSync(scenarioPath)) writeFileSync(scenarioPath, JSON.stringify(state.scenario, null, 2), { mode: 0o600 });
     const declaration = { ...state.spec, scenario: scenarioPath };
     writeFileSync(feedbackContext.declarationPath, JSON.stringify(declaration, null, 2), { mode: 0o600 });
   };
@@ -120,12 +122,12 @@ export async function manageEnvironment(action: EnvironmentAction, request: Envi
       state.generation += 1; state.phase = 'ready';
       result = { verdict: 'passed', evidence };
     } else if (action === 'verify' || action === 'demonstrate') {
-      saveDeclaration();
       if (state.phase !== 'ready' || state.fault || !state.scenario) throw new Error('Proof requires a ready, recovered environment with a declared application scenario');
       const observed = await observe();
       const verification = action === 'verify'
         ? await proveChange(state.scenario, verificationOutput!, feedbackContext)
         : await demonstrateChange(state.scenario, verificationOutput!, feedbackContext);
+      saveDeclaration();
       result = { verdict: verification.verdict, evidence: { output: verificationOutput, environmentId: state.id, generation: state.generation,
         sourceHashes: state.sourceHashes, observed, ...verification } };
     } else {

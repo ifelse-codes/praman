@@ -2,6 +2,10 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { createServer } from 'node:http';
+import { once } from 'node:events';
+import type { AddressInfo } from 'node:net';
+import { changeSpecSchema } from '../src/case/change.js';
 import { environmentSpecSchema } from '../src/environments/schema.js';
 import { manageEnvironment } from '../src/environments/manager.js';
 import type { EnvironmentState } from '../src/environments/types.js';
@@ -73,6 +77,44 @@ describe('managed environment isolation and evidence', () => {
     expect(saved.fault).toBe(true);
     expect(saved.phase).toBe('ready');
     expect(JSON.parse(readFileSync(join(state.directory, 'operations.jsonl'), 'utf8')).verdict).toBe('insufficient_evidence');
+  });
+  it('runs the declared scenario on a ready Docker instance and keeps the replay copies', async () => {
+    // A fake `docker` on PATH reports one owned, running container; no Docker daemon is needed.
+    const id = '0123456789ab', token = 'owner-token', container = `praman-${id}-web`;
+    const bin = join(base, 'bin'); mkdirSync(bin);
+    writeFileSync(join(bin, 'docker'), `#!/usr/bin/env node
+const args = process.argv.slice(2);
+if (args[0] === 'ps') console.log('fakeid');
+else if (args[0] === 'inspect') console.log(JSON.stringify([{ Id: 'fakeid', Image: 'sha256:fake', Config: { Labels: { 'io.praman.owner': ${JSON.stringify(token)} } }, State: { Running: true, Paused: false } }]));
+else process.exit(1);
+`, { mode: 0o755 });
+    const server = createServer((_, res) => { res.setHeader('content-type', 'text/html'); res.end('<!doctype html><title>Ready</title><p id="status">Seeded</p>'); });
+    server.listen(0, '127.0.0.1'); await once(server, 'listening');
+    const port = (server.address() as AddressInfo).port;
+    const path = process.env.PATH;
+    process.env.PATH = `${bin}:${path}`;
+    try {
+      const docker = { ...spec, provider: 'docker' as const, nodeImage: undefined, resources: [], workloads: {},
+        services: { web: { image: 'unused', port: 80, ready: ['true'] } }, faultService: 'web' };
+      const scenario = changeSpecSchema.parse({ title: 'Seeded page', mode: 'acceptance', change: 'The seed is shown', afterUrl: `http://127.0.0.1:${port}/`,
+        steps: [{ action: 'goto', path: '/', note: 'Open the page' }], checks: [{ id: 'seed', kind: 'text', selector: '#status', equals: 'Seeded' }] });
+      const state = persist({ clusterOwned: false, fault: false,
+        spec: docker, scenario, ownershipToken: token, services: { web: { name: container, port, owned: true } } });
+      const result = await manageEnvironment('verify', { id: state.id, baseDir: base }) as { verdict: string; evidence: { output: string } };
+      expect(result.verdict).toBe('passed');
+      const run = result.evidence.output;
+      expect(JSON.parse(readFileSync(join(run, 'proof.json'), 'utf8')).verdict).toBe('passed');
+      const declaration = JSON.parse(readFileSync(join(run, 'declaration.json'), 'utf8'));
+      expect(declaration.scenario).toBe(join(run, 'scenario.json'));
+      expect(changeSpecSchema.parse(JSON.parse(readFileSync(declaration.scenario, 'utf8'))).checks[0].id).toBe('seed');
+      // Demonstrate shares the fix: it reaches a proof instead of refusing its own run directory.
+      const demonstrated = await manageEnvironment('demonstrate', { id: state.id, baseDir: base }) as { evidence: { output: string } };
+      expect(JSON.parse(readFileSync(join(demonstrated.evidence.output, 'proof.json'), 'utf8')).verdict).toBe('passed');
+      expect(readFileSync(join(state.directory, 'operations.jsonl'), 'utf8')).not.toContain('choose a fresh directory');
+    } finally {
+      process.env.PATH = path;
+      server.close();
+    }
   });
   it('does not execute a destroyed instance', async () => {
     const dead = persist({ phase: 'destroyed', fault: false });

@@ -85,13 +85,14 @@ The submission release treats two surfaces differently:
   evidence/feedback, first-use onboarding and the stdio MCP entry point. These are
   exercised end-to-end and covered by the public 12-outcome example.
 - **Optional / experimental, not yet re-verified:** `preview`,
-  `command-preview`, `demonstrate`, `command-demonstrate`, `environment`,
-  `service`, `service-replay`, `workflow-replay`, `coverage-review`,
-  `workflow-campaign`, `campaign-resume` and `agent-campaign`. They are implemented
+  `command-preview`, `demonstrate`, `command-demonstrate`, `service`,
+  `service-replay`, `workflow-replay`, `coverage-review`, `workflow-campaign`,
+  `campaign-resume` and `agent-campaign`, plus kind environments. They are implemented
   and unit-tested but not re-verified end-to-end after the 2026-11-05 cleanup;
   do not treat their README contracts as newly demonstrated claims. The 2026-11-10
-  plan in [the roadmap](docs/ROADMAP.md) re-verifies `environment` first and then
-  extends it step by step.
+  plan in [the roadmap](docs/ROADMAP.md) extends them step by step.
+- **Re-checked 2026-11-10:** the Docker `environment` route (create, verify, workload,
+  reset, destroy) on two real apps; see [Docker environments](#docker-environments).
 
 ## Explicit verification modes
 
@@ -1537,8 +1538,27 @@ exec or HTTP readiness check; Docker workloads name a declared service and run
 and must fail its own readiness check; `recover` starts it and awaits readiness.
 Unique container names and random ownership labels prevent adopting or deleting
 foreign containers. There are no user host mounts or shared persistent volumes.
-Reset restores the declared seed; Docker state isolation is not hostile-code or
-network isolation.
+Reset recreates the declared containers (new data, new random host ports), reruns
+`readinessWorkloads`, and calls the integration's `reset`; restoring the
+application's own seed is the integration's job. Docker state isolation is not
+hostile-code or network isolation.
+
+Re-checked end to end on 2026-11-10 (plan step 0) with the Docker provider only:
+`create` → `verify` (passed) → a workload that changes data → `verify` (failed) →
+`reset` → `verify` (passed) → `destroy`, on Kan (Postgres and RustFS containers) and
+Shiori (Postgres), through the CLI and through `praman_environment` in headless Kiro.
+After `destroy`, no container with the instance's ownership label and no owned process
+remained. Limits found:
+
+- PRAMAN creates no Docker network, and host ports are random. One container cannot
+  reach another, so the application runs on the host (started by the integration) and
+  reaches services on `127.0.0.1:<state.services[name].port>`.
+- On `reset`, `readinessWorkloads` run inside the infrastructure reset, before the
+  integration restarts the application. Seed steps that need the application's own
+  schema migrations belong in the integration's `start`, not in `readinessWorkloads`.
+- `destroy` removes the containers recorded in state. It does not sweep for other
+  containers carrying the ownership label, and it does not remove pulled images.
+- kind is not re-checked and stays frozen.
 
 The Kan-specific adapter, its PostgreSQL/RustFS declarations, historical issue
 reproduction, credentials and evidence were archived on 2026-11-05 and are not part
@@ -1707,6 +1727,12 @@ node dist/cli.js demonstrate ./scenario.json -o ./.praman/change-report
   runtime errors are insufficient evidence—not a pass. Checks include text equality,
   form `value`, visibility, decoded `image` dimensions, JSON fields and `pageErrors: 0`.
   A screen rendering or HTTP 200 alone does not prove the acceptance criteria.
+- Known limit (found 2026-11-10 on Miniflux v2.3.5): PRAMAN's same-origin navigation
+  guard uses Playwright request routing. On that app, routing made Chromium abort the
+  CSS cross-document page transition (`@view-transition`) after each in-app
+  navigation and report `InvalidStateError: Transition was aborted…`; PRAMAN counts
+  it as an app runtime error, so such scenarios cannot pass. Without routing the
+  error did not appear. Not fixed yet; the exact Chromium trigger is unknown.
 - Additional native browser checks use the same `id`, `selector`, `equals` and
   optional `afterStep` fields:
   - `kind: "attribute", name: "aria-expanded", equals: "true"` checks exact

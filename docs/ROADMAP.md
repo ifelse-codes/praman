@@ -1,7 +1,7 @@
 # PRAMAN — current roadmap (2026-11-10)
 
-**Status: shipped and verified; next work is the Hue-style environment plan below
-(owner decision 2026-11-10).** Public repository
+**Status: shipped and verified; the Hue-style environment plan below is in progress
+(owner decision 2026-11-10; step 0 done).** Public repository
 https://github.com/ifelse-codes/praman (MIT), CI green on Ubuntu and macOS, judge
 access via [TESTING.md](../TESTING.md) and Codespaces, project page
 https://ifelse-codes.github.io/praman/. Not submitted: the demo video and the Devpost
@@ -67,12 +67,14 @@ relevant for desktop or Android testing, which stays deferred. Check each tool's
 license at the start of its session; run AGPL tools only as separate programs.
 
 **Real apps for proof.** A shared capability needs evidence from two different real
-apps (see AGENTS.md). Both run from their own unmodified checkouts:
+apps (see AGENTS.md). Both run from their own unmodified checkouts (Kan from a clean
+`git archive` export of its checkout's HEAD, because that checkout holds unrelated
+uncommitted work):
 
 | App | Why it fits | Where |
 | --- | --- | --- |
 | Kan (kanban board) | Real Postgres and S3-style file storage; used before | `../kan` (existing checkout) |
-| Miniflux (feed reader) | Go, Postgres only, official Docker image, Apache 2.0, and it fetches outside feeds, so it has a real outside dependency for network faults and recorded APIs | Clone `github.com/miniflux/v2` at a pinned release tag into `../miniflux` in session 0 |
+| Shiori (bookmark manager) | Go, Postgres, MIT; it downloads the pages it saves, so it has a real outside dependency for network faults and recorded APIs. Replaced Miniflux on 2026-11-10 (owner decision): PRAMAN's request routing made Chromium abort Miniflux's page transitions, so no Miniflux scenario could pass (see README known limit) | Cloned at `v1.8.0` into `../shiori` in session 0 |
 
 Integration modules, scenarios and evidence for these apps stay private under ignored
 `.praman/real-apps/<app>/`. No app name, selector, route, credential or seed goes into
@@ -82,12 +84,23 @@ core, schemas, CLI or MCP dispatch.
 
 | Step | Session goal | Reuse | Done when | Target date |
 | --- | --- | --- | --- | --- |
-| 0 | **Environment re-check.** Unfreeze the Docker `environment` route (create, verify, reset, destroy) and run it end to end on Kan and Miniflux. Fix only what broke since the 2026-11-05 cleanup, each with a regression test. kind stays frozen and is not claimed. | Existing code | Both apps: create, a passing scenario, reset to seed, destroy with no owned leftovers | Nov 11 |
+| 0 | **Done 2026-11-10.** **Environment re-check.** Unfreeze the Docker `environment` route (create, verify, reset, destroy) and run it end to end on Kan and Shiori. Fix only what broke since the 2026-11-05 cleanup, each with a regression test. kind stays frozen and is not claimed. | Existing code | Both apps: create, a passing scenario, reset to seed, destroy with no owned leftovers | Nov 11 |
 | 1 | **Worlds.** Save a declared starting state (the data volumes of declared services) as a hashed snapshot; give every repeat or campaign run its own fresh copy. Two versions can start from the same world. Generic: core copies volumes and never knows the database type. | Docker volumes | Both apps: a change in copy A is absent in copy B; each run's starting hash matches the world; an altered snapshot gives `insufficient_evidence` | Nov 12–14 |
 | 2 | **Real network faults.** Put a proxy between the app and a declared dependency and apply named faults: added delay, timeout, dropped connection, down. Like today's stop fault, the effect must be observed, or the run is `insufficient_evidence`. Faults can start and stop at step ids. | Toxiproxy | Both apps: each fault kind observed on live traffic; checks authored from the app's real behavior; fault removed and recovery observed | Nov 15–17 |
 | 3 | **Many users and invariants.** Run one scenario as N users at once (fresh browser contexts, a per-user index for inputs) against one environment copy. After the run, check caller-declared invariants (rules that must always hold), for example "card count equals N" or "no duplicate entries". | Parallel Playwright contexts | Both apps: N users run at the same time (peak concurrency recorded); per-user verdicts; an invariant that is broken on purpose in a fixture gives `failed` | Nov 18–20 |
-| 4 | **Recorded outside APIs.** Record an app's real outside HTTP calls once, then replay them in later runs. A call that is not in the recording fails closed (`insufficient_evidence`), so a test never reaches the real service by accident. The app is pointed at the replay through its own configuration. | Playwright HAR replay (browser side); Hoverfly or WireMock (server side) | Miniflux replays a recorded real feed with no network; an unrecorded call is refused. A second real app is required for a cross-app claim; if none of Kan, Lattice or Luma makes outside calls, that limit is written down instead | Nov 21–24 |
+| 4 | **Recorded outside APIs.** Record an app's real outside HTTP calls once, then replay them in later runs. A call that is not in the recording fails closed (`insufficient_evidence`), so a test never reaches the real service by accident. The app is pointed at the replay through its own configuration. | Playwright HAR replay (browser side); Hoverfly or WireMock (server side) | Shiori replays a recorded real page download with no network; an unrecorded call is refused. A second real app is required for a cross-app claim; if none of Kan, Lattice or Luma makes outside calls, that limit is written down instead | Nov 21–24 |
 | 5 | **Video and blog** (existing `submission-story` tasks 4–6). Record, edit to under 3 minutes and upload; add new footage only from recorded Kiro work in steps 0–4. | — | Video URL in the Devpost draft; owner submits | Nov 25–27 |
+
+**Step 0 result (2026-11-10, spec `environment-recheck`).** Fixed: managed `verify`
+never ran the scenario (the manager filled the run folder before the proof engine,
+which refuses a used folder); regression test added. On Kan and Shiori, through the CLI
+and through `praman_environment` in headless Kiro: create, seed scenario `passed`, a
+data-changing workload made it `failed`, reset, `passed` again, destroy with no
+labelled container or owned process left. One Kan MCP run was `insufficient_evidence`
+because Kan's sign-in rate limit answered HTTP 429; PRAMAN did not count it as a
+failure. Found, not fixed: on Miniflux, PRAMAN's request routing makes Chromium abort
+page transitions and PRAMAN blames the app (README known limit); Miniflux was replaced
+by Shiori.
 
 If a step misses its date, it is cut, not claimed. Step 4 is cut first. Hard deadline:
 Dec 4, 2026, 2:00 pm PT.
@@ -103,7 +116,7 @@ Dec 4, 2026, 2:00 pm PT.
 5. **Tests.** Deterministic regression tests in `tests/` that need no live app,
    Docker daemon or private files (guard them like the media suites if a tool is
    required). Old declarations keep their meaning and hash.
-6. **Real proof.** Prove the step on Kan and Miniflux, and through MCP in a headless
+6. **Real proof.** Prove the step on Kan and Shiori, and through MCP in a headless
    Kiro session where it applies. Evidence stays private under `.praman/`.
 7. **Checks.** `npm run build`, `npm run lint`, `npm run lint:tests`, the full suite
    (`--maxWorkers=2`) and `node examples/first-use/run.mjs` (12/12) all pass.
@@ -170,12 +183,17 @@ first and review the cut against `docs/video-guidelines.md`.
 ## Frozen
 
 - The feature freeze was lifted on 2026-11-10 for the plan above. The `environment`
-  route is unfrozen by step 0; each later step unfreezes only what it re-verifies.
+  route (Docker provider) was re-checked and unfrozen by step 0 on 2026-11-10; each
+  later step unfreezes only what it re-verifies.
 - Still frozen (implemented and unit-tested, no new end-to-end claims): kind
   environments, preview, command preview, demonstrate/recording, workflow replay,
   coverage review and campaigns, unless a plan step re-verifies them.
 
 ## Deferred
+
+- Browser engine: a navigation guard that does not use Playwright request routing, so
+  apps with CSS cross-document page transitions (Miniflux v2.3.5) can pass. Found in
+  plan step 0; needs its own spec.
 
 - Stateful dependency simulation beyond the declared service and the recorded APIs of
   step 4; world restore beyond the declared service volumes of step 1.

@@ -29,6 +29,13 @@
 
 ### Fixed
 
+- Managed `environment verify` always returned `insufficient_evidence` without running
+  the scenario ("Managed preflight unavailable"): the manager wrote its replay copies
+  (`scenario.json`, `declaration.json`) into the run directory before the proof engine
+  ran, and the engine refuses a directory that already holds a run. The copies are now
+  written after the engine returns, so `verify` gives the scenario's real verdict;
+  `environment demonstrate` no longer refuses its own directory either. Found and
+  re-checked on real Kan and Shiori (plan step 0).
 - `type` steps no longer time out while typing: the 3 s action limit applied to the whole
   key sequence, so 20 keys at the allowed 200 ms delay always failed as
   `insufficient_evidence`. Typing now gets time for every key on top of the 3 s.
