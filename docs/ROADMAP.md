@@ -1,7 +1,7 @@
 # PRAMAN — current roadmap (2026-11-10)
 
 **Status: shipped and verified; the Hue-style environment plan below is in progress
-(owner decision 2026-11-10; step 0 done).** Public repository
+(owner decision 2026-11-10; steps 0 and 1 done).** Public repository
 https://github.com/ifelse-codes/praman (MIT), CI green on Ubuntu and macOS, judge
 access via [TESTING.md](../TESTING.md) and Codespaces, project page
 https://ifelse-codes.github.io/praman/. Not submitted: the demo video and the Devpost
@@ -85,7 +85,7 @@ core, schemas, CLI or MCP dispatch.
 | Step | Session goal | Reuse | Done when | Target date |
 | --- | --- | --- | --- | --- |
 | 0 | **Done 2026-11-10.** **Environment re-check.** Unfreeze the Docker `environment` route (create, verify, reset, destroy) and run it end to end on Kan and Shiori. Fix only what broke since the 2026-11-05 cleanup, each with a regression test. kind stays frozen and is not claimed. | Existing code | Both apps: create, a passing scenario, reset to seed, destroy with no owned leftovers | Nov 11 |
-| 1 | **Worlds.** Save a declared starting state (the data volumes of declared services) as a hashed snapshot; give every repeat or campaign run its own fresh copy. Two versions can start from the same world. Generic: core copies volumes and never knows the database type. | Docker volumes | Both apps: a change in copy A is absent in copy B; each run's starting hash matches the world; an altered snapshot gives `insufficient_evidence` | Nov 12–14 |
+| 1 | **Done 2026-11-10.** **Worlds.** Save a declared starting state (the data volumes of declared services) as a hashed snapshot; give every repeat or campaign run its own fresh copy. Two versions can start from the same world. Generic: core copies volumes and never knows the database type. | Docker volumes | Both apps: a change in copy A is absent in copy B; each run's starting hash matches the world; an altered snapshot gives `insufficient_evidence` | Nov 12–14 |
 | 2 | **Real network faults.** Put a proxy between the app and a declared dependency and apply named faults: added delay, timeout, dropped connection, down. Like today's stop fault, the effect must be observed, or the run is `insufficient_evidence`. Faults can start and stop at step ids. | Toxiproxy | Both apps: each fault kind observed on live traffic; checks authored from the app's real behavior; fault removed and recovery observed | Nov 15–17 |
 | 3 | **Many users and invariants.** Run one scenario as N users at once (fresh browser contexts, a per-user index for inputs) against one environment copy. After the run, check caller-declared invariants (rules that must always hold), for example "card count equals N" or "no duplicate entries". | Parallel Playwright contexts | Both apps: N users run at the same time (peak concurrency recorded); per-user verdicts; an invariant that is broken on purpose in a fixture gives `failed` | Nov 18–20 |
 | 4 | **Recorded outside APIs.** Record an app's real outside HTTP calls once, then replay them in later runs. A call that is not in the recording fails closed (`insufficient_evidence`), so a test never reaches the real service by accident. The app is pointed at the replay through its own configuration. | Playwright HAR replay (browser side); Hoverfly or WireMock (server side) | Shiori replays a recorded real page download with no network; an unrecorded call is refused. A second real app is required for a cross-app claim; if none of Kan, Lattice or Luma makes outside calls, that limit is written down instead | Nov 21–24 |
@@ -133,32 +133,40 @@ Dec 4, 2026, 2:00 pm PT.
     force-push, a GitHub-made merge, or any push outside this flow still needs the
     owner's yes.
 
-### Handoff for the next session (step 1, Worlds; written 2026-11-10)
+**Step 1 result (2026-11-10, spec `worlds`).** Gap shown first on both apps: a scenario
+that changes data (Kan: create one board and expect two; Shiori: delete the seed bookmark
+and expect none) passed repeat 1 and failed repeat 2 of one `environment verify`, because
+the repeats shared one database. Built: `dataPath` on a Docker service, `environment
+world-save`, `environment create --world`, reset to the world, and a restore before every
+repeat of `verify` with the starting hashes recorded. Proven on Kan (Postgres + RustFS) and
+Shiori (Postgres): a change in copy A was absent in copy B and in the source; `verify`
+`passed` 2/2 with every repeat's hashes equal to the world; an appended byte in an archive
+gave `insufficient_evidence` at `create`; the same flow ran through `praman_environment`
+in headless Kiro (Shiori `sess_70a0f435…`, Kan `sess_51bf6aa8…`). Limits: Kan's address is
+fixed at build time, so only one Kan application can run at a time (data copies are still
+independent); `demonstrate` is refused for copies; baseline URLs are not isolated; no kind
+worlds. A Kan integration problem found on the way (a second instance's health check
+answered by the first instance's server) was fixed in the private integration.
 
-- **State:** step 0 is merged (`main` `1832643`, PR #18; CI on `main` run 42786511955,
-  262 passed / 16 skipped of 278 on Ubuntu and macOS). Colima profiles are all stopped;
-  docker context is `default`.
-- **Private setup is ready** under `.praman/real-apps/`: `HANDOFF.md` (runner, app
-  sources, seeds, workloads, the exact route commands and pitfalls), plus `kan/` and
-  `shiori/` with a declaration, integration module, read-only seed scenario and
-  evidence. Kan runs from a clean export of its checkout's HEAD; Shiori from a binary
-  built from `../shiori` at `v1.8.0`. Rebuild nothing unless a source changes.
-- **Runner:** declarations name Colima profile `praman-headlamp`; PRAMAN starts it.
-  Stop it at the end. A kind container from earlier work starts with that profile; it
-  is not owned by this plan, leave it alone.
-- **Known traps:** Kan allows 3 sign-ins per 10 s (HTTP 429 gives
-  `insufficient_evidence`), so wait 12 s between Kan verifies. Do not pass
-  `--require-mcp-startup` to headless Kiro: the installed Power's server fails to start.
-  Repeats share one database today, so step 0 scenarios are read-only; Worlds is what
-  should make a mutating scenario safe to repeat.
-- **Where step 1 starts in code:** `provisionDocker` in `src/environments/docker.ts`
-  (plain `docker run`, no volumes, `rm -fv` on teardown), the reset path in
-  `src/environments/manager.ts`, and the repeat loop in `proveChange`
-  (`src/eval/change.ts`). Data paths for the proof apps: Postgres
-  `/var/lib/postgresql/data`, RustFS `/data`; they belong in the declaration, not core.
-- **Show the gap first:** a mutating scenario (for example "add one bookmark, then
-  count 2") fails on repeat 2 today because the repeats share state. Record that on
-  both apps before building.
+### Handoff for the next session (step 2, real network faults; written 2026-11-10)
+
+- **State:** step 1 is merged (see STATUS.md for the commit and CI run). Colima profiles
+  are all stopped; docker context is `default`.
+- **Private setup** under `.praman/real-apps/` (see `HANDOFF.md` there): `kan/` and
+  `shiori/` each have `environment.json` (read-only seed scenario) and
+  `environment-mutate.json` (a mutating scenario, `dataPath` set, used for worlds). A
+  world for each app is in `envs/worlds/`. Rebuild nothing unless a source changes.
+- **Traps:** Kan's sign-in limit (3 per 10 s) is now covered by delays inside the Kan
+  integration's `start`; Kan runs one instance at a time; the environment keeps its
+  scenario copy from `create`, so a changed scenario needs a new `create`.
+- **Where step 2 starts in code:** `faultDocker` in `src/environments/docker.ts` (today:
+  `docker stop`). Apps run on the host and reach services on `127.0.0.1:<random port>`
+  (no Docker network), so a proxy must sit between the host application and the
+  service port; the integration receives ports through `state.services[...].port`. Shiori
+  downloads the pages it saves, which gives it a real outside dependency; Kan has
+  Postgres and RustFS.
+- **Show the gap first:** `fault` can only stop a whole container. Show a real run where
+  a slow or half-broken dependency (not a stopped one) cannot be produced.
 
 ### Kick-off prompt for the next session
 
@@ -236,7 +244,7 @@ first and review the cut against `docs/video-guidelines.md`.
 
 ## Next (owner)
 
-1. Steps 0–4 of the plan, one Kiro session each (Nov 11–24).
+1. Steps 2–4 of the plan, one Kiro session each (Nov 15–24).
 2. Record and upload the <=3 minute demo video; set `<DEMO_VIDEO_URL>` in
    [the Devpost draft](devpost-draft.md) (Nov 25–26).
 3. Paste the [TESTING.md](../TESTING.md) judge instructions, save and submit the Devpost

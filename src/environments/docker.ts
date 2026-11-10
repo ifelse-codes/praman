@@ -1,10 +1,11 @@
 import { randomBytes } from 'node:crypto';
-import { writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { command, ensureDockerRunner, freePort } from './runtime.js';
 import type { EnvironmentState, SaveState } from './types.js';
 import { z } from 'zod';
+import { archiveFile, copyIn, copyOut, loadWorld, worldIdOf, type WorldManifest, type WorldStart } from './world.js';
 
 const containerSchema = z.object({
   Id: z.string(), Image: z.string(), Config: z.object({ Labels: z.record(z.string(), z.string()).nullable() }),
@@ -41,21 +42,67 @@ async function waitService(state: EnvironmentState, service: string) {
     catch (error) { if (Date.now() >= deadline) throw error; await delay(300); }
   }
 }
-export async function provisionDocker(state: EnvironmentState, save: SaveState) {
+export async function provisionDocker(state: EnvironmentState, save: SaveState): Promise<WorldStart[]> {
   await ensureDockerRunner(state);
   state.ownershipToken ??= randomBytes(24).toString('hex');
   state.services ??= {}; save();
+  // A world is verified before any container exists; a changed world starts nothing.
+  const world = state.world ? { ref: state.world, manifest: await loadWorld(state.world, state) } : undefined;
+  const starts: WorldStart[] = [];
   for (const [name, spec] of Object.entries(state.spec.services!)) {
     const containerName = `praman-${state.id}-${name}`;
     if (await inspect(state, containerName)) throw new Error(`Container ${containerName} exists; refusing adoption`);
     const port = await freePort();
     state.services[name] = { name: containerName, port, owned: true }; save();
-    // No host mounts or persistent shared volumes. Docker owns each container's writable state.
-    await command(state, 'docker', ['run', '-d', '--name', containerName, '--label', `${label}=${state.ownershipToken}`,
-      '-p', `127.0.0.1:${port}:${spec.port}`, ...Object.entries(spec.env ?? {}).flatMap(([key, value]) => ['-e', `${key}=${value}`]), spec.image, ...(spec.args ?? [])], { timeoutMs: 300_000 });
+    // No host mounts. Docker owns each container's writable state; a world is copied in before start.
+    const options = ['--name', containerName, '--label', `${label}=${state.ownershipToken}`,
+      '-p', `127.0.0.1:${port}:${spec.port}`, ...Object.entries(spec.env ?? {}).flatMap(([key, value]) => ['-e', `${key}=${value}`]), spec.image, ...(spec.args ?? [])];
+    const entry = world?.manifest.services[name];
+    if (world && entry) {
+      await command(state, 'docker', ['create', ...options], { timeoutMs: 300_000 });
+      await copyIn(state, containerName, dirname(entry.dataPath), archiveFile(world.ref.directory, name));
+      const restored = await copyOut(state, containerName, entry.dataPath);
+      const start = { service: name, worldId: world.ref.id, sha256: restored.sha256, matchesWorld: restored.sha256 === entry.sha256 };
+      starts.push(start);
+      if (!start.matchesWorld) throw new Error(`Restored data of ${name} differs from world ${world.ref.id}; refusing to start`);
+      await command(state, 'docker', ['start', containerName]);
+    } else await command(state, 'docker', ['run', '-d', ...options], { timeoutMs: 300_000 });
     const readiness = await waitService(state, name);
     writeFileSync(join(state.directory, `${name}-readiness-${Date.now()}.json`), JSON.stringify(readiness, null, 2));
   }
+  return starts;
+}
+/**
+ * Saves the data paths of the declared services as a hashed world under `<worlds>/<id>`. Each
+ * service is stopped for its copy and started again, so the copy is a cleanly stopped state.
+ */
+export async function saveWorldDocker(state: EnvironmentState, worldsDirectory: string) {
+  const names = Object.entries(state.spec.services!).filter(([, service]) => service.dataPath).map(([name]) => name);
+  if (!names.length) throw new Error('No service declares dataPath; there is nothing to save as a world');
+  const staging = join(worldsDirectory, `.saving-${randomBytes(6).toString('hex')}`);
+  mkdirSync(staging, { recursive: true, mode: 0o700 });
+  const manifest: WorldManifest = { version: 1, services: {} };
+  try {
+    for (const name of names) {
+      const { item, container } = await ownedService(state, name);
+      if (!container) throw new Error(`Service ${name} is missing`);
+      const spec = state.spec.services![name];
+      await command(state, 'docker', ['stop', '--time', '30', item.name], { timeoutMs: 60_000 });
+      try {
+        const copied = await copyOut(state, item.name, spec.dataPath!, archiveFile(staging, name));
+        manifest.services[name] = { image: spec.image, dataPath: spec.dataPath!, bytes: copied.bytes, sha256: copied.sha256 };
+      } finally {
+        await command(state, 'docker', ['start', item.name]);
+        await waitService(state, name);
+      }
+    }
+    const id = worldIdOf(manifest);
+    writeFileSync(join(staging, 'manifest.json'), JSON.stringify(manifest, null, 2), { mode: 0o600 });
+    const directory = join(worldsDirectory, id);
+    rmSync(directory, { recursive: true, force: true });
+    renameSync(staging, directory);
+    return { id, directory, manifest };
+  } catch (error) { rmSync(staging, { recursive: true, force: true }); throw error; }
 }
 export async function observeDocker(state: EnvironmentState) {
   const services: Record<string, unknown> = {};

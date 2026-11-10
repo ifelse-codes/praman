@@ -21,7 +21,7 @@ export const environmentSpecSchema = z.object({
   readinessWorkloads: z.array(z.string().min(1)).optional(),
   services: z.record(z.string().regex(/^[a-z][a-z0-9-]*$/), z.object({
     image: z.string().min(1), args: z.array(z.string()).optional(), env: z.record(z.string(), z.string()).optional(),
-    port: z.number().int().min(1).max(65535), ready: z.union([z.array(z.string()).min(1), z.object({ http: z.string().startsWith('/') }).strict()]),
+    port: z.number().int().min(1).max(65535), dataPath: z.string().regex(/^\/[^\0]*[^/\0]$/).optional(), ready: z.union([z.array(z.string()).min(1), z.object({ http: z.string().startsWith('/') }).strict()]),
   }).strict()).optional(),
   faultService: z.string().optional(),
   application: z.object({ module: z.string().min(1), config: z.unknown() }).strict().optional(),
@@ -65,5 +65,6 @@ export const environmentStateSchema = z.object({
   urls: z.record(z.string(), z.string()), scenario: changeSpecSchema.optional(), sourceHashes: z.record(z.string(), z.string()).optional(),
   services: z.record(z.string(), z.object({ name: z.string(), port: z.number().int(), owned: z.boolean() })).optional(),
   ownershipToken: z.string().optional(),
+  world: z.object({ id: z.string().regex(/^[a-f0-9]{12}$/), directory: z.string() }).strict().optional(),
   privateInputs: z.array(z.string()).optional(),
 });

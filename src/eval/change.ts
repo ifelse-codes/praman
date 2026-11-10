@@ -341,7 +341,10 @@ export async function executeScenario(spec: ChangeSpec, url: string, outDir: str
   return result;
 }
 
-export async function proveChange(input: ChangeSpec, outDir: string, context?: FeedbackContext) {
+/** Optional steps a managed environment runs around the proof; they are not part of the declaration. */
+export interface ProofHooks { beforeRepeat?: (index: number) => Promise<void>; }
+
+export async function proveChange(input: ChangeSpec, outDir: string, context?: FeedbackContext, hooks: ProofHooks = {}) {
   const spec = changeSpecSchema.parse(input);
   mkdirSync(outDir, { recursive: true, mode: 0o700 });
   if (existsSync(join(outDir, 'scenario.json')) || existsSync(join(outDir, 'proof.json'))) throw new Error('Proof output directory already contains a run; choose a fresh directory.');
@@ -354,7 +357,15 @@ export async function proveChange(input: ChangeSpec, outDir: string, context?: F
   }
   const before = spec.mode === 'acceptance' ? undefined : await run(spec.beforeUrl!, join(outDir, 'before'), 'before');
   const after: ScenarioRun[] = [];
-  for (let i = 0; i < spec.repeats; i++) after.push(await run(spec.afterUrl, join(outDir, `after-${i + 1}`), 'current'));
+  for (let i = 0; i < spec.repeats; i++) {
+    try { await hooks.beforeRepeat?.(i); }
+    catch (error) {
+      // A repeat that did not get its fresh starting state is never counted as a pass.
+      after.push({ url: spec.afterUrl, verdict: 'insufficient_evidence', checks: [], screenshots: [], error: `Fresh starting state unavailable: ${error instanceof Error ? error.message : String(error)}` });
+      continue;
+    }
+    after.push(await run(spec.afterUrl, join(outDir, `after-${i + 1}`), 'current'));
+  }
   const proof: ChangeProof = { mode: spec.mode, baselineKind: spec.baselineKind, specHash: hashSpec(spec), verifiedAt: new Date().toISOString(),
     scope: `Only the declared scenario and requirements; not whole-application correctness. URLs identify targets, not source/build provenance. Baseline kind is caller-declared, not independently authenticated history. ${identityScope}`,
     ...assessProof(spec, before, after), ...(before ? { before } : {}), after };

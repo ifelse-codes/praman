@@ -7,7 +7,8 @@ import { demonstrateChange } from '../core/demonstrate.js';
 import { environmentSpecSchema, environmentStateSchema } from './schema.js';
 import { provisionKind, observeKind, resetKind, workloadKind, faultKind, destroyKind, kubectl } from './kind.js';
 import { loadApplication, type ApplicationIntegration } from './application.js';
-import { provisionDocker, observeDocker, workloadDocker, faultDocker, destroyDocker } from './docker.js';
+import { provisionDocker, observeDocker, workloadDocker, faultDocker, destroyDocker, saveWorldDocker } from './docker.js';
+import { loadWorld, worldIdPattern, type WorldStart } from './world.js';
 import { stopProcesses } from './runtime.js';
 import type { EnvironmentState, OperationResult } from './types.js';
 import { saveFeedback, safeFeedbackValue } from '../review/feedback.js';
@@ -15,8 +16,8 @@ import type { ChangeProof } from '../case/change.js';
 import { changeSpecSchema } from '../case/change.js';
 import { normalizeIdentity } from '../eval/identity.js';
 
-export type EnvironmentAction = 'create' | 'observe' | 'workload' | 'fault' | 'recover' | 'reset' | 'verify' | 'demonstrate' | 'destroy';
-export interface EnvironmentRequest { baseDir?: string; id?: string; specPath?: string; workload?: string; }
+export type EnvironmentAction = 'create' | 'observe' | 'workload' | 'fault' | 'recover' | 'reset' | 'world-save' | 'verify' | 'demonstrate' | 'destroy';
+export interface EnvironmentRequest { baseDir?: string; id?: string; specPath?: string; workload?: string; world?: string; }
 
 export async function manageEnvironment(action: EnvironmentAction, request: EnvironmentRequest) {
   const base = resolve(request.baseDir ?? '.praman/environments');
@@ -30,10 +31,12 @@ export async function manageEnvironment(action: EnvironmentAction, request: Envi
     spec.dockerHost = `unix://${resolve(socket.startsWith('~/') ? join(homedir(), socket.slice(2)) : resolve(specDir, socket))}`;
     if (spec.application) spec.application.module = resolve(specDir, spec.application.module);
     if (spec.scenario) spec.scenario = resolve(specDir, spec.scenario);
+    if (request.world !== undefined && (!worldIdPattern.test(request.world) || spec.provider !== 'docker')) throw new Error('world must be a 12-character world id and needs a Docker environment');
     const id = randomBytes(6).toString('hex');
     const directory = join(base, id);
     mkdirSync(directory, { recursive: true, mode: 0o700 });
-    state = { version: 3, id, directory, spec, clusterName: `praman-${id}`, clusterOwned: false, kubeconfig: join(directory, 'kubeconfig'), phase: 'creating', fault: false, generation: 0, processes: [], urls: {} };
+    state = { version: 3, id, directory, spec, clusterName: `praman-${id}`, clusterOwned: false, kubeconfig: join(directory, 'kubeconfig'), phase: 'creating', fault: false, generation: 0, processes: [], urls: {},
+      ...(request.world ? { world: { id: request.world, directory: join(base, 'worlds', request.world) } } : {}) };
   } else {
     if (!request.id || !/^[a-f0-9]{12}$/.test(request.id)) throw new Error('A managed environment ID (12 hexadecimal characters) is required');
     state = environmentStateSchema.parse(JSON.parse(readFileSync(join(base, request.id, 'state.json'), 'utf8')));
@@ -56,6 +59,21 @@ export async function manageEnvironment(action: EnvironmentAction, request: Envi
     application: application ? await application.observe(state) : null,
   });
   const destroyInfrastructure = () => docker ? destroyDocker(state, save) : destroyKind(state, save);
+  // Restores the declared starting state: the world when there is one, otherwise the seed alone.
+  let lastStarts: WorldStart[] = [];
+  const resetInfrastructure = async () => {
+    if (docker) {
+      await destroyDocker(state, save);
+      lastStarts = await provisionDocker(state, save);
+      for (const name of state.spec.readinessWorkloads ?? []) await workloadDocker(state, name);
+    } else await resetKind(state, save);
+  };
+  const resetEnvironment = async () => {
+    if (docker && state.fault) await faultDocker(state, false, save);
+    if (application) await application.reset(state, save, resetInfrastructure);
+    else await resetInfrastructure();
+  };
+  const worldRuns: Array<{ repeat: number; worldId: string; services: WorldStart[] }> = [];
   let result: OperationResult;
   let error: string | undefined;
   const verificationOutput = action === 'verify' || action === 'demonstrate'
@@ -74,7 +92,7 @@ export async function manageEnvironment(action: EnvironmentAction, request: Envi
   };
   try {
     if (state.phase === 'destroyed' && action !== 'destroy') throw new Error('This environment was destroyed; create a new instance');
-    if (state.spec.application && !['destroy', 'workload', 'fault', 'recover'].includes(action)) {
+    if (state.spec.application && !['destroy', 'workload', 'fault', 'recover', 'world-save'].includes(action)) {
       application = await loadApplication(state.spec.application.module);
     }
     if (action === 'create') {
@@ -92,10 +110,10 @@ export async function manageEnvironment(action: EnvironmentAction, request: Envi
         state.scenario = scenario;
       }
       save();
-      if (docker) await provisionDocker(state, save); else await provisionKind(state, save);
+      if (docker) lastStarts = await provisionDocker(state, save); else await provisionKind(state, save);
       if (application) await application.start(state, save);
       if (docker) for (const name of state.spec.readinessWorkloads ?? []) await workloadDocker(state, name);
-      const evidence = { ...await observe(), urls: state.urls, sourceHashes: state.sourceHashes };
+      const evidence = { ...await observe(), urls: state.urls, sourceHashes: state.sourceHashes, ...(state.world ? { world: { id: state.world.id, services: lastStarts } } : {}) };
       state.phase = 'ready';
       if (state.scenario) writeFileSync(join(state.directory, 'scenario.json'), JSON.stringify(state.scenario, null, 2));
       result = { verdict: 'passed', evidence };
@@ -108,28 +126,34 @@ export async function manageEnvironment(action: EnvironmentAction, request: Envi
     } else if (action === 'fault' || action === 'recover') {
       result = { verdict: 'passed', evidence: docker ? await faultDocker(state, action === 'fault', save) : await faultKind(state, action === 'fault', save) };
     } else if (action === 'reset') {
-      if (docker && state.fault) await faultDocker(state, false, save);
-      const resetInfrastructure = async () => {
-        if (docker) {
-          await destroyDocker(state, save);
-          await provisionDocker(state, save);
-          for (const name of state.spec.readinessWorkloads ?? []) await workloadDocker(state, name);
-        } else await resetKind(state, save);
-      };
-      if (application) await application.reset(state, save, resetInfrastructure);
-      else await resetInfrastructure();
+      await resetEnvironment();
       const evidence = await observe();
       state.generation += 1; state.phase = 'ready';
       result = { verdict: 'passed', evidence };
+    } else if (action === 'world-save') {
+      if (!docker || state.phase !== 'ready' || state.fault) throw new Error('A world can only be saved from a ready, recovered Docker environment');
+      const saved = await saveWorldDocker(state, join(base, 'worlds'));
+      // Prove the saved world is readable and unchanged before reporting it.
+      await loadWorld({ id: saved.id, directory: saved.directory }, { ...state, spec: state.spec });
+      result = { verdict: 'passed', evidence: { world: { id: saved.id, services: saved.manifest.services }, observed: await observe() } };
     } else if (action === 'verify' || action === 'demonstrate') {
       if (state.phase !== 'ready' || state.fault || !state.scenario) throw new Error('Proof requires a ready, recovered environment with a declared application scenario');
+      if (state.world && action === 'demonstrate') throw new Error('demonstrate is not supported for environments created from a world; its recording would start from a used copy');
       const observed = await observe();
+      const hooks = state.world ? { beforeRepeat: async (index: number) => {
+        const address = state.scenario!.afterUrl;
+        await resetEnvironment();
+        if (state.scenario!.afterUrl !== address) throw new Error('The application address changed while restoring the world');
+        if (!lastStarts.length || lastStarts.some(start => !start.matchesWorld)) throw new Error('The restored data does not match the world');
+        worldRuns.push({ repeat: index + 1, worldId: state.world!.id, services: lastStarts });
+      } } : undefined;
       const verification = action === 'verify'
-        ? await proveChange(state.scenario, verificationOutput!, feedbackContext)
+        ? await proveChange(state.scenario, verificationOutput!, feedbackContext, hooks)
         : await demonstrateChange(state.scenario, verificationOutput!, feedbackContext);
       saveDeclaration();
+      if (state.world) writeFileSync(join(verificationOutput!, 'world-runs.json'), JSON.stringify({ world: state.world.id, runs: worldRuns }, null, 2), { mode: 0o600 });
       result = { verdict: verification.verdict, evidence: { output: verificationOutput, environmentId: state.id, generation: state.generation,
-        sourceHashes: state.sourceHashes, observed, ...verification } };
+        sourceHashes: state.sourceHashes, observed, ...(state.world ? { world: { id: state.world.id, runs: worldRuns } } : {}), ...verification } };
     } else {
       const errors: string[] = [];
       try { await stopProcesses(state, save); } catch (e) { errors.push(String(e)); }

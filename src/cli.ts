@@ -41,12 +41,13 @@ program.name('praman').description('Evidence-driven verification for AI-generate
 
 const environment = program.command('environment').description('Provision and exercise owned, isolated kind or Docker environments');
 environment.command('create').argument('<declaration>').option('--base <dir>', 'managed environment storage', './.praman/environments')
+  .option('--world <id>', 'start from a saved world (see: environment world-save)')
   .action(async (specPath, opts) => {
-    const result = await manageEnvironment('create', { specPath, baseDir: opts.base });
+    const result = await manageEnvironment('create', { specPath, baseDir: opts.base, world: opts.world });
     console.log(JSON.stringify(result, null, 2));
     if (result.verdict !== 'passed') process.exitCode = 2;
   });
-for (const action of ['observe', 'workload', 'fault', 'recover', 'reset', 'verify', 'demonstrate', 'destroy'] as const) {
+for (const action of ['observe', 'workload', 'fault', 'recover', 'reset', 'world-save', 'verify', 'demonstrate', 'destroy'] as const) {
   environment.command(action).argument('<id>').argument('[workload]', 'declared workload name')
     .option('--base <dir>', 'managed environment storage', './.praman/environments')
     .action(async (id, workload, opts) => {

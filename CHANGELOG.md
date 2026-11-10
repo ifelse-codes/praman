@@ -4,6 +4,13 @@
 
 ### Added
 
+- Worlds (spec `worlds`, plan step 1): a Docker service may declare `dataPath`;
+  `environment world-save <id>` saves the declared data paths as a hashed world,
+  `environment create --world <id>` starts a copy after verifying the hashes and the
+  restored data, `reset` restores the world, and `verify` restores it before every
+  repeat and records each repeat's starting hash (`world-runs.json`). Changed worlds are
+  `insufficient_evidence`. MCP: `praman_environment` action `world-save` and argument
+  `world`. Environments without a world behave as before.
 - Failure diagnosis (spec `agent-diagnostics`): when a browser step or check cannot
   run, `--summary`, `feedback.json`, `REPORT.md` and MCP results name the kind
   (`locator_ambiguous` with the matched count, `locator_timeout` with the timeout and

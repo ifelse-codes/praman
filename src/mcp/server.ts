@@ -120,9 +120,9 @@ export async function startMcp() {
     const result = await cancellable(extra.signal, signal => previewCommands(planPath, outDir, cut, signal));
     return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }], isError: result.status !== 'passed' };
   });
-  tool('praman_environment', 'Manage owned real kind or Docker environments. create provisions dependencies and application; workload exercises live state; fault/recover pause the actual dependency; reset restores seed; verify collects proof; demonstrate records only after its proof gate; destroy removes owned resources.', {
-    action: z.enum(['create', 'observe', 'workload', 'fault', 'recover', 'reset', 'verify', 'demonstrate', 'destroy']),
-    specPath: z.string().optional(), id: z.string().optional(), workload: z.string().optional(), baseDir: z.string().optional(),
+  tool('praman_environment', 'Manage owned real kind or Docker environments. create provisions dependencies and application; workload exercises live state; fault/recover pause the actual dependency; reset restores the seed or the world; world-save stores the data paths of the declared services as a hashed world (create with world starts a copy; verify restores it before every repeat); verify collects proof; demonstrate records only after its proof gate; destroy removes owned resources.', {
+    action: z.enum(['create', 'observe', 'workload', 'fault', 'recover', 'reset', 'world-save', 'verify', 'demonstrate', 'destroy']),
+    specPath: z.string().optional(), id: z.string().optional(), workload: z.string().optional(), baseDir: z.string().optional(), world: z.string().regex(/^[a-f0-9]{12}$/).optional(),
   }, async ({ action, ...request }) => {
     const result = await manageEnvironment(action, request);
     return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }], isError: result.verdict !== 'passed' };

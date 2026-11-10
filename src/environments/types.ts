@@ -23,6 +23,7 @@ export interface EnvironmentSpec {
     args?: string[];
     env?: Record<string, string>;
     port: number;
+    dataPath?: string;
     ready: string[] | { http: string };
   }>;
   faultService?: string;
@@ -48,6 +49,7 @@ export interface EnvironmentState {
   sourceHashes?: Record<string, string>;
   services?: Record<string, { name: string; port: number; owned: boolean }>;
   ownershipToken?: string;
+  world?: { id: string; directory: string };
   privateInputs?: string[];
 }
 export interface OperationResult {

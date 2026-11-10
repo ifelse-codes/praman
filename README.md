@@ -687,6 +687,7 @@ node dist/cli.js environment workload <id> ready
 node dist/cli.js environment fault <id>
 node dist/cli.js environment recover <id>
 node dist/cli.js environment reset <id>
+node dist/cli.js environment world-save <id>      # Docker only; see Worlds
 node dist/cli.js environment verify <id>
 node dist/cli.js environment demonstrate <id>
 node dist/cli.js environment destroy <id>
@@ -1559,6 +1560,39 @@ remained. Limits found:
 - `destroy` removes the containers recorded in state. It does not sweep for other
   containers carrying the ownership label, and it does not remove pulled images.
 - kind is not re-checked and stays frozen.
+
+#### Worlds (plan step 1, 2026-11-10)
+
+A **world** is a saved starting state: the data of the declared services, copied as
+opaque files and hashed. A service opts in with `dataPath`, an absolute path inside its
+container (for example `/var/lib/postgresql/data`). PRAMAN never reads these files, so
+it does not know the database or storage type.
+
+```sh
+node dist/cli.js environment create ./env.json                 # seed the instance
+node dist/cli.js environment world-save <id>                   # -> world id (12 hex)
+node dist/cli.js environment create ./env.json --world <worldId>   # a copy of the world
+```
+
+- `world-save` stops each `dataPath` service, copies its path, starts it again and
+  writes `<base>/worlds/<worldId>/` (`manifest.json` plus one `.tar` per service). The id
+  is a hash of the manifest (image, path, size, SHA-256 per service).
+- `create --world` re-hashes the manifest and every archive, restores them into new
+  containers *before* they start, reads the restored path back and compares its hash
+  with the world. Any difference (altered archive, different image or `dataPath`,
+  missing world) gives `insufficient_evidence` and nothing starts.
+- Two copies of one world are independent: a change in one is absent in the other.
+- `reset` of a copy restores the world. `verify` of a copy restores the world before
+  **every repeat**, so a scenario that changes data can be repeated safely. Each repeat's
+  world id and verified starting hashes are in `world-runs.json` and in the result's
+  `evidence.world`. A repeat whose restore fails is `insufficient_evidence`, never a pass.
+- Limits: `demonstrate` is refused for a copy (its recording would start from a used
+  copy); the `beforeUrl` baseline is not isolated; the application keeps running while
+  its database is stopped for `world-save` and must reconnect; if the integration
+  fixes the application address (Kan's is fixed at build time), only one copy's
+  application can run at a time, although the data copies stay independent; archives
+  hold seeded data and are private files; no kind worlds, live snapshots or garbage
+  collection.
 
 The Kan-specific adapter, its PostgreSQL/RustFS declarations, historical issue
 reproduction, credentials and evidence were archived on 2026-11-05 and are not part

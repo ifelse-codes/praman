@@ -10,12 +10,28 @@ general simulator and not a sandbox.
 
 - **Plan (2026-11-10):** the owner lifted the feature freeze. Work follows the
   Hue-style environment plan in [ROADMAP.md](ROADMAP.md): step 0 environment re-check
-  (**done 2026-11-10**), 1 Worlds, 2 real network faults, 3 many users and invariants,
+  (**done 2026-11-10**), 1 Worlds (**done 2026-11-10**), 2 real network faults, 3 many users and invariants,
   4 recorded outside APIs, then the video and blog. One step per Kiro session; each
   session ends with a green PR fast-forwarded to `main`. Real-app proof uses Kan and
   Shiori (Shiori replaced Miniflux on 2026-11-10, owner decision; see below). Next:
-  step 1, Worlds; the handoff is in ROADMAP.md ("Handoff for the next session") and
+  step 2, real network faults; the handoff is in ROADMAP.md ("Handoff for the next session") and
   the private `.praman/real-apps/HANDOFF.md`.
+- **Worlds (2026-11-10, plan step 1, spec `worlds`):** before the fix, a scenario that
+  changes data passed repeat 1 and failed repeat 2 of one managed `verify` on both Kan
+  (create a board, expect two) and Shiori (delete the seed bookmark, expect none),
+  because repeats shared one database. Now a Docker service may declare `dataPath`;
+  `environment world-save` stores a hashed world, `create --world` starts a copy,
+  `reset` restores it and `verify` restores it before every repeat, recording each
+  repeat's starting hashes. On Kan (Postgres + RustFS) and Shiori (Postgres): copy A's
+  change was absent in copy B and in the source; the same scenarios `passed` 2/2 with
+  every hash equal to the world; an altered archive gave `insufficient_evidence` at
+  `create`; through `praman_environment` in headless Kiro both apps passed
+  (`sess_70a0f435…` Shiori, `sess_51bf6aa8…` Kan; no seeded secret in the output).
+  Nine new deterministic tests (fake `docker` on `PATH`) fail on the old code. Limits:
+  Kan's address is fixed at build time, so one Kan application runs at a time (data
+  copies are independent); `demonstrate` is refused for copies; baseline URLs are not
+  isolated; no kind worlds or live snapshots. Private inputs and evidence:
+  `.praman/real-apps/{kan,shiori}/` (`gap-before.json`, `world-*.json`, `kiro-mcp-worlds/`).
 - **Environment re-check (2026-11-10, plan step 0, spec `environment-recheck`):**
   before the fix, managed `environment verify` returned `insufficient_evidence`
   ("Managed preflight unavailable") on real Miniflux, Kan and Shiori and no browser
@@ -46,7 +62,7 @@ general simulator and not a sandbox.
   is a squashed public snapshot under the owner identity (see the repository history),
   with CI green and judge access enabled.
 - **Checks:** `npm run build` and `npm run lint` pass; `npm run lint:tests` passes;
-  the **full suite passes 278 tests / 35 files** on the recorded host (2026-11-10,
+  the **full suite passes 287 tests / 36 files** on the recorded host (2026-11-10,
   `--maxWorkers=2`), including the 8 Kiro finish-gate tests, the 15 cancellation
   tests, the 21 diagnosis tests, the 22 browser-action tests, the 11 step-id tests and
   the managed-verify test. Parallel local runs
@@ -208,8 +224,8 @@ The shipped/frozen/deferred view is in [ROADMAP.md](ROADMAP.md).
 
 ## Remaining before release / submission
 
-1. **Build plan (Nov 11–24):** steps 1–4 of the Hue-style environment plan in
-   [ROADMAP.md](ROADMAP.md) (step 0 done 2026-11-10), one Kiro session each; a step that misses its date is cut,
+1. **Build plan (Nov 15–24):** steps 2–4 of the Hue-style environment plan in
+   [ROADMAP.md](ROADMAP.md) (steps 0 and 1 done 2026-11-10), one Kiro session each; a step that misses its date is cut,
    not claimed.
 2. **Video and submission (owner):** record the takes in `docs/video-script.md`, edit to
    under 3 minutes, upload publicly to YouTube; replace `<DEMO_VIDEO_URL>` in the Devpost
