@@ -13,3 +13,7 @@ The repository is public. Before **any** push or merge:
    of a tested branch whose commits already carry the public identity). If the primary
    email ever shows as public again, stop and ask the owner.
 3. Never push, merge or force-push without the owner's explicit yes for that action.
+   Standing yes (owner decision 2026-11-10): a session doing one step of the plan in
+   `docs/ROADMAP.md` may push its branch, open a PR and fast-forward `main` once every
+   CI check is green, after checks 1 and 2 above. Force-pushes, GitHub-made merges and
+   any other push still need the owner's yes.

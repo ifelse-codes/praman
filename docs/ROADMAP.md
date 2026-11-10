@@ -1,6 +1,7 @@
-# PRAMAN — current roadmap (2026-11-09)
+# PRAMAN — current roadmap (2026-11-10)
 
-**Status: shipped and verified; next work is agent-facing fixes.** Public repository
+**Status: shipped and verified; next work is the Hue-style environment plan below
+(owner decision 2026-11-10).** Public repository
 https://github.com/ifelse-codes/praman (MIT), CI green on Ubuntu and macOS, judge
 access via [TESTING.md](../TESTING.md) and Codespaces, project page
 https://ifelse-codes.github.io/praman/. Not submitted: the demo video and the Devpost
@@ -45,6 +46,90 @@ form are the remaining release blockers.
   by `id`, so inserting a step no longer moves them; unknown ids are rejected before
   anything runs.
 
+## Plan: Hue-style environments and stimulation (decided 2026-11-10)
+
+**Why.** PRAMAN was inspired by Hue.run: give software a real place to run, with real
+state, real dependencies and controlled failures, then judge the result on evidence.
+Today PRAMAN can start Docker/kind environments, stop one dependency and replay a
+declared HTTP state machine. It cannot fork a saved starting state per run, slow or
+break live network traffic, run many users at once, or replay recorded outside APIs.
+The owner lifted the feature freeze for this plan on 2026-11-10. The video and blog
+need about one day, so building continues until Nov 24.
+
+**What we reuse and what we do not.** We reuse small, proven tools behind PRAMAN's
+existing proof and evidence rules: Docker volumes, Toxiproxy, parallel Playwright
+contexts, Playwright HAR replay and Hoverfly or WireMock. We copy ideas from Hue, not
+code (its backend is closed). Harbor stays paused: the 2026-11-02 Kan trial matched
+PRAMAN's runner but removed no custom code. AgentEnv is not needed, because PRAMAN's
+application integration module already has the same reset/observe shape. ZOO and
+AppWorld are benchmark worlds, not homes for a user's app. Gym-Anything is only
+relevant for desktop or Android testing, which stays deferred. Check each tool's
+license at the start of its session; run AGPL tools only as separate programs.
+
+**Real apps for proof.** A shared capability needs evidence from two different real
+apps (see AGENTS.md). Both run from their own unmodified checkouts:
+
+| App | Why it fits | Where |
+| --- | --- | --- |
+| Kan (kanban board) | Real Postgres and S3-style file storage; used before | `../kan` (existing checkout) |
+| Miniflux (feed reader) | Go, Postgres only, official Docker image, Apache 2.0, and it fetches outside feeds, so it has a real outside dependency for network faults and recorded APIs | Clone `github.com/miniflux/v2` at a pinned release tag into `../miniflux` in session 0 |
+
+Integration modules, scenarios and evidence for these apps stay private under ignored
+`.praman/real-apps/<app>/`. No app name, selector, route, credential or seed goes into
+core, schemas, CLI or MCP dispatch.
+
+### The steps: one per session
+
+| Step | Session goal | Reuse | Done when | Target date |
+| --- | --- | --- | --- | --- |
+| 0 | **Environment re-check.** Unfreeze the Docker `environment` route (create, verify, reset, destroy) and run it end to end on Kan and Miniflux. Fix only what broke since the 2026-11-05 cleanup, each with a regression test. kind stays frozen and is not claimed. | Existing code | Both apps: create, a passing scenario, reset to seed, destroy with no owned leftovers | Nov 11 |
+| 1 | **Worlds.** Save a declared starting state (the data volumes of declared services) as a hashed snapshot; give every repeat or campaign run its own fresh copy. Two versions can start from the same world. Generic: core copies volumes and never knows the database type. | Docker volumes | Both apps: a change in copy A is absent in copy B; each run's starting hash matches the world; an altered snapshot gives `insufficient_evidence` | Nov 12–14 |
+| 2 | **Real network faults.** Put a proxy between the app and a declared dependency and apply named faults: added delay, timeout, dropped connection, down. Like today's stop fault, the effect must be observed, or the run is `insufficient_evidence`. Faults can start and stop at step ids. | Toxiproxy | Both apps: each fault kind observed on live traffic; checks authored from the app's real behavior; fault removed and recovery observed | Nov 15–17 |
+| 3 | **Many users and invariants.** Run one scenario as N users at once (fresh browser contexts, a per-user index for inputs) against one environment copy. After the run, check caller-declared invariants (rules that must always hold), for example "card count equals N" or "no duplicate entries". | Parallel Playwright contexts | Both apps: N users run at the same time (peak concurrency recorded); per-user verdicts; an invariant that is broken on purpose in a fixture gives `failed` | Nov 18–20 |
+| 4 | **Recorded outside APIs.** Record an app's real outside HTTP calls once, then replay them in later runs. A call that is not in the recording fails closed (`insufficient_evidence`), so a test never reaches the real service by accident. The app is pointed at the replay through its own configuration. | Playwright HAR replay (browser side); Hoverfly or WireMock (server side) | Miniflux replays a recorded real feed with no network; an unrecorded call is refused. A second real app is required for a cross-app claim; if none of Kan, Lattice or Luma makes outside calls, that limit is written down instead | Nov 21–24 |
+| 5 | **Video and blog** (existing `submission-story` tasks 4–6). Record, edit to under 3 minutes and upload; add new footage only from recorded Kiro work in steps 0–4. | — | Video URL in the Devpost draft; owner submits | Nov 25–27 |
+
+If a step misses its date, it is cut, not claimed. Step 4 is cut first. Hard deadline:
+Dec 4, 2026, 2:00 pm PT.
+
+### Rules for every session in this plan
+
+1. **Start clean.** Local `main` equals public `main`, the working tree is clean, and
+   CI on `main` is green. If not, stop and tell the owner.
+2. **One step per session.** Branch from `main`, named after the step's spec.
+3. **Spec first.** Write `.kiro/specs/<name>/` (requirements, design, tasks) in Kiro.
+4. **Show the gap before the fix.** Record a real failing or refused run before
+   building, as earlier specs did.
+5. **Tests.** Deterministic regression tests in `tests/` that need no live app,
+   Docker daemon or private files (guard them like the media suites if a tool is
+   required). Old declarations keep their meaning and hash.
+6. **Real proof.** Prove the step on Kan and Miniflux, and through MCP in a headless
+   Kiro session where it applies. Evidence stays private under `.praman/`.
+7. **Checks.** `npm run build`, `npm run lint`, `npm run lint:tests`, the full suite
+   (`--maxWorkers=2`) and `node examples/first-use/run.mjs` (12/12) all pass.
+8. **Docs.** Update this table, `docs/STATUS.md`, the README contract, `CHANGELOG.md`
+   and the `docs/kiro-usage.md` usage log with what was observed and its limits.
+9. **Clean up.** Destroy owned containers and networks, remove throwaway scripts, and
+   return Colima to the state it was in at the start.
+10. **Deliver.** Check the identity of every new commit
+    (`Suman Patra <ifelse-codes@users.noreply.github.com>`) and the diff for private
+    paths, push the branch, open a PR, wait until every CI job is green, then
+    fast-forward public `main` (no GitHub-made commit) and local `main`. End with local
+    `main` equal to public `main` and a clean tree. Owner decision 2026-11-10: sessions
+    in this plan may do this push, PR and fast-forward without asking again. A
+    force-push, a GitHub-made merge, or any push outside this flow still needs the
+    owner's yes.
+
+### Kick-off prompt for the next session
+
+```
+Continue PRAMAN. Read AGENTS.md, docs/STATUS.md and docs/ROADMAP.md
+("Plan: Hue-style environments and stimulation"). Do the next step in the
+table that is not marked done, and only that step. Follow "Rules for every
+session in this plan", including the PR, green CI and fast-forward of main.
+Docker/Colima may be started for this work; return it to its starting state.
+```
+
 ## Real-world use so far
 
 PRAMAN has been used on real software by more than one agent: Headlamp (Kubernetes UI),
@@ -52,7 +137,7 @@ Kan (kanban app), Stern (Go CLI), jq (C CLI), Luma (todo app) and Lattice (a spr
 built and verified by a different agent, opencode, using only the public docs). The
 evidence is private and held outside this repository (see [ARCHIVE.md](ARCHIVE.md)).
 
-## Next: fix what every agent hits (planned 2026-11-08)
+## Done: fixes every agent hit (planned 2026-11-08, done 2026-11-09)
 
 Found by the opencode/Lattice session and our own testing. Each fix is app-independent,
 works the same for every agent and the CLI, and keeps existing declarations unchanged.
@@ -67,7 +152,7 @@ works the same for every agent and the CLI, and keeps existing declarations unch
 | 4 | ~~Checks point at steps by number, so inserting a step shifts them~~ **Done 2026-11-09** | Optional step names that checks can reference | `named-steps` | M |
 | 5 | No demo video yet (storyboard and submission copy done 2026-11-09; recording is the owner's) | A video of under 3 minutes made only from this Kiro work (the earlier non-Kiro Headlamp clip is dropped) | `submission-story` | M |
 
-Next session starts with order 5: the owner records the takes listed in
+Order 5 moved to step 5 of the 2026-11-10 plan above. The owner records the takes in
 `docs/video-script.md` (spec `submission-story` task 4); the agent can dry-run every take
 first and review the cut against `docs/video-guidelines.md`.
 
@@ -78,35 +163,39 @@ first and review the cut against `docs/video-guidelines.md`.
 - `docs/kiro-usage.md` has the PR #8 row.
 - `tests/networkPolicy.test.ts` has passed since (local full suite and PR #9 CI on
   Ubuntu and macOS). Still treated as flaky; if it fails again, investigate and fix it.
+- `tests/scenarioActions.test.ts` (all-actions test, macOS CI failure on 2026-11-09):
+  CI on `main` `682f0ed` passed on Ubuntu and macOS (run 42664656908). Still watched; its
+  assertion now prints the stopped step if it fails again.
 
-This replaces the earlier "no new features" freeze for these items only. Other optional
-surfaces stay frozen.
+## Frozen
 
-## Frozen for this release window
-
-- Optional surfaces (preview, campaigns, managed environments, recording) are
-  implemented and unit-tested, but frozen: no expansion and no new end-to-end claims
-  before submission.
+- The feature freeze was lifted on 2026-11-10 for the plan above. The `environment`
+  route is unfrozen by step 0; each later step unfreezes only what it re-verifies.
+- Still frozen (implemented and unit-tested, no new end-to-end claims): kind
+  environments, preview, command preview, demonstrate/recording, workflow replay,
+  coverage review and campaigns, unless a plan step re-verifies them.
 
 ## Deferred
 
-- Stateful dependency simulation beyond the declared service; arbitrary world or
-  database restore.
+- Stateful dependency simulation beyond the declared service and the recorded APIs of
+  step 4; world restore beyond the declared service volumes of step 1.
 - Autonomous discovery and semantic requirement review.
 - Native desktop automation.
 - Cross-host or distributed campaigns; machine-level Kubernetes campaigns.
-- Cached-audio movie review; Harbor adoption.
+- Cached-audio movie review; Harbor adoption (paused until hundreds of parallel or cloud
+  runs are a real need).
 - MCP project-folder discovery (`PRAMAN_WORKSPACE` or client roots); the speech-cache
   default stays relative.
 - npm publishing, Windows support, and the final archive-retention decision.
 
 ## Next (owner)
 
-1. Record and upload the <=3 minute demo video; set `<DEMO_VIDEO_URL>` in
-   [the Devpost draft](devpost-draft.md).
-2. Paste the [TESTING.md](../TESTING.md) judge instructions, save and submit the Devpost
-   form (target Nov 26–27; deadline Dec 4, 2026 2:00 pm PT).
-3. Publish the blog/social bonus posts during the submission window; decide archive
+1. Steps 0–4 of the plan, one Kiro session each (Nov 11–24).
+2. Record and upload the <=3 minute demo video; set `<DEMO_VIDEO_URL>` in
+   [the Devpost draft](devpost-draft.md) (Nov 25–26).
+3. Paste the [TESTING.md](../TESTING.md) judge instructions, save and submit the Devpost
+   form (target Nov 27; deadline Dec 4, 2026 2:00 pm PT).
+4. Publish the blog/social bonus posts during the submission window; decide archive
    retention and npm publishing.
 
 Optional: run independent-human validation.

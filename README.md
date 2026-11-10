@@ -44,7 +44,8 @@ Node 23). See [docs/PLATFORMS.md](docs/PLATFORMS.md).
 Stateful dependency simulation, autonomous discovery, native desktop automation,
 cross-host/distributed campaigns and machine-level Kubernetes campaigns are explicitly
 deferred and not claimed. Optional product surfaces (previews, campaigns, managed
-environments) are implemented and tested but frozen for this release window; the
+environments) are implemented and unit-tested; they were frozen for the release window
+until the owner lifted the freeze on 2026-11-10 for the plan in the roadmap. The
 verified core is authored browser/command verification with evidence.
 
 **Current state: scoped MVP complete and published.** Authored command/browser
@@ -83,12 +84,14 @@ The submission release treats two surfaces differently:
 - **Verified core:** `scenario-verify`, `command-verify`, the three explicit modes,
   evidence/feedback, first-use onboarding and the stdio MCP entry point. These are
   exercised end-to-end and covered by the public 12-outcome example.
-- **Optional / experimental, frozen for the submission window:** `preview`,
+- **Optional / experimental, not yet re-verified:** `preview`,
   `command-preview`, `demonstrate`, `command-demonstrate`, `environment`,
   `service`, `service-replay`, `workflow-replay`, `coverage-review`,
   `workflow-campaign`, `campaign-resume` and `agent-campaign`. They are implemented
   and unit-tested but not re-verified end-to-end after the 2026-11-05 cleanup;
-  do not treat their README contracts as newly demonstrated claims.
+  do not treat their README contracts as newly demonstrated claims. The 2026-11-10
+  plan in [the roadmap](docs/ROADMAP.md) re-verifies `environment` first and then
+  extends it step by step.
 
 ## Explicit verification modes
 

@@ -1,4 +1,4 @@
-# PRAMAN — current project status (2026-11-09, agent-facing fixes)
+# PRAMAN — current project status (2026-11-10, Hue-style environment plan)
 
 PRAMAN (प्रमाण, "evidence") is an evidence-driven verification toolkit for AI coding
 agents. An agent supplies an authored browser scenario or command declaration through
@@ -8,11 +8,17 @@ general simulator and not a sandbox.
 
 ## Current state
 
+- **Plan (2026-11-10):** the owner lifted the feature freeze. Next work is the
+  Hue-style environment plan in [ROADMAP.md](ROADMAP.md): step 0 environment re-check,
+  1 Worlds, 2 real network faults, 3 many users and invariants, 4 recorded outside
+  APIs, then the video and blog. One step per Kiro session; each session ends with a
+  green PR fast-forwarded to `main`. Real-app proof uses Kan and Miniflux. Nothing in
+  the plan is built yet.
 - **History:** the private working history ends at `cc83be3`; the **public repository**
   is a squashed public snapshot under the owner identity (see the repository history),
   with CI green and judge access enabled.
 - **Checks:** `npm run build` and `npm run lint` pass; `npm run lint:tests` passes;
-  the **full suite passes 276 tests / 35 files** on the recorded host (2026-11-09,
+  the **full suite passes 277 tests / 35 files** on the recorded host (2026-11-10,
   `--maxWorkers=2`), including the 8 Kiro finish-gate tests, the 15 cancellation
   tests, the 21 diagnosis tests, the 22 browser-action tests and the 11 step-id tests. Parallel local runs
   are resource-sensitive while macOS Spotlight/MediaAnalysis indexing saturates the
@@ -173,21 +179,26 @@ The shipped/frozen/deferred view is in [ROADMAP.md](ROADMAP.md).
 
 ## Remaining before release / submission
 
-1. **Video and submission (owner):** record the takes in `docs/video-script.md`, edit to
+1. **Build plan (Nov 11–24):** steps 0–4 of the Hue-style environment plan in
+   [ROADMAP.md](ROADMAP.md), one Kiro session each; a step that misses its date is cut,
+   not claimed.
+2. **Video and submission (owner):** record the takes in `docs/video-script.md`, edit to
    under 3 minutes, upload publicly to YouTube; replace `<DEMO_VIDEO_URL>` in the Devpost
-   draft and social post; save and submit. Target Nov 26–27, deadline Dec 4, 2026.
-2. **Kiro:** done: specs `kiro-evidence-gate`, `power-path-resolution`,
+   draft and social post; save and submit. Target Nov 25–27, deadline Dec 4, 2026.
+3. **Kiro:** done: specs `kiro-evidence-gate`, `power-path-resolution`,
    `verify-cancellation`, `agent-diagnostics`, `scenario-actions` and `named-steps`.
    Spec `submission-story`: documents, Kiro write-up, storyboard and submission copy are
    done (tasks 1–3, 5.2 copy); recording, upload, submission and the final fresh-clone
    check are left (tasks 4, 5, 6).
-3. **Independent-human validation:** a person other than the owner following the
+4. **Independent-human validation:** a person other than the owner following the
    first-use guide (CI already covers two operating systems).
-4. **Post-submission backlog:** npm publish pipeline, Windows support, deferred
+5. **Post-submission backlog:** npm publish pipeline, Windows support, deferred
    capabilities, archive retention decision.
 
 ## Boundaries
 
 Do not host public PRAMAN execution (trusted commands, inherited environment, no
-sandbox/auth). Do not publish raw evidence or the external archive. Do not add
-features before the submission. Do not commit, push or submit without authorization.
+sandbox/auth). Do not publish raw evidence or the external archive. New features only
+through the 2026-11-10 plan, each proven on real apps before it is claimed. Do not
+commit, push or submit without authorization; the plan's rules state the push, PR and
+fast-forward each plan session may do.
