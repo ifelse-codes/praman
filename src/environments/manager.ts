@@ -8,6 +8,7 @@ import { environmentSpecSchema, environmentStateSchema } from './schema.js';
 import { provisionKind, observeKind, resetKind, workloadKind, faultKind, destroyKind, kubectl } from './kind.js';
 import { loadApplication, type ApplicationIntegration } from './application.js';
 import { provisionDocker, observeDocker, workloadDocker, faultDocker, destroyDocker, saveWorldDocker } from './docker.js';
+import { applyFault, removeFault } from './proxy.js';
 import { loadWorld, worldIdPattern, type WorldStart } from './world.js';
 import { stopProcesses } from './runtime.js';
 import type { EnvironmentState, OperationResult } from './types.js';
@@ -17,7 +18,7 @@ import { changeSpecSchema } from '../case/change.js';
 import { normalizeIdentity } from '../eval/identity.js';
 
 export type EnvironmentAction = 'create' | 'observe' | 'workload' | 'fault' | 'recover' | 'reset' | 'world-save' | 'verify' | 'demonstrate' | 'destroy';
-export interface EnvironmentRequest { baseDir?: string; id?: string; specPath?: string; workload?: string; world?: string; }
+export interface EnvironmentRequest { baseDir?: string; id?: string; specPath?: string; workload?: string; world?: string; fault?: string; }
 
 export async function manageEnvironment(action: EnvironmentAction, request: EnvironmentRequest) {
   const base = resolve(request.baseDir ?? '.praman/environments');
@@ -52,6 +53,7 @@ export async function manageEnvironment(action: EnvironmentAction, request: Envi
     renameSync(temporary, join(state.directory, 'state.json'));
   };
   const started = new Date().toISOString();
+  const proxyToken = state.proxy?.token;
   const docker = state.spec.provider === 'docker';
   let application: ApplicationIntegration | undefined;
   const observe = async () => ({
@@ -69,13 +71,16 @@ export async function manageEnvironment(action: EnvironmentAction, request: Envi
     } else await resetKind(state, save);
   };
   const resetEnvironment = async () => {
-    if (docker && state.fault) await faultDocker(state, false, save);
+    if (docker && state.activeFault) await removeFault(state, save);
+    else if (docker && state.fault) await faultDocker(state, false, save);
     if (application) await application.reset(state, save, resetInfrastructure);
     else await resetInfrastructure();
   };
   const worldRuns: Array<{ repeat: number; worldId: string; services: WorldStart[] }> = [];
   let result: OperationResult;
   let error: string | undefined;
+  // One line about the fault windows, placed last: some MCP clients show only the start and end of a long result.
+  let faultSummary: string | undefined;
   const verificationOutput = action === 'verify' || action === 'demonstrate'
     ? join(state.directory, 'runs', `${Date.now()}-${action}`) : undefined;
   const feedbackContext = { environmentId: state.id, generation: state.generation, sourceHashes: state.sourceHashes,
@@ -107,6 +112,9 @@ export async function manageEnvironment(action: EnvironmentAction, request: Envi
         normalizeIdentity(scenario.identity, scenarioDirectory);
         if (scenario.diffPath) scenario.diffPath = resolve(scenarioDirectory, scenario.diffPath);
         for (const step of scenario.steps) if (step.action === 'upload') step.path = resolve(scenarioDirectory, step.path);
+        for (const window of scenario.faults ?? []) {
+          if (!state.spec.faults?.[window.name]) throw new Error(`The scenario names fault "${window.name}", which this environment does not declare`);
+        }
         state.scenario = scenario;
       }
       save();
@@ -124,7 +132,16 @@ export async function manageEnvironment(action: EnvironmentAction, request: Envi
       if (!request.workload) throw new Error('workload requires a declared workload name');
       result = { verdict: 'passed', evidence: docker ? await workloadDocker(state, request.workload) : await workloadKind(state, request.workload) };
     } else if (action === 'fault' || action === 'recover') {
-      result = { verdict: 'passed', evidence: docker ? await faultDocker(state, action === 'fault', save) : await faultKind(state, action === 'fault', save) };
+      let evidence: unknown;
+      if (!docker && request.fault !== undefined) throw new Error('Named network faults need a Docker environment');
+      if (!docker) evidence = await faultKind(state, action === 'fault', save);
+      else if (action === 'fault' && request.fault !== undefined) {
+        if (state.phase !== 'ready') throw new Error('Faults require a ready environment');
+        evidence = await applyFault(state, request.fault, save);
+      } else if (action === 'recover' && state.activeFault) evidence = await removeFault(state, save);
+      else if (!state.spec.faultService) throw new Error('This environment declares no faultService; name one of its declared faults');
+      else evidence = await faultDocker(state, action === 'fault', save);
+      result = { verdict: 'passed', evidence };
     } else if (action === 'reset') {
       await resetEnvironment();
       const evidence = await observe();
@@ -140,20 +157,41 @@ export async function manageEnvironment(action: EnvironmentAction, request: Envi
       if (state.phase !== 'ready' || state.fault || !state.scenario) throw new Error('Proof requires a ready, recovered environment with a declared application scenario');
       if (state.world && action === 'demonstrate') throw new Error('demonstrate is not supported for environments created from a world; its recording would start from a used copy');
       const observed = await observe();
-      const hooks = state.world ? { beforeRepeat: async (index: number) => {
+      const beforeRepeat = state.world ? async (index: number) => {
         const address = state.scenario!.afterUrl;
         await resetEnvironment();
         if (state.scenario!.afterUrl !== address) throw new Error('The application address changed while restoring the world');
         if (!lastStarts.length || lastStarts.some(start => !start.matchesWorld)) throw new Error('The restored data does not match the world');
         worldRuns.push({ repeat: index + 1, worldId: state.world!.id, services: lastStarts });
-      } } : undefined;
+      } : undefined;
+      // Fault windows run inside this process: the operation lock keeps any other action out meanwhile.
+      const faults = docker && state.scenario.faults ? {
+        apply: (name: string) => applyFault(state, name, save),
+        remove: async (name: string) => {
+          if (state.activeFault?.name !== name) throw new Error(`Fault "${name}" is not the active fault`);
+          return removeFault(state, save);
+        },
+        clear: async () => state.activeFault ? removeFault(state, save) : undefined,
+      } : undefined;
+      const hooks = beforeRepeat || faults ? { ...(beforeRepeat ? { beforeRepeat } : {}), ...(faults ? { faults } : {}) } : undefined;
       const verification = action === 'verify'
         ? await proveChange(state.scenario, verificationOutput!, feedbackContext, hooks)
         : await demonstrateChange(state.scenario, verificationOutput!, feedbackContext);
       saveDeclaration();
       if (state.world) writeFileSync(join(verificationOutput!, 'world-runs.json'), JSON.stringify({ world: state.world.id, runs: worldRuns }, null, 2), { mode: 0o600 });
+      // A short per-run view of the fault windows, so an agent sees it even when the full proof is cut off.
+      const windowsOf = (run: { verdict: string; faults?: unknown[] }) => ({ verdict: run.verdict, windows: (run.faults ?? []).filter((row): row is Record<string, unknown> => typeof row === 'object' && row !== null && 'name' in row)
+        .map(row => ({ name: row.name, applied: !!row.applied, removed: !!row.removed, ...(row.error ? { failed: true } : {}) })) });
+      const faultWindows = state.scenario.faults && 'proof' in verification ? {
+        ...(verification.proof.before ? { before: windowsOf(verification.proof.before) } : {}),
+        repeats: verification.proof.after.map(windowsOf) } : undefined;
+      if (faultWindows) {
+        const line = (label: string, run: ReturnType<typeof windowsOf>) => `${label} ${run.verdict}: ${run.windows.length ? run.windows.map(window =>
+          `${window.name} ${window.failed ? 'failed' : window.applied && window.removed ? 'applied and removed' : window.applied ? 'applied, not removed' : 'not applied'}`).join(', ') : 'no window ran'}`;
+        faultSummary = [...(faultWindows.before ? [line('baseline', faultWindows.before)] : []), ...faultWindows.repeats.map((run, index) => line(`repeat ${index + 1}`, run))].join('; ');
+      }
       result = { verdict: verification.verdict, evidence: { output: verificationOutput, environmentId: state.id, generation: state.generation,
-        sourceHashes: state.sourceHashes, observed, ...(state.world ? { world: { id: state.world.id, runs: worldRuns } } : {}), ...verification } };
+        sourceHashes: state.sourceHashes, observed, ...(state.world ? { world: { id: state.world.id, runs: worldRuns } } : {}), ...(faultWindows ? { faultWindows } : {}), ...verification } };
     } else {
       const errors: string[] = [];
       try { await stopProcesses(state, save); } catch (e) { errors.push(String(e)); }
@@ -197,9 +235,9 @@ export async function manageEnvironment(action: EnvironmentAction, request: Envi
         ...saveFeedback(state.scenario, proof, verificationOutput, feedbackContext) } };
     }
   } finally { unlinkSync(lock); }
-  const record = { action, started, finished: new Date().toISOString(), id: state.id, directory: state.directory, phase: state.phase, generation: state.generation, ...result, ...(error ? { error } : {}) };
+  const record = { action, started, finished: new Date().toISOString(), id: state.id, directory: state.directory, phase: state.phase, generation: state.generation, ...result, ...(error ? { error } : {}), ...(faultSummary ? { faultSummary } : {}) };
   appendFileSync(join(state.directory, 'operations.jsonl'), JSON.stringify(record) + '\n', { mode: 0o600 });
-  const secrets = [state.ownershipToken, ...(state.privateInputs ?? []),
+  const secrets = [state.ownershipToken, proxyToken, state.proxy?.token, ...(state.privateInputs ?? []),
     ...Object.values(state.spec.services ?? {}).flatMap(service => Object.entries(service.env ?? {})
       .filter(([key]) => /password|secret|token|key|credential/i.test(key)).map(([, value]) => value))]
     .filter((value): value is string => !!value);

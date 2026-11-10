@@ -1,4 +1,4 @@
-# PRAMAN — current project status (2026-11-10, Hue-style environment plan)
+# PRAMAN — current project status (2026-11-10, Hue-style environment plan, step 2 done)
 
 PRAMAN (प्रमाण, "evidence") is an evidence-driven verification toolkit for AI coding
 agents. An agent supplies an authored browser scenario or command declaration through
@@ -10,12 +10,37 @@ general simulator and not a sandbox.
 
 - **Plan (2026-11-10):** the owner lifted the feature freeze. Work follows the
   Hue-style environment plan in [ROADMAP.md](ROADMAP.md): step 0 environment re-check
-  (**done 2026-11-10**), 1 Worlds (**done 2026-11-10**), 2 real network faults, 3 many users and invariants,
+  (**done 2026-11-10**), 1 Worlds (**done 2026-11-10**), 2 real network faults (**done
+  2026-11-10**), 3 many users and invariants,
   4 recorded outside APIs, then the video and blog. One step per Kiro session; each
   session ends with a green PR fast-forwarded to `main`. Real-app proof uses Kan and
   Shiori (Shiori replaced Miniflux on 2026-11-10, owner decision; see below). Next:
-  step 2, real network faults; the handoff is in ROADMAP.md ("Handoff for the next session") and
+  step 3, many users and invariants; the handoff is in ROADMAP.md ("Handoff for the next session") and
   the private `.praman/real-apps/HANDOFF.md`.
+- **Network faults (2026-11-10, plan step 2, spec `network-faults`):** before the fix, a
+  declaration naming a slow database was rejected by the schema, and `environment fault
+  <id> db-slow` passed but ignored the name and stopped the whole database, on both Kan
+  and Shiori. Now a Docker service may declare `proxy`: PRAMAN runs an owned Toxiproxy
+  container (MIT, `ghcr.io/shopify/toxiproxy:2.13.0`) on an owned network between the
+  application and the service, and the application's `state.services[name].port` is the
+  proxy port. Named `faults` (`delay`, `timeout`, `drop`, `down`) are applied by
+  `fault <id> <name>` or by scenario windows at step ids during managed `verify`; each
+  effect and recovery is observed through a probe over the proxy, or the result is
+  `insufficient_evidence`. On Kan (Postgres; `delay` and `down` also on RustFS storage)
+  and Shiori (Postgres): every kind observed and removed with recovery observed; fault
+  scenarios authored from real behavior `passed` 2/2; through `praman_environment` in
+  headless Kiro (`sess_8d627916…` Shiori, `sess_808c8533…` Kan; no seeded secret in the
+  output). Controls: a probe that bypassed the proxy gave `insufficient_evidence`; a
+  wrong expectation under `down` `failed`; `reset` recreated the proxy and network;
+  `destroy` left no labelled container or network. 22 new deterministic tests (fake
+  `docker` and a fake proxy API); 15 fail on the old code (the other 7 are rejections
+  and the unchanged no-proxy path). Found on the way: Kiro shows only the first and last
+  500 characters of an MCP result over 30,000 characters, so the verify result now ends
+  with a one-line `faultSummary`. Limits: the probe measures the proxy path, not the
+  application; Toxiproxy counts bytes only when a connection closes, so per-window
+  application traffic is not reported; one fault at a time; no container-to-container
+  or kind faults. Private inputs and evidence: `.praman/real-apps/{kan,shiori}/`
+  (`faults-gap/`, `faults/`, `kiro-mcp-faults/`).
 - **Worlds (2026-11-10, plan step 1, spec `worlds`):** before the fix, a scenario that
   changes data passed repeat 1 and failed repeat 2 of one managed `verify` on both Kan
   (create a board, expect two) and Shiori (delete the seed bookmark, expect none),
@@ -62,8 +87,8 @@ general simulator and not a sandbox.
   is a squashed public snapshot under the owner identity (see the repository history),
   with CI green and judge access enabled.
 - **Checks:** `npm run build` and `npm run lint` pass; `npm run lint:tests` passes;
-  the **full suite passes 287 tests / 36 files** on the recorded host (2026-11-10,
-  `--maxWorkers=2`), including the 8 Kiro finish-gate tests, the 15 cancellation
+  the **full suite passes 309 tests / 37 files** on the recorded host (2026-11-10,
+  `--maxWorkers=2`), including the 22 network-fault tests, the 8 Kiro finish-gate tests, the 15 cancellation
   tests, the 21 diagnosis tests, the 22 browser-action tests, the 11 step-id tests and
   the managed-verify test. Parallel local runs
   are resource-sensitive while macOS Spotlight/MediaAnalysis indexing saturates the
@@ -164,9 +189,10 @@ general simulator and not a sandbox.
   [browser scenario cheat sheet](schema-cheatsheet.md) plus explicit
   selector/zero-based/private-evidence guidance in the README and browser guide;
   product behavior and test counts are unchanged.
-- **CI:** green on **Ubuntu and macOS** (Node 22) for public `main` `1832643` (plan
-  step 0, PR #18) — run https://github.com/ifelse-codes/praman/actions/runs/42786511955.
-  Each runner reports 262 passed / 16 skipped of 278 tests; the skips are the
+- **CI:** green on **Ubuntu and macOS** (Node 22) for public `main` `ce383e9` (plan
+  step 1, PR #20) — run https://github.com/ifelse-codes/praman/actions/runs/42809966916.
+  The earlier step 0 run (`1832643`, run 42786511955) reported 262 passed / 16 skipped
+  of 278 tests on each runner; the skips are the
   environment-guarded media/speech suites (no ffmpeg/ffprobe on the runners). The
   Ubuntu job also runs the judge route. `tests/networkPolicy.test.ts` failed once on
   macOS CI (PR #8) and passed on rerun; it has passed since, locally and in CI.
@@ -224,15 +250,15 @@ The shipped/frozen/deferred view is in [ROADMAP.md](ROADMAP.md).
 
 ## Remaining before release / submission
 
-1. **Build plan (Nov 15–24):** steps 2–4 of the Hue-style environment plan in
-   [ROADMAP.md](ROADMAP.md) (steps 0 and 1 done 2026-11-10), one Kiro session each; a step that misses its date is cut,
+1. **Build plan (Nov 15–24):** steps 3–4 of the Hue-style environment plan in
+   [ROADMAP.md](ROADMAP.md) (steps 0, 1 and 2 done 2026-11-10), one Kiro session each; a step that misses its date is cut,
    not claimed.
 2. **Video and submission (owner):** record the takes in `docs/video-script.md`, edit to
    under 3 minutes, upload publicly to YouTube; replace `<DEMO_VIDEO_URL>` in the Devpost
    draft and social post; save and submit. Target Nov 25–27, deadline Dec 4, 2026.
 3. **Kiro:** done: specs `kiro-evidence-gate`, `power-path-resolution`,
-   `verify-cancellation`, `agent-diagnostics`, `scenario-actions`, `named-steps` and
-   `environment-recheck`.
+   `verify-cancellation`, `agent-diagnostics`, `scenario-actions`, `named-steps`,
+   `environment-recheck`, `worlds` and `network-faults`.
    Spec `submission-story`: documents, Kiro write-up, storyboard and submission copy are
    done (tasks 1–3, 5.2 copy); recording, upload, submission and the final fresh-clone
    check are left (tasks 4, 5, 6).

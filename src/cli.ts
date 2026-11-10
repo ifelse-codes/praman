@@ -48,10 +48,10 @@ environment.command('create').argument('<declaration>').option('--base <dir>', '
     if (result.verdict !== 'passed') process.exitCode = 2;
   });
 for (const action of ['observe', 'workload', 'fault', 'recover', 'reset', 'world-save', 'verify', 'demonstrate', 'destroy'] as const) {
-  environment.command(action).argument('<id>').argument('[workload]', 'declared workload name')
+  environment.command(action).argument('<id>').argument('[name]', action === 'fault' ? 'declared fault name (none: stop faultService)' : 'declared workload name')
     .option('--base <dir>', 'managed environment storage', './.praman/environments')
-    .action(async (id, workload, opts) => {
-      const result = await manageEnvironment(action, { id, workload, baseDir: opts.base });
+    .action(async (id, name, opts) => {
+      const result = await manageEnvironment(action, { id, baseDir: opts.base, ...(action === 'fault' ? { fault: name } : { workload: name }) });
       console.log(JSON.stringify(result, null, 2));
       if (result.verdict !== 'passed') process.exitCode = result.verdict === 'failed' ? 1 : 2;
     });

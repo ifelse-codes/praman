@@ -4,6 +4,18 @@
 
 ### Added
 
+- Network faults (spec `network-faults`, plan step 2): a Docker service may declare
+  `proxy`; PRAMAN then runs an owned Toxiproxy container on an owned network between
+  the application and the service (`state.services[name].port` becomes the proxy port,
+  `directPort` the service's own). Named `faults` (`delay`, `timeout`, `drop`, `down`)
+  are applied with `environment fault <id> <name>` or `praman_environment` `fault`, and
+  removed with `recover`; each effect and each recovery is observed through a probe
+  over the proxy, or the result is `insufficient_evidence`. Scenarios may declare fault
+  windows (`faults: [{ name, fromStep, throughStep }]`, step ids allowed) that managed
+  `verify` applies in every run and records per run; results carry
+  `evidence.faultWindows` and a last-field `faultSummary`. Windows are refused outside
+  a managed verify. `faultService` is optional when `faults` is declared. Declarations
+  and scenarios without these fields keep their meaning and hash.
 - Worlds (spec `worlds`, plan step 1): a Docker service may declare `dataPath`;
   `environment world-save <id>` saves the declared data paths as a hashed world,
   `environment create --world <id>` starts a copy after verifying the hashes and the

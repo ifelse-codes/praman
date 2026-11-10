@@ -8,6 +8,7 @@ export const resourceSchema = z.object({
 export const namespaceSchema = z.object({ metadata: z.object({ name: z.string(), uid: z.string().min(1) }) });
 const kinds = ['ConfigMap', 'Deployment', 'StatefulSet', 'Service', 'Job', 'PersistentVolumeClaim', 'NetworkPolicy', 'Pod'];
 const verbs = ['get', 'scale', 'exec', 'patch', 'annotate', 'label', 'wait', 'rollout'];
+export const faultNamePattern = /^[a-z][a-z0-9-]*$/;
 export const environmentSpecSchema = z.object({
   name: z.string().min(1),
   provider: z.enum(['kind', 'docker']).optional(),
@@ -22,8 +23,16 @@ export const environmentSpecSchema = z.object({
   services: z.record(z.string().regex(/^[a-z][a-z0-9-]*$/), z.object({
     image: z.string().min(1), args: z.array(z.string()).optional(), env: z.record(z.string(), z.string()).optional(),
     port: z.number().int().min(1).max(65535), dataPath: z.string().regex(/^\/[^\0]*[^/\0]$/).optional(), ready: z.union([z.array(z.string()).min(1), z.object({ http: z.string().startsWith('/') }).strict()]),
+    // The application reaches a proxied service through an owned fault proxy; `probe` checks that path.
+    proxy: z.object({ probe: z.array(z.string()).min(1).optional() }).strict().optional(),
   }).strict()).optional(),
   faultService: z.string().optional(),
+  faults: z.record(z.string().regex(faultNamePattern), z.discriminatedUnion('kind', [
+    z.object({ service: z.string(), kind: z.literal('delay'), delayMs: z.number().int().min(100).max(60_000) }).strict(),
+    z.object({ service: z.string(), kind: z.literal('timeout'), timeoutMs: z.number().int().min(100).max(60_000) }).strict(),
+    z.object({ service: z.string(), kind: z.literal('drop') }).strict(),
+    z.object({ service: z.string(), kind: z.literal('down') }).strict(),
+  ])).optional(),
   application: z.object({ module: z.string().min(1), config: z.unknown() }).strict().optional(),
   scenario: z.string().min(1).optional(),
 }).strict().superRefine((spec, ctx) => {
@@ -34,7 +43,19 @@ export const environmentSpecSchema = z.object({
     for (const [name, workload] of Object.entries(spec.workloads)) {
       if (!workload.service || !spec.services?.[workload.service]) ctx.addIssue({ code: 'custom', path: ['workloads', name], message: 'Docker workloads require a declared service' });
     }
-    if (!spec.faultService || !spec.services?.[spec.faultService]) ctx.addIssue({ code: 'custom', path: ['faultService'], message: 'A declared fault service is required' });
+    const named = Object.keys(spec.faults ?? {}).length > 0;
+    if ((!named || spec.faultService !== undefined) && (!spec.faultService || !spec.services?.[spec.faultService])) ctx.addIssue({ code: 'custom', path: ['faultService'], message: 'A declared fault service is required' });
+    for (const [name, fault] of Object.entries(spec.faults ?? {})) {
+      if (!spec.services?.[fault.service]?.proxy) ctx.addIssue({ code: 'custom', path: ['faults', name, 'service'], message: 'A fault needs a declared service with proxy' });
+    }
+    for (const [name, service] of Object.entries(spec.services ?? {})) {
+      if (!service.proxy) continue;
+      if (service.proxy.probe ? !service.proxy.probe.some(arg => arg.includes('{proxyPort}')) : Array.isArray(service.ready)) {
+        ctx.addIssue({ code: 'custom', path: ['services', name, 'proxy', 'probe'], message: 'A proxied service needs HTTP readiness or a proxy.probe command that uses {proxyPort}' });
+      }
+    }
+  } else if (spec.faults || Object.values(spec.services ?? {}).some(service => service.proxy)) {
+    ctx.addIssue({ code: 'custom', path: ['faults'], message: 'Network faults need a Docker environment' });
   } else if (!spec.nodeImage || spec.services) {
     ctx.addIssue({ code: 'custom', message: 'Kind requires nodeImage and cannot declare Docker services' });
   }
@@ -63,8 +84,11 @@ export const environmentStateSchema = z.object({
   fault: z.boolean(), generation: z.number().int().nonnegative(),
   processes: z.array(z.object({ pid: z.number().int().positive(), startedAt: z.string(), command: z.string(), args: z.array(z.string()), log: z.string() })),
   urls: z.record(z.string(), z.string()), scenario: changeSpecSchema.optional(), sourceHashes: z.record(z.string(), z.string()).optional(),
-  services: z.record(z.string(), z.object({ name: z.string(), port: z.number().int(), owned: z.boolean() })).optional(),
+  services: z.record(z.string(), z.object({ name: z.string(), port: z.number().int(), owned: z.boolean(), directPort: z.number().int().optional() })).optional(),
   ownershipToken: z.string().optional(),
+  network: z.object({ name: z.string(), owned: z.literal(true) }).strict().optional(),
+  proxy: z.object({ name: z.string(), apiPort: z.number().int(), token: z.string(), listen: z.record(z.string(), z.number().int()) }).strict().optional(),
+  activeFault: z.object({ name: z.string(), healthyMs: z.number(), startedAt: z.string() }).strict().optional(),
   world: z.object({ id: z.string().regex(/^[a-f0-9]{12}$/), directory: z.string() }).strict().optional(),
   privateInputs: z.array(z.string()).optional(),
 });

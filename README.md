@@ -93,6 +93,7 @@ The submission release treats two surfaces differently:
   plan in [the roadmap](docs/ROADMAP.md) extends them step by step.
 - **Re-checked 2026-11-10:** the Docker `environment` route (create, verify, workload,
   reset, destroy) on two real apps; see [Docker environments](#docker-environments).
+  Added on 2026-11-10 and proven on the same two apps: worlds and network faults.
 
 ## Explicit verification modes
 
@@ -685,6 +686,7 @@ node dist/cli.js environment workload <id> requests
 node dist/cli.js environment workload <id> scale
 node dist/cli.js environment workload <id> ready
 node dist/cli.js environment fault <id>
+node dist/cli.js environment fault <id> db-slow      # Docker only; a declared network fault
 node dist/cli.js environment recover <id>
 node dist/cli.js environment reset <id>
 node dist/cli.js environment world-save <id>      # Docker only; see Worlds
@@ -1537,6 +1539,7 @@ declare image, environment, command arguments, a loopback-published port and an
 exec or HTTP readiness check; Docker workloads name a declared service and run
 `args` inside that owned container; `faultService` is physically stopped by `fault`
 and must fail its own readiness check; `recover` starts it and awaits readiness.
+Slower, hanging or dropped connections are declared as network faults (below).
 Unique container names and random ownership labels prevent adopting or deleting
 foreign containers. There are no user host mounts or shared persistent volumes.
 Reset recreates the declared containers (new data, new random host ports), reruns
@@ -1551,9 +1554,9 @@ Shiori (Postgres), through the CLI and through `praman_environment` in headless 
 After `destroy`, no container with the instance's ownership label and no owned process
 remained. Limits found:
 
-- PRAMAN creates no Docker network, and host ports are random. One container cannot
-  reach another, so the application runs on the host (started by the integration) and
-  reaches services on `127.0.0.1:<state.services[name].port>`.
+- PRAMAN creates no Docker network unless a service declares `proxy` (see Network
+  faults), and host ports are random. The application runs on the host (started by the
+  integration) and reaches services on `127.0.0.1:<state.services[name].port>`.
 - On `reset`, `readinessWorkloads` run inside the infrastructure reset, before the
   integration restarts the application. Seed steps that need the application's own
   schema migrations belong in the integration's `start`, not in `readinessWorkloads`.
@@ -1593,6 +1596,82 @@ node dist/cli.js environment create ./env.json --world <worldId>   # a copy of t
   application can run at a time, although the data copies stay independent; archives
   hold seeded data and are private files; no kind worlds, live snapshots or garbage
   collection.
+
+#### Network faults (plan step 2, 2026-11-10)
+
+A **network fault** changes how the connection between the application and one
+declared service behaves, while the service itself keeps running. PRAMAN puts
+[Toxiproxy](https://github.com/Shopify/toxiproxy) (MIT, image
+`ghcr.io/shopify/toxiproxy:2.13.0`) between them as one owned container per
+environment. Core knows TCP, HTTP readiness and a declared probe command; it never
+learns the database or storage type.
+
+```json
+"services": {
+  "db": { "image": "postgres:17-alpine", "port": 5432, "ready": ["pg_isready"],
+          "proxy": { "probe": ["pg_isready", "-t", "5", "-h", "{proxyHost}", "-p", "{proxyPort}", "-U", "app"] } }
+},
+"faults": {
+  "db-slow": { "service": "db", "kind": "delay", "delayMs": 250 },
+  "db-hang": { "service": "db", "kind": "timeout", "timeoutMs": 1000 },
+  "db-drop": { "service": "db", "kind": "drop" },
+  "db-down": { "service": "db", "kind": "down" }
+}
+```
+
+- **Proxy.** A service with `proxy` gets an owned network `praman-<id>` (all services
+  join it) and a listener on the proxy. `state.services[name].port` is then the proxy's
+  host port, the port the application uses; `directPort` is the service's own port,
+  which readiness keeps using. Integrations need no change. The proxy's API listens
+  on `127.0.0.1` only and requires a per-environment token, which is kept out of
+  results.
+- **Probe.** Every proxied service has a probe that goes through the proxy: its HTTP
+  readiness path, or for command readiness a declared `proxy.probe` command run inside
+  the service container, with `{proxyHost}` and `{proxyPort}` replaced. A probe
+  command without `{proxyPort}` is rejected. After setup the probe must succeed, or
+  `create` is `insufficient_evidence`.
+- **Kinds.** `delay` adds `delayMs` to every answer (Toxiproxy `latency`, downstream);
+  `timeout` stops answers and closes connections after `timeoutMs` (`timeout`);
+  `drop` resets every connection (`reset_peer`); `down` closes the listener (proxy
+  disabled).
+- **Observed, not assumed.** Applying a fault first probes the healthy dependency,
+  applies the fault, reads it back from the proxy, and probes again. `delay` needs the
+  probe to answer at least 0.8 × `delayMs` slower than healthy; the other kinds need it
+  to fail. Removing a fault needs the probe to answer again (for `delay`, less than
+  0.8 × `delayMs` slower). Otherwise the result is `insufficient_evidence` and the
+  fault stays recorded as active until `recover` or `reset`.
+- **By hand.** `environment fault <id> <name>` / `recover <id>`, or
+  `praman_environment` with `action: "fault", fault: "<name>"`. Without a name, `fault`
+  keeps its old meaning (stop `faultService`). `faultService` is optional when
+  `faults` is declared. `verify` is refused while a fault is active.
+- **At step ids.** A scenario may declare windows:
+  `"faults": [{ "name": "db-hang", "fromStep": "reload", "throughStep": "error-shown" }]`
+  (indexes or step ids; ordered; no overlap). `environment verify` applies the fault
+  before step `fromStep` and removes it after the checks of step `throughStep`, in
+  every run. A fault still active when a run ends is removed. Each run's
+  `result.json` and the proof record every window (applied effect, removal,
+  recovery); the result has a per-repeat `evidence.faultWindows` and, as its last
+  field, a one-line `faultSummary` (some MCP clients show only the start and end of a
+  long result). A window whose effect or removal is not observed makes that run
+  `insufficient_evidence`. Scenarios with windows are refused (`insufficient_evidence`,
+  nothing runs) by `scenario-verify`, `praman_scenario_verify`, `demonstrate` and
+  previews, and at `create` when they name an undeclared fault. Scenarios without
+  `faults` keep their meaning and hash.
+
+Proven on 2026-11-10 on Kan (Postgres, plus `delay` and `down` on RustFS file storage
+through the HTTP probe) and Shiori (Postgres), through the CLI and through
+`praman_environment` in headless Kiro: each kind was observed through the proxy and
+removed with recovery observed, and both apps' fault scenarios `passed` 2/2. A probe
+that bypassed the proxy gave `insufficient_evidence` (delay not observed), and a
+scenario that expected Shiori's list to load with the database down `failed`. Limits:
+
+- The probe measures the proxy path, not the application. Whether the application
+  met the fault is shown by the checks you author from its real behavior. Toxiproxy
+  counts bytes only when a connection closes, so PRAMAN does not report per-window
+  application traffic (pooled connections would show none).
+- One fault at a time; no random or partial (toxicity) faults, bandwidth or packet
+  loss; no faults on traffic between two containers or inside kind clusters.
+- The application's own outside (internet) calls are not covered (plan step 4).
 
 The Kan-specific adapter, its PostgreSQL/RustFS declarations, historical issue
 reproduction, credentials and evidence were archived on 2026-11-05 and are not part

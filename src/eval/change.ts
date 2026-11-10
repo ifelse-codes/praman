@@ -114,6 +114,7 @@ export async function executeScenario(spec: ChangeSpec, url: string, outDir: str
   const result: ScenarioRun = { url, verdict: 'not_executed', checks: [], screenshots: [], completedSteps: 0, identityBefore };
   let browser: Browser | undefined;
   try {
+    if (spec.faults?.length && !options.faultWindows) throw new Error('Fault windows need a managed environment verify that declares these faults; nothing was run.');
     if (!identityComplete(identityBefore) || options.expectedIdentity && !sameIdentity(options.expectedIdentity, identityBefore)) throw new Error('Declared browser execution identity is unavailable or changed before replay.');
     // Explicit launch selects the binary whose bytes are recorded, not Playwright's implicit headless-shell choice.
     browser = await chromium.launch({ headless: true, executablePath: identityBefore.entries.find(entry => entry.role === 'browser')!.path! });
@@ -342,7 +343,11 @@ export async function executeScenario(spec: ChangeSpec, url: string, outDir: str
 }
 
 /** Optional steps a managed environment runs around the proof; they are not part of the declaration. */
-export interface ProofHooks { beforeRepeat?: (index: number) => Promise<void>; }
+export interface ProofHooks {
+  beforeRepeat?: (index: number) => Promise<void>;
+  /** Applies and removes the scenario's named fault windows; each call observes its effect or throws. */
+  faults?: { apply: (name: string) => Promise<unknown>; remove: (name: string) => Promise<unknown>; clear: () => Promise<unknown> };
+}
 
 export async function proveChange(input: ChangeSpec, outDir: string, context?: FeedbackContext, hooks: ProofHooks = {}) {
   const spec = changeSpecSchema.parse(input);
@@ -350,10 +355,35 @@ export async function proveChange(input: ChangeSpec, outDir: string, context?: F
   if (existsSync(join(outDir, 'scenario.json')) || existsSync(join(outDir, 'proof.json'))) throw new Error('Proof output directory already contains a run; choose a fresh directory.');
   writeFileSync(join(outDir, 'scenario.json'), JSON.stringify(spec, null, 2), { mode: 0o600 });
   async function run(url: string, directory: string, version: 'before' | 'current'): Promise<ScenarioRun> {
-    try { return await executeScenario(spec, url, directory, { version }); }
-    catch (error) {
-      return { url, verdict: 'insufficient_evidence', checks: [], screenshots: [], error: error instanceof Error ? error.message : String(error) };
+    const windows = spec.faults ?? [];
+    const faults = hooks.faults;
+    if (windows.length && !faults) {
+      return { url, verdict: 'insufficient_evidence', checks: [], screenshots: [], error: 'Fault windows need a managed environment verify that declares these faults; nothing was run.' };
     }
+    const evidence: Array<Record<string, unknown>> = [];
+    const step = async (index: number, edge: 'fromStep' | 'throughStep') => {
+      for (const window of windows.filter(row => row[edge] === index)) {
+        const row = edge === 'fromStep' ? { name: window.name, fromStep: window.fromStep, throughStep: window.throughStep } as Record<string, unknown> : evidence.at(-1)!;
+        if (edge === 'fromStep') evidence.push(row);
+        try { row[edge === 'fromStep' ? 'applied' : 'removed'] = await (edge === 'fromStep' ? faults!.apply(window.name) : faults!.remove(window.name)); }
+        catch (error) { row.error = error instanceof Error ? error.message : String(error); throw error; }
+      }
+    };
+    const options: ScenarioOptions = windows.length ? { version, faultWindows: true,
+      beforeStep: async (_page, _step, index) => step(index, 'fromStep'), afterStep: async (_page, _step, index) => step(index, 'throughStep') } : { version };
+    let result: ScenarioRun;
+    try { result = await executeScenario(spec, url, directory, options); }
+    catch (error) {
+      result = { url, verdict: 'insufficient_evidence', checks: [], screenshots: [], error: error instanceof Error ? error.message : String(error) };
+    }
+    if (windows.length) {
+      // A fault left active by a failed step is removed before anything else runs.
+      try { const cleared = await faults!.clear(); if (cleared) evidence.push({ clearedAfterRun: cleared }); }
+      catch (error) { result.verdict = 'insufficient_evidence'; result.error = `${result.error ? `${result.error}; ` : ''}Fault cleanup failed: ${error instanceof Error ? error.message : String(error)}`; }
+      result.faults = evidence;
+      writeFileSync(join(directory, 'result.json'), JSON.stringify(result, null, 2), { mode: 0o600 });
+    }
+    return result;
   }
   const before = spec.mode === 'acceptance' ? undefined : await run(spec.beforeUrl!, join(outDir, 'before'), 'before');
   const after: ScenarioRun[] = [];

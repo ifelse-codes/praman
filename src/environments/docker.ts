@@ -4,20 +4,10 @@ import { dirname, join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { command, ensureDockerRunner, freePort } from './runtime.js';
 import type { EnvironmentState, SaveState } from './types.js';
-import { z } from 'zod';
 import { archiveFile, copyIn, copyOut, loadWorld, worldIdOf, type WorldManifest, type WorldStart } from './world.js';
+import { inspectContainer as inspect, ownerLabel as label } from './container.js';
+import { createNetwork, destroyProxy, proxiedServices, startProxy } from './proxy.js';
 
-const containerSchema = z.object({
-  Id: z.string(), Image: z.string(), Config: z.object({ Labels: z.record(z.string(), z.string()).nullable() }),
-  State: z.object({ Running: z.boolean(), Paused: z.boolean() }),
-});
-
-const label = 'io.praman.owner';
-async function inspect(state: EnvironmentState, name: string) {
-  const ids = (await command(state, 'docker', ['ps', '-aq', '--filter', `name=^/${name}$`])).trim();
-  if (!ids) return null;
-  return containerSchema.parse(JSON.parse(await command(state, 'docker', ['inspect', name]))[0]);
-}
 export async function ownedService(state: EnvironmentState, service: string) {
   const item = state.services?.[service];
   if (!item || !item.owned || item.name !== `praman-${state.id}-${service}` || !state.ownershipToken) throw new Error('Refusing non-owned Docker service');
@@ -25,12 +15,14 @@ export async function ownedService(state: EnvironmentState, service: string) {
   if (container && container.Config.Labels?.[label] !== state.ownershipToken) throw new Error(`Docker ownership label differs for ${service}; refusing adoption or mutation`);
   return { item, container };
 }
+/** The service's own published port; for a proxied service this bypasses the fault proxy. */
+const directPort = (item: { port: number; directPort?: number }) => item.directPort ?? item.port;
 async function probe(state: EnvironmentState, service: string) {
   const spec = state.spec.services![service];
   const { item, container } = await ownedService(state, service);
   if (!container?.State.Running || container.State.Paused) throw new Error(`${service} is not running/recovered`);
   if (Array.isArray(spec.ready)) return command(state, 'docker', ['exec', item.name, ...spec.ready], { timeoutMs: 5_000 });
-  const url = `http://127.0.0.1:${item.port}${spec.ready.http}`;
+  const url = `http://127.0.0.1:${directPort(item)}${spec.ready.http}`;
   const response = await fetch(url, { signal: AbortSignal.timeout(3_000) });
   if (!response.ok) throw new Error(`${service} readiness HTTP ${response.status}`);
   return { url, status: response.status };
@@ -49,13 +41,15 @@ export async function provisionDocker(state: EnvironmentState, save: SaveState):
   // A world is verified before any container exists; a changed world starts nothing.
   const world = state.world ? { ref: state.world, manifest: await loadWorld(state.world, state) } : undefined;
   const starts: WorldStart[] = [];
+  // Only a declaration with a proxied service gets an owned network and a fault proxy.
+  const network = proxiedServices(state).length ? await createNetwork(state, save) : undefined;
   for (const [name, spec] of Object.entries(state.spec.services!)) {
     const containerName = `praman-${state.id}-${name}`;
     if (await inspect(state, containerName)) throw new Error(`Container ${containerName} exists; refusing adoption`);
     const port = await freePort();
     state.services[name] = { name: containerName, port, owned: true }; save();
     // No host mounts. Docker owns each container's writable state; a world is copied in before start.
-    const options = ['--name', containerName, '--label', `${label}=${state.ownershipToken}`,
+    const options = ['--name', containerName, '--label', `${label}=${state.ownershipToken}`, ...(network ? ['--network', network] : []),
       '-p', `127.0.0.1:${port}:${spec.port}`, ...Object.entries(spec.env ?? {}).flatMap(([key, value]) => ['-e', `${key}=${value}`]), spec.image, ...(spec.args ?? [])];
     const entry = world?.manifest.services[name];
     if (world && entry) {
@@ -70,6 +64,7 @@ export async function provisionDocker(state: EnvironmentState, save: SaveState):
     const readiness = await waitService(state, name);
     writeFileSync(join(state.directory, `${name}-readiness-${Date.now()}.json`), JSON.stringify(readiness, null, 2));
   }
+  if (network) await startProxy(state, save);
   return starts;
 }
 /**
@@ -134,7 +129,7 @@ export async function faultDocker(state: EnvironmentState, enabled: boolean, sav
   if (enabled) {
     let effect: string | undefined;
     const readiness = state.spec.services![name].ready;
-    const endpoint = Array.isArray(readiness) ? undefined : `http://127.0.0.1:${item.port}${readiness.http}`;
+    const endpoint = Array.isArray(readiness) ? undefined : `http://127.0.0.1:${directPort(item)}${readiness.http}`;
     if (endpoint) {
       try {
         const response = await fetch(endpoint, { signal: AbortSignal.timeout(3_000) });
@@ -157,6 +152,8 @@ export async function faultDocker(state: EnvironmentState, enabled: boolean, sav
 }
 export async function destroyDocker(state: EnvironmentState, save: SaveState) {
   const errors: string[] = [];
+  // The proxy goes first so the application loses its dependencies in one step; the network goes last.
+  try { await destroyProxy(state, save, 'container'); } catch (error) { errors.push(String(error)); }
   for (const name of Object.keys(state.services ?? {}).reverse()) {
     try {
       const { item, container } = await ownedService(state, name);
@@ -168,7 +165,8 @@ export async function destroyDocker(state: EnvironmentState, save: SaveState) {
       delete state.services![name]; save();
     } catch (error) { errors.push(String(error)); }
   }
+  if (!errors.length) try { await destroyProxy(state, save, 'network'); } catch (error) { errors.push(String(error)); }
   if (errors.length) throw new Error(errors.join('\n'));
-  state.services = {}; state.fault = false; save();
+  state.services = {}; state.fault = false; delete state.activeFault; save();
   writeFileSync(join(state.directory, 'teardown.json'), JSON.stringify({ containersAbsent: true, observedAt: new Date().toISOString() }, null, 2));
 }

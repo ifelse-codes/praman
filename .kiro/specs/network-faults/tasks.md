@@ -1,0 +1,24 @@
+# Tasks: Real network faults
+
+- [x] 1. Gap record on Kan and Shiori (old code)
+  - _Requirements: observed gap_
+  - 2026-11-10: on both apps a declaration with `proxy` and a `delay` fault was rejected (`Unrecognized key`), and `environment fault <id> db-slow` passed but ignored the name and stopped the whole database (Shiori login failed in 1 ms; Kan health `database: error`). Private: `.praman/real-apps/{kan,shiori}/faults-gap/`
+- [x] 2. Schema, state and types: `proxy`, `faults`, scenario fault windows
+  - _Requirements: 1.3, 1.6, 2.1, 3.1, 3.6_
+- [x] 3. Proxy provisioning, ownership and cleanup (network, Toxiproxy container)
+  - _Requirements: 1.1, 1.2, 1.4, 4.x_
+  - `src/environments/proxy.ts`, `container.ts`; Toxiproxy 2.13.0 checked first on a throwaway container (token, toxics, counters)
+- [x] 4. Named faults with observed effect and removal; CLI and MCP
+  - _Requirements: 2.x_
+  - Changed from the design: requirement 2.5 and the traffic part of 3.3 were dropped. Toxiproxy updates its byte counters only when a connection closes, so pooled connections showed 0 bytes during real queries (Kan). Recorded as a limit
+- [x] 5. Fault windows in managed verify; refusal elsewhere
+  - _Requirements: 3.x_
+  - `ProofHooks.faults`; `executeScenario` refuses windows without `faultWindows`; results carry `evidence.faultWindows` and a last-field `faultSummary` (Kiro shows only the first and last 500 characters of long MCP results)
+- [x] 6. Deterministic tests (fake `docker`, fake proxy API), failing on the old code
+  - _Requirements: 1–4_
+  - `tests/networkFaults.test.ts`: 22 tests; 15 fail with the old `src/` (the other 7 are rejections and the unchanged no-proxy path)
+- [x] 7. Real proof on Kan and Shiori (CLI) and through MCP in headless Kiro
+  - _Requirements: 5.x_
+  - Both apps `passed` 2/2 with every kind observed; controls: bypassing probe `insufficient_evidence`, wrong expectation `failed`. MCP: Shiori `sess_8d627916…`, Kan `sess_808c8533…`
+- [x] 8. Full checks; README, ROADMAP, STATUS, CHANGELOG, usage log; clean up; deliver
+  - build, lint, lint:tests, 309 tests / 37 files, first-use 12/12

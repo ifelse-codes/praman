@@ -93,6 +93,8 @@ const rawSpecSchema = z.object({
   diffPath: z.string().min(1).optional(),
   walkthrough: walkthroughSchema.optional(),
   identity: identityDeclarationSchema.optional(),
+  // Named faults of a managed environment, active from before `fromStep` until after the checks of `throughStep`.
+  faults: z.array(z.object({ name: z.string().regex(/^[a-z][a-z0-9-]*$/), fromStep: stepRef, throughStep: stepRef }).strict()).min(1).optional(),
 }).strict();
 
 type RawSpec = z.output<typeof rawSpecSchema>;
@@ -102,7 +104,8 @@ type ResolvedCheck<C> = C extends { kind: 'network'; window: infer W } ? { [P in
 type ResolvedBeats<A> = A extends Array<infer B> ? Array<Indexed<B, 'step'>> : A;
 type ResolvedWalkthrough<W> = W extends undefined ? W : { [P in keyof W]: P extends 'startStep' ? number : P extends 'before' | 'after' ? ResolvedBeats<W[P]> : W[P] };
 type ResolvedSpec = { [P in keyof RawSpec]: P extends 'checks' ? Array<ResolvedCheck<RawSpec['checks'][number]>>
-  : P extends 'walkthrough' ? ResolvedWalkthrough<RawSpec['walkthrough']> : RawSpec[P] };
+  : P extends 'walkthrough' ? ResolvedWalkthrough<RawSpec['walkthrough']>
+  : P extends 'faults' ? Array<{ name: string; fromStep: number; throughStep: number }> | undefined : RawSpec[P] };
 
 /** Resolve step ids to indexes once, at parse time; indexes pass through unchanged and nothing is renumbered. */
 function resolveStepRefs(spec: RawSpec, ctx: z.RefinementCtx): ResolvedSpec {
@@ -128,8 +131,9 @@ function resolveStepRefs(spec: RawSpec, ctx: z.RefinementCtx): ResolvedSpec {
   const beats = (version: 'before' | 'after') => story?.[version]?.map((beat, i) => ({ ...beat, step: resolve(beat.step, ['walkthrough', version, i, 'step']) }));
   const walkthrough = story && { ...story, startStep: resolve(story.startStep, ['walkthrough', 'startStep']),
     ...(story.before ? { before: beats('before') } : {}), after: beats('after')! };
+  const faults = spec.faults?.map((fault, i) => ({ ...fault, fromStep: resolve(fault.fromStep, ['faults', i, 'fromStep']), throughStep: resolve(fault.throughStep, ['faults', i, 'throughStep']) }));
   if (invalid) return z.NEVER;
-  return { ...spec, checks, ...(walkthrough ? { walkthrough } : {}) } as ResolvedSpec;
+  return { ...spec, checks, ...(walkthrough ? { walkthrough } : {}), ...(faults ? { faults } : {}) } as ResolvedSpec;
 }
 
 export const changeSpecSchema = rawSpecSchema.transform(resolveStepRefs).superRefine((spec, ctx) => {
@@ -151,6 +155,12 @@ export const changeSpecSchema = rawSpecSchema.transform(resolveStepRefs).superRe
     if (check.kind === 'json' && [spec.afterUrl, ...(spec.beforeUrl ? [spec.beforeUrl] : [])].some(url => new URL(check.path, url).origin !== new URL(url).origin)) ctx.addIssue({ code: 'custom', message: 'JSON checks must remain on the app origin', path: ['checks', i] });
     if (check.kind === 'network' && (check.window.fromStep > check.window.throughStep || check.window.throughStep >= spec.steps.length)) ctx.addIssue({ code: 'custom', path: ['checks', i, 'window'], message: 'Network windows require ordered existing step indexes.' });
     if (check.afterStep !== undefined && (check.afterStep >= spec.steps.length || check.kind === 'pageErrors')) ctx.addIssue({ code: 'custom', path: ['checks', i, 'afterStep'], message: 'Checkpoints require an existing step; runtime errors must be checked at the end' });
+  }
+  for (const [i, fault] of (spec.faults ?? []).entries()) {
+    const previous = spec.faults![i - 1];
+    if (fault.fromStep > fault.throughStep || fault.throughStep >= spec.steps.length || (previous && fault.fromStep <= previous.throughStep)) {
+      ctx.addIssue({ code: 'custom', path: ['faults', i], message: 'Fault windows need ordered existing steps and may not overlap the previous window' });
+    }
   }
   if (spec.walkthrough) {
     try { validateShortComposition(spec.walkthrough, spec.mode); }
@@ -203,6 +213,8 @@ export interface ScenarioRun {
   initialStorageState?: { path: string; sha256: string };
   identityBefore?: IdentitySnapshot;
   identityAfter?: IdentitySnapshot;
+  /** Evidence of each fault window of a managed environment, in order. */
+  faults?: unknown[];
 }
 export interface ChangeProof {
   mode: ChangeSpec['mode'];
@@ -223,4 +235,6 @@ export interface ScenarioOptions {
   beforeStep?: (page: Page, step: WorkflowStep, index: number) => Promise<void>;
   afterStep?: (page: Page, step: WorkflowStep, index: number) => Promise<void>;
   afterChecks?: (page: Page, checks: CheckEvidence[]) => Promise<void>;
+  /** Set only by a managed proof that applies the scenario's fault windows in `beforeStep`/`afterStep`. */
+  faultWindows?: boolean;
 }

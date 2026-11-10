@@ -1,7 +1,7 @@
 # PRAMAN — current roadmap (2026-11-10)
 
 **Status: shipped and verified; the Hue-style environment plan below is in progress
-(owner decision 2026-11-10; steps 0 and 1 done).** Public repository
+(owner decision 2026-11-10; steps 0, 1 and 2 done).** Public repository
 https://github.com/ifelse-codes/praman (MIT), CI green on Ubuntu and macOS, judge
 access via [TESTING.md](../TESTING.md) and Codespaces, project page
 https://ifelse-codes.github.io/praman/. Not submitted: the demo video and the Devpost
@@ -86,7 +86,7 @@ core, schemas, CLI or MCP dispatch.
 | --- | --- | --- | --- | --- |
 | 0 | **Done 2026-11-10.** **Environment re-check.** Unfreeze the Docker `environment` route (create, verify, reset, destroy) and run it end to end on Kan and Shiori. Fix only what broke since the 2026-11-05 cleanup, each with a regression test. kind stays frozen and is not claimed. | Existing code | Both apps: create, a passing scenario, reset to seed, destroy with no owned leftovers | Nov 11 |
 | 1 | **Done 2026-11-10.** **Worlds.** Save a declared starting state (the data volumes of declared services) as a hashed snapshot; give every repeat or campaign run its own fresh copy. Two versions can start from the same world. Generic: core copies volumes and never knows the database type. | Docker volumes | Both apps: a change in copy A is absent in copy B; each run's starting hash matches the world; an altered snapshot gives `insufficient_evidence` | Nov 12–14 |
-| 2 | **Real network faults.** Put a proxy between the app and a declared dependency and apply named faults: added delay, timeout, dropped connection, down. Like today's stop fault, the effect must be observed, or the run is `insufficient_evidence`. Faults can start and stop at step ids. | Toxiproxy | Both apps: each fault kind observed on live traffic; checks authored from the app's real behavior; fault removed and recovery observed | Nov 15–17 |
+| 2 | **Done 2026-11-10.** **Real network faults.** Put a proxy between the app and a declared dependency and apply named faults: added delay, timeout, dropped connection, down. Like today's stop fault, the effect must be observed, or the run is `insufficient_evidence`. Faults can start and stop at step ids. | Toxiproxy | Both apps: each fault kind observed on live traffic; checks authored from the app's real behavior; fault removed and recovery observed | Nov 15–17 |
 | 3 | **Many users and invariants.** Run one scenario as N users at once (fresh browser contexts, a per-user index for inputs) against one environment copy. After the run, check caller-declared invariants (rules that must always hold), for example "card count equals N" or "no duplicate entries". | Parallel Playwright contexts | Both apps: N users run at the same time (peak concurrency recorded); per-user verdicts; an invariant that is broken on purpose in a fixture gives `failed` | Nov 18–20 |
 | 4 | **Recorded outside APIs.** Record an app's real outside HTTP calls once, then replay them in later runs. A call that is not in the recording fails closed (`insufficient_evidence`), so a test never reaches the real service by accident. The app is pointed at the replay through its own configuration. | Playwright HAR replay (browser side); Hoverfly or WireMock (server side) | Shiori replays a recorded real page download with no network; an unrecorded call is refused. A second real app is required for a cross-app claim; if none of Kan, Lattice or Luma makes outside calls, that limit is written down instead | Nov 21–24 |
 | 5 | **Video and blog** (existing `submission-story` tasks 4–6). Record, edit to under 3 minutes and upload; add new footage only from recorded Kiro work in steps 0–4. | — | Video URL in the Devpost draft; owner submits | Nov 25–27 |
@@ -148,25 +148,50 @@ independent); `demonstrate` is refused for copies; baseline URLs are not isolate
 worlds. A Kan integration problem found on the way (a second instance's health check
 answered by the first instance's server) was fixed in the private integration.
 
-### Handoff for the next session (step 2, real network faults; written 2026-11-10)
+**Step 2 result (2026-11-10, spec `network-faults`).** Gap shown first on both apps: a
+declaration naming a slow database was rejected by the schema, and `environment fault
+<id> db-slow` passed but ignored the name and stopped the whole database (Shiori's login
+then failed in 1 ms; Kan's health showed `database: error`). Built: `proxy` on a Docker
+service (an owned Toxiproxy container and network between the application and the
+service), named `faults` (`delay`, `timeout`, `drop`, `down`) applied and removed with
+`fault`/`recover`, and scenario fault windows at step ids applied by managed `verify` in
+every run. Each effect and each recovery is observed through a probe over the proxy, or
+the result is `insufficient_evidence`. Proven on Kan (Postgres, plus `delay` and `down` on
+RustFS through the HTTP probe) and Shiori (Postgres): every kind observed, removal and
+recovery observed, fault scenarios authored from the apps' real behavior `passed` 2/2;
+through `praman_environment` in headless Kiro (Shiori `sess_8d627916…`, Kan
+`sess_808c8533…`). Controls: a probe that bypassed the proxy gave `insufficient_evidence`;
+a wrong expectation under `down` `failed`. Real behavior found: with its database down or
+resetting, Shiori says "username or password do not match" at login and "Unknown error
+occurred" with "No saved bookmarks yet" on the list; Kan shows no boards and offers
+"Create workspace", and its health API answers HTTP 500 to a signed-in browser. Limits:
+the probe measures the proxy path, not the application (Toxiproxy counts bytes only when
+a connection closes, so per-window application traffic is not reported); one fault at a
+time; no container-to-container or kind faults. MCP clients may cut long verify results,
+so the result ends with a one-line `faultSummary`.
 
-- **State:** step 1 is merged (see STATUS.md for the commit and CI run). Colima profiles
+### Handoff for the next session (step 3, many users and invariants; written 2026-11-10)
+
+- **State:** step 2 is merged (see STATUS.md for the commit and CI run). Colima profiles
   are all stopped; docker context is `default`.
 - **Private setup** under `.praman/real-apps/` (see `HANDOFF.md` there): `kan/` and
-  `shiori/` each have `environment.json` (read-only seed scenario) and
-  `environment-mutate.json` (a mutating scenario, `dataPath` set, used for worlds). A
-  world for each app is in `envs/worlds/`. Rebuild nothing unless a source changes.
-- **Traps:** Kan's sign-in limit (3 per 10 s) is now covered by delays inside the Kan
-  integration's `start`; Kan runs one instance at a time; the environment keeps its
-  scenario copy from `create`, so a changed scenario needs a new `create`.
-- **Where step 2 starts in code:** `faultDocker` in `src/environments/docker.ts` (today:
-  `docker stop`). Apps run on the host and reach services on `127.0.0.1:<random port>`
-  (no Docker network), so a proxy must sit between the host application and the
-  service port; the integration receives ports through `state.services[...].port`. Shiori
-  downloads the pages it saves, which gives it a real outside dependency; Kan has
-  Postgres and RustFS.
-- **Show the gap first:** `fault` can only stop a whole container. Show a real run where
-  a slow or half-broken dependency (not a stopped one) cannot be produced.
+  `shiori/` each have `environment.json` (read-only seed scenario),
+  `environment-mutate.json` (mutating scenario, `dataPath`, worlds) and
+  `faults/environment.json` (proxied database and fault scenario). Worlds are in
+  `envs/worlds/`. Rebuild nothing unless a source changes.
+- **Traps:** Kan's sign-in limit is 3 per 10 s; N users signing in at once will hit it
+  (HTTP 429, which PRAMAN reports as `insufficient_evidence`). Kan runs one application
+  instance at a time (fixed port 3917). A changed scenario needs a new `create`.
+- **Where step 3 starts in code:** `executeScenario` in `src/eval/change.ts` makes one
+  browser context and one page per run; `proveChange` runs repeats one after another.
+  Many users means several contexts at once against one environment copy, a per-user
+  index for inputs, per-user verdicts and recorded peak concurrency. Invariants are
+  caller-declared rules checked after the run; core must not learn app rules, so an
+  invariant should be a declared probe (for example a `workload` or a JSON path) with an
+  expected value.
+- **Show the gap first:** a real run where two users acting at the same time cannot be
+  expressed (one context per run) or where a concurrency rule (for example "card count
+  equals N") cannot be declared.
 
 ### Kick-off prompt for the next session
 
@@ -233,6 +258,9 @@ first and review the cut against `docs/video-guidelines.md`.
 
 - Stateful dependency simulation beyond the declared service and the recorded APIs of
   step 4; world restore beyond the declared service volumes of step 1.
+- Network faults: proof that the application's own traffic met a fault window (Toxiproxy
+  counts bytes only when a connection closes); several faults at once; faults between
+  containers or in kind.
 - Autonomous discovery and semantic requirement review.
 - Native desktop automation.
 - Cross-host or distributed campaigns; machine-level Kubernetes campaigns.
@@ -244,7 +272,7 @@ first and review the cut against `docs/video-guidelines.md`.
 
 ## Next (owner)
 
-1. Steps 2–4 of the plan, one Kiro session each (Nov 15–24).
+1. Steps 3–4 of the plan, one Kiro session each (Nov 15–24).
 2. Record and upload the <=3 minute demo video; set `<DEMO_VIDEO_URL>` in
    [the Devpost draft](devpost-draft.md) (Nov 25–26).
 3. Paste the [TESTING.md](../TESTING.md) judge instructions, save and submit the Devpost

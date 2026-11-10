@@ -25,13 +25,17 @@ export interface EnvironmentSpec {
     port: number;
     dataPath?: string;
     ready: string[] | { http: string };
+    proxy?: { probe?: string[] };
   }>;
   faultService?: string;
+  faults?: Record<string, NetworkFault>;
   application?: { module: string; config?: unknown };
   scenario?: string;
 }
 
 export interface OwnedProcess { pid: number; startedAt: string; command: string; args: string[]; log: string; }
+/** A named fault on the proxied connection to one declared service. */
+export type NetworkFault = { service: string } & ({ kind: 'delay'; delayMs: number } | { kind: 'timeout'; timeoutMs: number } | { kind: 'drop' } | { kind: 'down' });
 export interface EnvironmentState {
   version: 3;
   id: string;
@@ -47,8 +51,13 @@ export interface EnvironmentState {
   urls: Record<string, string>;
   scenario?: ChangeSpec;
   sourceHashes?: Record<string, string>;
-  services?: Record<string, { name: string; port: number; owned: boolean }>;
+  /** `port` is the port the application uses; for a proxied service `directPort` is the service's own. */
+  services?: Record<string, { name: string; port: number; owned: boolean; directPort?: number }>;
   ownershipToken?: string;
+  network?: { name: string; owned: true };
+  proxy?: { name: string; apiPort: number; token: string; listen: Record<string, number> };
+  /** The named fault that is applied now, with the healthy probe time measured just before it. */
+  activeFault?: { name: string; healthyMs: number; startedAt: string };
   world?: { id: string; directory: string };
   privateInputs?: string[];
 }
