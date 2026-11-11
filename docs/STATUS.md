@@ -36,7 +36,9 @@ general simulator and not a sandbox.
   lost update gives `failed`; the file cannot load on the old code). Limits: one machine
   and one environment copy; shared credentials; the barrier aligns step starts, not
   server arrival; only `count` scales; no faults, recording or baseline modes with
-  users; neither real app showed a race. Private inputs and evidence:
+  users; neither real app showed a race. Stress run on this Mac (M5, 10 cores, 16 GB):
+  Shiori `passed` up to 27 users, failed at 28; Kan `passed` up to 18, failed at 20 (see
+  README for the causes); the default stays 3 and the cap stays 10. Private inputs and evidence:
   `.praman/real-apps/{kan,shiori}/users/` and `kiro-mcp-users/`.
 - **Network faults (2026-11-10, plan step 2, spec `network-faults`):** before the fix, a
   declaration naming a slow database was rejected by the schema, and `environment fault

@@ -1731,6 +1731,17 @@ Deterministic tests use a local fixture whose variant loses an update: the users
   creation. Kan's sign-in limit (3 per 10 s) needs `staggerMs` for 3 or more users.
 - Invariants are read through the first user's session, and only `count` scales with the
   number of users. Between 2 and 10 users. No faults, recording or baseline modes with users.
+- Measured on one machine only (Apple M5, 10 cores, 16 GB, one run per count unless noted;
+  the schema cap was raised temporarily and put back at 10, which is the tested cap
+  unchanged): every count from 3 to 10 `passed` on both apps. Shiori `passed` up to 27
+  users and failed at 28 (twice): 28 browsers launched together made the fixed 10 s
+  first-page limit expire for some users, with the load average above 80. Kan `passed`
+  up to 18 users and failed at 20 (twice): the first user's list page missed the fixed
+  15 s wait after 19 other users had created boards. Chromium used about 0.8 GB per user
+  (about 21 GB counted at 27 users, so the OS compressed and swapped; peak swap about
+  5.6 GB). Kan needs `staggerMs` above 10 s from the fourth user on: its sign-in limiter
+  keeps counting while sign-ins are less than 10 s apart. These are this machine's
+  limits, not guarantees; the default stays 3.
 - Neither app showed a concurrency defect in these runs; the proof is that the feature
   observes and gates, not that the apps are race-free.
 
