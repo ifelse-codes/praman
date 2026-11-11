@@ -238,17 +238,20 @@ general simulator and not a sandbox.
   [browser scenario cheat sheet](schema-cheatsheet.md) plus explicit
   selector/zero-based/private-evidence guidance in the README and browser guide;
   product behavior and test counts are unchanged.
-- **CI:** PR #26 (plan step 4) was green on Ubuntu and macOS (runs 43062385840 and
-  43062395264, commit `cf5a2d6`) and `main` is fast-forwarded to it. Before that, every
+- **CI:** PR #26 (plan step 4) was green on Ubuntu and macOS (first on commit `cf5a2d6`,
+  runs 43062385840 and 43062395264, then on its final commit) and `main` is fast-forwarded
+  to it. Before that, every
   Ubuntu job failed for about 2.5 hours before any test ran: the GitHub runner (image
   `ubuntu-26.04` 20261101.186.1, the same as the last green `main` run) could not resolve
   the Ubuntu package mirrors, so `playwright install --with-deps` stopped. The Linux
   install step now falls back to installing Chromium without system packages (the image
   already has its libraries; the tests still fail if one is missing); the next Ubuntu run
-  used the fallback and passed. One macOS run of that commit failed once in
-  `tests/manyUsers.test.ts` ("passes when the shared rule holds": `insufficient_evidence`
-  after 30 s on a loaded runner) while the other macOS run of the same code passed; it
-  passed 3 of 3 locally. The test now prints which user failed and why.
+  used the fallback and passed. On macOS, `tests/manyUsers.test.ts` ("passes when the
+  shared rule holds") failed in 2 of 6 runs on loaded runners while the other run of the
+  same code passed: user 1's `fill` of the input hit the 3 s action limit while three
+  browsers started together (it passed 3 of 3 locally). The real-browser many-users tests
+  now wait for the input first (`waitFor`, 15 s) and print which user failed and why;
+  the product's 3 s action limit is unchanged.
 - **CI (step 3):** PR #22 (plan step 3) was green on Ubuntu and macOS (runs 42970668040 and
   42970675509) and fast-forwarded to `main` `f604355`. The push run on `main`
   (42972408874) failed once on macOS in `tests/networkFaults.test.ts` ("applies each

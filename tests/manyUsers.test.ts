@@ -171,7 +171,9 @@ afterEach(async () => {
 describe('three users in real browsers', () => {
   // A repeat starts from an empty list: the managed environment restores its world; here the hook does the same.
   const hooks = { beforeRepeat: async () => { items = []; } };
-  const run = (name: string, extra: object = {}) => proveChange(changeSpecSchema.parse(declaration({ afterUrl: origin, ...extra })), join(dir, name), undefined, hooks);
+  // Real browsers start together on a busy runner: wait for the input (15 s) before the 3 s fill, as a careful author would.
+  const browserSteps = [steps[0], { id: 'ready', action: 'waitFor', selector: '#title', note }, ...steps.slice(1)];
+  const run = (name: string, extra: object = {}) => proveChange(changeSpecSchema.parse(declaration({ afterUrl: origin, steps: browserSteps, ...extra })), join(dir, name), undefined, hooks);
 
   it('passes when the shared rule holds, with per-user evidence and a recorded peak concurrency', async () => {
     const result = await run('ok');
