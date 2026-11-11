@@ -183,13 +183,17 @@ async function create(config: Record<string, unknown> = {}, extra: Record<string
   return manageEnvironment('create', { specPath: write('env.json', declaration(config, extra)), baseDir: base, ...(recording ? { recording } : {}) }) as Promise<Result>;
 }
 const act = (action: 'verify' | 'reset' | 'destroy' | 'recording-save' | 'demonstrate', id: string) => manageEnvironment(action, { id, baseDir: base }) as Promise<Result>;
+/** Why a verify did not pass, from the private operation log: a timing failure on a loaded runner must name its cause. */
+const why = (id: string) => operations(id).split('\n').filter(Boolean).map(line => JSON.parse(line)).filter(row => row.action === 'verify')
+  .map(row => ({ verdict: row.verdict, error: row.error, reason: row.evidence?.proof?.reason, runs: row.evidence?.proof?.after?.map((run: { error?: string; outside?: unknown }) => ({ error: run.error, outside: run.outside })) })).at(-1);
+const verifiedPass = async (id: string) => { const result = await act('verify', id); expect(result.verdict, JSON.stringify(why(id))).toBe('passed'); return result; };
 const state = (id: string) => JSON.parse(readFileSync(join(base, id, 'state.json'), 'utf8'));
 const operations = (id: string) => readFileSync(join(base, id, 'operations.jsonl'), 'utf8');
 const owned = () => readdirSync(fake).filter(name => (name.startsWith('praman-') || name.startsWith('network-')) && name.endsWith('.json'));
 const recorder = (id: string) => JSON.parse(readFileSync(join(fake, `praman-${id}--hoverfly.json`), 'utf8'));
 async function recorded() {
   const env = await create();
-  expect((await act('verify', env.id)).verdict).toBe('passed');
+  await verifiedPass(env.id);
   const saved = await act('recording-save', env.id);
   expect(saved.verdict).toBe('passed');
   expect((await act('destroy', env.id)).verdict).toBe('passed');
@@ -234,8 +238,7 @@ describe('outside calls: record, save and replay', () => {
     expect(JSON.stringify(env)).not.toContain(saved.outside.password);
     expect(env.evidence.outsideCalls).toEqual({ mode: 'record' });
 
-    const verified = await act('verify', env.id);
-    expect(verified.verdict).toBe('passed');
+    const verified = await verifiedPass(env.id);
     expect(Object.keys(verified).at(-1)).toBe('outsideSummary');
     expect(verified.outsideSummary).toBe('repeat 1 passed: recording, 1 served, 0 refused, 0 TLS refused; repeat 2 passed: recording, 1 served, 0 refused, 0 TLS refused');
     expect(verified.evidence.outsideCalls.repeats[0]).toEqual({ verdict: 'passed', mode: 'record', served: 1, refused: 0, tlsRefused: 0, ok: true });
@@ -269,8 +272,7 @@ describe('outside calls: record, save and replay', () => {
     const readiness = readdirSync(join(base, env.id)).find(name => name.startsWith('outside-readiness-'))!;
     expect(JSON.parse(readFileSync(join(base, env.id, readiness), 'utf8')).probes).toEqual({ withoutPassword: 407, unrecorded: 502 });
 
-    const verified = await act('verify', env.id);
-    expect(verified.verdict).toBe('passed');
+    const verified = await verifiedPass(env.id);
     expect(verified.outsideSummary).toBe(`repeat 1 passed: replay of ${id}, 1 served, 0 refused, 0 TLS refused; repeat 2 passed: replay of ${id}, 1 served, 0 refused, 0 TLS refused`);
     expect((await act('destroy', env.id)).verdict).toBe('passed');
     expect(owned()).toEqual([]);
@@ -295,7 +297,7 @@ describe('outside calls: record, save and replay', () => {
     expect(verified.evidence.proof.reason).toContain('Only 0 outside call(s) went through the replay');
     await act('destroy', env.id);
     const allowed = await create({ bypass: true }, { outsideCalls: { minPerRun: 0 } }, id);
-    expect((await act('verify', allowed.id)).verdict).toBe('passed');
+    await verifiedPass(allowed.id);
   });
 
   it('gives insufficient_evidence when the app rejects the environment CA during an HTTPS call', async () => {
@@ -352,7 +354,7 @@ describe('outside calls: lifecycle', () => {
     expect((await act('reset', env.id)).verdict).toBe('passed');
     expect(state(env.id).outside).toEqual(before);
     expect(readFileSync(join(fake, 'calls.log'), 'utf8').split('\n').filter(line => line.includes('--hoverfly') && line.startsWith('run '))).toHaveLength(1);
-    expect((await act('verify', env.id)).verdict).toBe('passed');
+    await verifiedPass(env.id);
   });
 
   it('refuses demonstrate for an environment with outsideCalls', async () => {
