@@ -251,7 +251,11 @@ general simulator and not a sandbox.
   same code passed: user 1's `fill` of the input hit the 3 s action limit while three
   browsers started together (it passed 3 of 3 locally). The real-browser many-users tests
   now wait for the input first (`waitFor`, 15 s) and print which user failed and why;
-  the product's 3 s action limit is unchanged.
+  the product's 3 s action limit is unchanged. Once, on macOS only, the new
+  `tests/outsideCalls.test.ts` record test gave `insufficient_evidence` (run 43069576808);
+  the cause was not printed and it did not recur (passed locally under CPU load and in the
+  next four CI jobs). Its verify assertions now print each run's error and outside-call
+  evidence, so a recurrence will name the cause.
 - **CI (step 3):** PR #22 (plan step 3) was green on Ubuntu and macOS (runs 42970668040 and
   42970675509) and fast-forwarded to `main` `f604355`. The push run on `main`
   (42972408874) failed once on macOS in `tests/networkFaults.test.ts` ("applies each
