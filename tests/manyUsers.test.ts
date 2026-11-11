@@ -175,7 +175,9 @@ describe('three users in real browsers', () => {
 
   it('passes when the shared rule holds, with per-user evidence and a recorded peak concurrency', async () => {
     const result = await run('ok');
-    expect(result.verdict).toBe('passed');
+    // A timing-based failure on a loaded runner must say which user or invariant failed and why.
+    expect(result.verdict, JSON.stringify({ reason: result.proof.reason, runs: result.proof.after.map(run => ({ error: run.error, peak: run.peakConcurrency,
+      users: run.users?.map(row => ({ verdict: row.run.verdict, error: row.run.error, failedStep: row.run.failedStep })) })) })).toBe('passed');
     const [first] = result.proof.after;
     expect(first.users?.map(row => row.run.verdict)).toEqual(['passed', 'passed', 'passed']);
     expect(first.peakConcurrency).toBeGreaterThanOrEqual(2);
