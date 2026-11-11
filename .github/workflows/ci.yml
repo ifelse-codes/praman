@@ -40,7 +40,14 @@ jobs:
         run: npm run build
       - name: Install Chromium (Linux)
         if: runner.os == 'Linux'
-        run: npx playwright install --with-deps chromium
+        # The runner image already has Chromium's runtime libraries; --with-deps mostly adds
+        # fonts from the Ubuntu mirrors. When the runner cannot reach them (DNS failures seen
+        # on 2026-11-11), install the browser alone; the tests still fail if a library is missing.
+        run: |
+          if ! npx playwright install --with-deps chromium; then
+            echo "::warning::Ubuntu package mirrors unavailable; installing Chromium without system packages"
+            npx playwright install chromium
+          fi
       - name: Install Chromium (macOS)
         if: runner.os == 'macOS'
         run: npx playwright install chromium
