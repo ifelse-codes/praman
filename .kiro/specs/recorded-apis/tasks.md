@@ -1,0 +1,22 @@
+# Tasks: Recorded outside APIs
+
+- [x] 1. Gap record on Shiori and Kan (old code)
+  - _Requirements: observed gap_
+  - 2026-11-11, `main` `920dbeb`. Shiori (from world `27110d95efc6`): saving `http://example.com/` with no title and searching for it showed the downloaded title "Example Domain", `passed` 2/2, while the real page was fetched from the internet; with the app's proxy pointed at a closed port, the same run `failed` 2/2 (title stayed the address; Shiori logged `proxyconnect tcp: dial tcp 127.0.0.1:9: connect: connection refused`). Kan: `/oss-friends` listed 38 projects that Kan's server fetched from `https://formbricks.com/api/oss-friends`, `passed` 2/2; with `NODE_USE_ENV_PROXY=1` and a closed proxy, the list never appeared (`fetch failed`), `insufficient_evidence` 2/2. On both apps a declaration with `outsideCalls` was rejected (`Unrecognized key: "outsideCalls"`) and `create --recording` was an unknown option. Private: `.praman/real-apps/{shiori,kan}/outside/gap/`
+- [x] 2. Schema, state and types: `outsideCalls`, `state.outside`, `state.recording`
+  - _Requirements: 1.1, 1.7, 3.7_
+- [x] 3. Recorder/replay lifecycle: owned container, CA, probes, network, kept across reset
+  - _Requirements: 1.1–1.6_
+  - `src/environments/outside.ts`; `destroyDocker(..., keepOutside)` for reset and world restores. Changed from the design: `command()` gained `withStderr`, because Hoverfly's `-v` log goes to stderr
+- [x] 4. Saved recordings: `recording-save`, `create --recording`, hash checks; CLI and MCP
+  - _Requirements: 2.x_
+- [x] 5. Per-run journal check in managed verify; refusal of `demonstrate`; summary
+  - _Requirements: 3.x_
+  - `ProofHooks.outside`; `assessProof` also reads a many-users run's own error, so an unreadable journal cannot become `failed`
+- [x] 6. Deterministic tests (fake `docker`, fake Hoverfly), failing on the old code
+  - _Requirements: 1–3_
+  - `tests/outsideCalls.test.ts`: 17 tests; 13 fail with the old `src/` (the other 4 are schema rejections and the unchanged path without `outsideCalls`)
+- [x] 7. Real proof on Shiori and Kan (CLI) and through MCP in headless Kiro
+  - _Requirements: 4.x_
+  - Shiori recording `e5f572adf9a5`, Kan recording `b510732b868e`: replays `passed` 2/2. Controls `insufficient_evidence`: Shiori unrecorded page (1 refused), Shiori app not pointed at the replay (0 served), Kan untrusted CA (1 TLS refused); an appended byte stopped `create` before any container. Replay network: `example.com` and `1.1.1.1` unreachable from a container on it. MCP: Shiori `sess_8a40cfeb…`, Kan `sess_a6b1afe5…`
+- [ ] 8. Full checks; README, ROADMAP, STATUS, CHANGELOG, usage log; clean up; deliver

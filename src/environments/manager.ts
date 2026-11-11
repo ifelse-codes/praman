@@ -9,6 +9,7 @@ import { provisionKind, observeKind, resetKind, workloadKind, faultKind, destroy
 import { loadApplication, type ApplicationIntegration } from './application.js';
 import { provisionDocker, observeDocker, workloadDocker, faultDocker, destroyDocker, saveWorldDocker } from './docker.js';
 import { applyFault, removeFault } from './proxy.js';
+import { beginOutsideRun, endOutsideRun, loadRecording, recordingIdPattern, saveRecording } from './outside.js';
 import { loadWorld, worldIdPattern, type WorldStart } from './world.js';
 import { stopProcesses } from './runtime.js';
 import type { EnvironmentState, OperationResult } from './types.js';
@@ -17,8 +18,8 @@ import type { ChangeProof } from '../case/change.js';
 import { changeSpecSchema } from '../case/change.js';
 import { normalizeIdentity } from '../eval/identity.js';
 
-export type EnvironmentAction = 'create' | 'observe' | 'workload' | 'fault' | 'recover' | 'reset' | 'world-save' | 'verify' | 'demonstrate' | 'destroy';
-export interface EnvironmentRequest { baseDir?: string; id?: string; specPath?: string; workload?: string; world?: string; fault?: string; }
+export type EnvironmentAction = 'create' | 'observe' | 'workload' | 'fault' | 'recover' | 'reset' | 'world-save' | 'recording-save' | 'verify' | 'demonstrate' | 'destroy';
+export interface EnvironmentRequest { baseDir?: string; id?: string; specPath?: string; workload?: string; world?: string; recording?: string; fault?: string; }
 
 export async function manageEnvironment(action: EnvironmentAction, request: EnvironmentRequest) {
   const base = resolve(request.baseDir ?? '.praman/environments');
@@ -33,11 +34,13 @@ export async function manageEnvironment(action: EnvironmentAction, request: Envi
     if (spec.application) spec.application.module = resolve(specDir, spec.application.module);
     if (spec.scenario) spec.scenario = resolve(specDir, spec.scenario);
     if (request.world !== undefined && (!worldIdPattern.test(request.world) || spec.provider !== 'docker')) throw new Error('world must be a 12-character world id and needs a Docker environment');
+    if (request.recording !== undefined && (!recordingIdPattern.test(request.recording) || !spec.outsideCalls)) throw new Error('recording must be a 12-character recording id and needs a declaration with outsideCalls');
     const id = randomBytes(6).toString('hex');
     const directory = join(base, id);
     mkdirSync(directory, { recursive: true, mode: 0o700 });
     state = { version: 3, id, directory, spec, clusterName: `praman-${id}`, clusterOwned: false, kubeconfig: join(directory, 'kubeconfig'), phase: 'creating', fault: false, generation: 0, processes: [], urls: {},
-      ...(request.world ? { world: { id: request.world, directory: join(base, 'worlds', request.world) } } : {}) };
+      ...(request.world ? { world: { id: request.world, directory: join(base, 'worlds', request.world) } } : {}),
+      ...(request.recording ? { recording: { id: request.recording, directory: join(base, 'recordings', request.recording) } } : {}) };
   } else {
     if (!request.id || !/^[a-f0-9]{12}$/.test(request.id)) throw new Error('A managed environment ID (12 hexadecimal characters) is required');
     state = environmentStateSchema.parse(JSON.parse(readFileSync(join(base, request.id, 'state.json'), 'utf8')));
@@ -54,6 +57,7 @@ export async function manageEnvironment(action: EnvironmentAction, request: Envi
   };
   const started = new Date().toISOString();
   const proxyToken = state.proxy?.token;
+  const outsidePassword = state.outside?.password;
   const docker = state.spec.provider === 'docker';
   let application: ApplicationIntegration | undefined;
   const observe = async () => ({
@@ -65,7 +69,7 @@ export async function manageEnvironment(action: EnvironmentAction, request: Envi
   let lastStarts: WorldStart[] = [];
   const resetInfrastructure = async () => {
     if (docker) {
-      await destroyDocker(state, save);
+      await destroyDocker(state, save, true);
       lastStarts = await provisionDocker(state, save);
       for (const name of state.spec.readinessWorkloads ?? []) await workloadDocker(state, name);
     } else await resetKind(state, save);
@@ -82,6 +86,7 @@ export async function manageEnvironment(action: EnvironmentAction, request: Envi
   // One line about the fault windows, placed last: some MCP clients show only the start and end of a long result.
   let faultSummary: string | undefined;
   let usersSummary: string | undefined;
+  let outsideSummary: string | undefined;
   const verificationOutput = action === 'verify' || action === 'demonstrate'
     ? join(state.directory, 'runs', `${Date.now()}-${action}`) : undefined;
   const feedbackContext = { environmentId: state.id, generation: state.generation, sourceHashes: state.sourceHashes,
@@ -98,7 +103,7 @@ export async function manageEnvironment(action: EnvironmentAction, request: Envi
   };
   try {
     if (state.phase === 'destroyed' && action !== 'destroy') throw new Error('This environment was destroyed; create a new instance');
-    if (state.spec.application && !['destroy', 'workload', 'fault', 'recover', 'world-save'].includes(action)) {
+    if (state.spec.application && !['destroy', 'workload', 'fault', 'recover', 'world-save', 'recording-save'].includes(action)) {
       application = await loadApplication(state.spec.application.module);
     }
     if (action === 'create') {
@@ -122,7 +127,8 @@ export async function manageEnvironment(action: EnvironmentAction, request: Envi
       if (docker) lastStarts = await provisionDocker(state, save); else await provisionKind(state, save);
       if (application) await application.start(state, save);
       if (docker) for (const name of state.spec.readinessWorkloads ?? []) await workloadDocker(state, name);
-      const evidence = { ...await observe(), urls: state.urls, sourceHashes: state.sourceHashes, ...(state.world ? { world: { id: state.world.id, services: lastStarts } } : {}) };
+      const evidence = { ...await observe(), urls: state.urls, sourceHashes: state.sourceHashes, ...(state.world ? { world: { id: state.world.id, services: lastStarts } } : {}),
+        ...(state.outside ? { outsideCalls: { mode: state.outside.mode, ...(state.outside.recordingId ? { recordingId: state.outside.recordingId } : {}) } } : {}) };
       state.phase = 'ready';
       if (state.scenario) writeFileSync(join(state.directory, 'scenario.json'), JSON.stringify(state.scenario, null, 2));
       result = { verdict: 'passed', evidence };
@@ -154,9 +160,16 @@ export async function manageEnvironment(action: EnvironmentAction, request: Envi
       // Prove the saved world is readable and unchanged before reporting it.
       await loadWorld({ id: saved.id, directory: saved.directory }, { ...state, spec: state.spec });
       result = { verdict: 'passed', evidence: { world: { id: saved.id, services: saved.manifest.services }, observed: await observe() } };
+    } else if (action === 'recording-save') {
+      if (!docker || state.phase !== 'ready') throw new Error('A recording can only be saved from a ready Docker environment');
+      const saved = await saveRecording(state, join(base, 'recordings'));
+      // Prove the saved recording is readable and unchanged before reporting it.
+      loadRecording({ id: saved.id, directory: saved.directory });
+      result = { verdict: 'passed', evidence: { recording: { id: saved.id, calls: saved.manifest.calls, bytes: saved.manifest.bytes, sha256: saved.manifest.sha256 } } };
     } else if (action === 'verify' || action === 'demonstrate') {
       if (state.phase !== 'ready' || state.fault || !state.scenario) throw new Error('Proof requires a ready, recovered environment with a declared application scenario');
       if (state.world && action === 'demonstrate') throw new Error('demonstrate is not supported for environments created from a world; its recording would start from a used copy');
+      if (state.spec.outsideCalls && action === 'demonstrate') throw new Error('demonstrate is not supported with outsideCalls; its runs would not check the outside-call journal');
       const observed = await observe();
       const beforeRepeat = state.world ? async (index: number) => {
         const address = state.scenario!.afterUrl;
@@ -174,7 +187,12 @@ export async function manageEnvironment(action: EnvironmentAction, request: Envi
         },
         clear: async () => state.activeFault ? removeFault(state, save) : undefined,
       } : undefined;
-      const hooks = beforeRepeat || faults ? { ...(beforeRepeat ? { beforeRepeat } : {}), ...(faults ? { faults } : {}) } : undefined;
+      let begun: { tlsSeen: number } | undefined;
+      const outside = docker && state.spec.outsideCalls ? {
+        begin: async () => { if (!state.outside) throw new Error('The outside-call recorder is not running'); begun = await beginOutsideRun(state); },
+        end: async (directory: string) => { if (!state.outside || !begun) throw new Error('The outside-call recorder is not running'); const evidence = await endOutsideRun(state, begun, directory); begun = undefined; return evidence; },
+      } : undefined;
+      const hooks = beforeRepeat || faults || outside ? { ...(beforeRepeat ? { beforeRepeat } : {}), ...(faults ? { faults } : {}), ...(outside ? { outside } : {}) } : undefined;
       const verification = action === 'verify'
         ? await proveChange(state.scenario, verificationOutput!, feedbackContext, hooks)
         : await demonstrateChange(state.scenario, verificationOutput!, feedbackContext);
@@ -194,8 +212,18 @@ export async function manageEnvironment(action: EnvironmentAction, request: Envi
       if (state.scenario.users && 'proof' in verification) {
         usersSummary = verification.proof.after.map((run, index) => `repeat ${index + 1} ${run.verdict}: ${run.users?.length ?? 0} users [${(run.users ?? []).map(row => row.run.verdict).join(', ')}], peak ${run.peakConcurrency ?? 0}, invariants [${(run.invariants ?? []).map(row => row.verdict).join(', ')}]`).join('; ');
       }
+      // Counts only: the addresses of the outside calls stay in each run's private outside-calls.json.
+      const outsideOf = (run: ChangeProof['after'][number]) => run.outside
+        ? { verdict: run.verdict, mode: run.outside.mode, ...(run.outside.recordingId ? { recordingId: run.outside.recordingId } : {}), served: run.outside.served, refused: run.outside.refused, tlsRefused: run.outside.tlsRefused, ok: run.outside.ok }
+        : { verdict: run.verdict, unavailable: true };
+      const outsideCalls = outside && 'proof' in verification ? { ...(verification.proof.before ? { before: outsideOf(verification.proof.before) } : {}), repeats: verification.proof.after.map(outsideOf) } : undefined;
+      if (outsideCalls) {
+        const line = (label: string, run: ReturnType<typeof outsideOf>) => 'unavailable' in run ? `${label} ${run.verdict}: outside-call journal unavailable`
+          : `${label} ${run.verdict}: ${run.mode === 'replay' ? `replay of ${run.recordingId}` : 'recording'}, ${run.served} served, ${run.refused} refused, ${run.tlsRefused} TLS refused`;
+        outsideSummary = [...(outsideCalls.before ? [line('baseline', outsideCalls.before)] : []), ...outsideCalls.repeats.map((run, index) => line(`repeat ${index + 1}`, run))].join('; ');
+      }
       result = { verdict: verification.verdict, evidence: { output: verificationOutput, environmentId: state.id, generation: state.generation,
-        sourceHashes: state.sourceHashes, observed, ...(state.world ? { world: { id: state.world.id, runs: worldRuns } } : {}), ...(faultWindows ? { faultWindows } : {}), ...verification } };
+        sourceHashes: state.sourceHashes, observed, ...(state.world ? { world: { id: state.world.id, runs: worldRuns } } : {}), ...(faultWindows ? { faultWindows } : {}), ...(outsideCalls ? { outsideCalls } : {}), ...verification } };
     } else {
       const errors: string[] = [];
       try { await stopProcesses(state, save); } catch (e) { errors.push(String(e)); }
@@ -239,9 +267,9 @@ export async function manageEnvironment(action: EnvironmentAction, request: Envi
         ...saveFeedback(state.scenario, proof, verificationOutput, feedbackContext) } };
     }
   } finally { unlinkSync(lock); }
-  const record = { action, started, finished: new Date().toISOString(), id: state.id, directory: state.directory, phase: state.phase, generation: state.generation, ...result, ...(error ? { error } : {}), ...(faultSummary ? { faultSummary } : {}), ...(usersSummary ? { usersSummary } : {}) };
+  const record = { action, started, finished: new Date().toISOString(), id: state.id, directory: state.directory, phase: state.phase, generation: state.generation, ...result, ...(error ? { error } : {}), ...(faultSummary ? { faultSummary } : {}), ...(usersSummary ? { usersSummary } : {}), ...(outsideSummary ? { outsideSummary } : {}) };
   appendFileSync(join(state.directory, 'operations.jsonl'), JSON.stringify(record) + '\n', { mode: 0o600 });
-  const secrets = [state.ownershipToken, proxyToken, state.proxy?.token, ...(state.privateInputs ?? []),
+  const secrets = [state.ownershipToken, proxyToken, state.proxy?.token, outsidePassword, state.outside?.password, ...(state.privateInputs ?? []),
     ...Object.values(state.spec.services ?? {}).flatMap(service => Object.entries(service.env ?? {})
       .filter(([key]) => /password|secret|token|key|credential/i.test(key)).map(([, value]) => value))]
     .filter((value): value is string => !!value);

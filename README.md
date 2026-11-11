@@ -93,7 +93,7 @@ The submission release treats two surfaces differently:
   plan in [the roadmap](docs/ROADMAP.md) extends them step by step.
 - **Re-checked 2026-11-10:** the Docker `environment` route (create, verify, workload,
   reset, destroy) on two real apps; see [Docker environments](#docker-environments).
-  Added on 2026-11-10/11 and proven on the same two apps: worlds, network faults and many users with invariants.
+  Added on 2026-11-10/11 and proven on the same two apps: worlds, network faults, many users with invariants and recorded outside calls.
 
 ## Explicit verification modes
 
@@ -324,6 +324,12 @@ default-exports the `ApplicationIntegration` interface from
 - Optional `secrets(config)` supplies private values withheld from returned
   feedback. Core stores these privately so teardown does not depend on importing
   the module again. This supplements, not replaces, known-shape redaction.
+- With `outsideCalls` declared (Docker), `start` should point the application at
+  `state.outside.proxyUrl` (an HTTP proxy URL with a password) and make it trust
+  `state.outside.caCert` (a PEM file) through the application's **own** settings, for
+  example Go `HTTP_PROXY`/`HTTPS_PROXY`, or Node `NODE_USE_ENV_PROXY=1`,
+  `HTTPS_PROXY`, `NO_PROXY=127.0.0.1,localhost` and `NODE_EXTRA_CA_CERTS`. See
+  [Recorded outside calls](#recorded-outside-calls-plan-step-4-2026-11-11).
 
 Use managed `startProcess`, `command` and ownership helpers in integrations; core
 teardown owns process termination and provider cleanup. Teardown works even if
@@ -690,6 +696,7 @@ node dist/cli.js environment fault <id> db-slow      # Docker only; a declared n
 node dist/cli.js environment recover <id>
 node dist/cli.js environment reset <id>
 node dist/cli.js environment world-save <id>      # Docker only; see Worlds
+node dist/cli.js environment recording-save <id>  # Docker only; see Recorded outside calls
 node dist/cli.js environment verify <id>
 node dist/cli.js environment demonstrate <id>
 node dist/cli.js environment destroy <id>
@@ -1671,7 +1678,7 @@ scenario that expected Shiori's list to load with the database down `failed`. Li
   application traffic (pooled connections would show none).
 - One fault at a time; no random or partial (toxicity) faults, bandwidth or packet
   loss; no faults on traffic between two containers or inside kind clusters.
-- The application's own outside (internet) calls are not covered (plan step 4).
+- The application's own outside (internet) calls are covered separately (see Recorded outside calls).
 
 #### Many users and invariants (plan step 3, 2026-11-11)
 
@@ -1744,6 +1751,83 @@ Deterministic tests use a local fixture whose variant loses an update: the users
   limits, not guarantees; the default is 5 users.
 - Neither app showed a concurrency defect in these runs; the proof is that the feature
   observes and gates, not that the apps are race-free.
+
+#### Recorded outside calls (plan step 4, 2026-11-11)
+
+Many applications call outside services from their server: Shiori downloads every page it
+saves, Kan's server fetches a list from formbricks.com. PRAMAN can **record** those HTTP
+calls once and **replay** them in later runs, so a run neither depends on nor reaches the
+real service. It runs [Hoverfly](https://github.com/SpectoLabs/hoverfly) (Apache-2.0, image
+`spectolabs/hoverfly:v1.12.17`) as one owned container per environment. Core knows HTTP and
+HTTPS through the application's own proxy settings; it never learns what the outside
+service is.
+
+```json
+"outsideCalls": { "minPerRun": 1 }
+```
+
+```sh
+node dist/cli.js environment create ./env.json                     # records: calls reach the real service
+node dist/cli.js environment verify <id>                           # the scenario makes the calls
+node dist/cli.js environment recording-save <id>                   # -> recording id (12 hex)
+node dist/cli.js environment create ./env.json --recording <recId> # replays; a call not in it is refused
+```
+
+- **Recorder.** Proxy and admin ports listen on `127.0.0.1` only, behind a password made
+  for the environment (a call without it gets HTTP 407; the password is kept out of
+  results). HTTPS is read with a CA certificate generated inside the container for this
+  environment, never Hoverfly's public default CA. The integration points the application
+  at `state.outside.proxyUrl` and `state.outside.caCert` (see the integration contract);
+  PRAMAN does not change the application.
+- **Replay.** `create --recording` re-hashes the recording before any container starts (an
+  altered or missing recording gives `insufficient_evidence`), loads it and reads back its
+  number of calls, and checks that an unrecorded call is refused, before the application
+  starts. The replay runs on an owned network without outbound address translation, so it
+  has no route to the internet.
+- **Every run is checked.** `verify` clears the recorder's journal before every run and
+  reads it after. A call the replay refused (not in the recording), a call the recorder
+  could not complete (the real service failed), or an HTTPS call whose TLS the application
+  rejected (it does not trust the CA; seen in Hoverfly's log) makes that run
+  `insufficient_evidence`, never a pass, even when every check passed. So does a run with
+  fewer served calls than `minPerRun` (default 1): the application may not be pointed at
+  the recorder. Set `minPerRun: 0` for scenarios that make no outside call.
+- **Evidence.** Each run writes `outside-calls.json` (method, address, status) privately in
+  its folder. Results carry only the mode, the recording id and counts
+  (`evidence.outsideCalls` per run) and end with a one-line `outsideSummary`, for example
+  `repeat 1 passed: replay of e5f572adf9a5, 1 served, 0 refused, 0 TLS refused`.
+- **Recordings.** `recording-save` writes `<base>/recordings/<id>/` (`simulation.json`
+  and `manifest.json` with size, SHA-256, call count and image); the id is a hash of the
+  manifest. It refuses a replay environment and an empty recorder. Recordings hold the
+  outside services' responses and are private files.
+- The recorder keeps running across `reset` and world restores (the outside world is not
+  the application's data) and is removed with its network by `destroy`. `demonstrate` is
+  refused with `outsideCalls`. Kind environments reject it. Declarations and scenarios
+  without it keep their meaning and hash.
+
+Proven on 2026-11-11. **Shiori** (Go, from a saved world): saving `http://example.com/` and
+searching for it showed the downloaded title "Example Domain"; recorded once, then replayed
+`passed` 2/2 with one served call per run. A page that was not in the recording was refused
+and the run was `insufficient_evidence`; an application not pointed at the replay (it
+reached the real page, every check passed) was `insufficient_evidence` (0 served); one
+appended byte in the recording stopped `create` before any container started; a container
+on the replay network could not reach `example.com` or `1.1.1.1`, while the default
+network could. **Kan** (Node, HTTPS): the `/oss-friends` page listed 38 projects from
+Kan's server call to `https://formbricks.com/api/oss-friends`; recorded and replayed
+`passed` 2/2; with the CA not trusted, the run was `insufficient_evidence` (1 TLS refused).
+Both replays also `passed` through `praman_environment` in headless Kiro. Limits:
+
+- Only calls made through the application's proxy settings are seen. A call that bypasses
+  them is not; `minPerRun` catches a full bypass, not a partial one.
+- HTTPS needs a client that can trust an added CA. Go on macOS cannot: its system verifier
+  ignores `SSL_CERT_FILE` and rejected Hoverfly's certificate as "not standards
+  compliant", so Shiori was proven with an `http://` page only. Node (Kan) works with
+  `NODE_EXTRA_CA_CERTS`.
+- Matching is Hoverfly's default (method, scheme, host, path, query, body; not headers);
+  identical calls are recorded once; responses are replayed without their original
+  timing; no stateful sequences, edited responses or non-HTTP protocols. One recorder per
+  environment.
+- Browser-side outside calls (for example a CDN, or Kan's YouTube embed) are not recorded:
+  no real-app scenario in this plan had one, so Playwright HAR replay was not built.
 
 The Kan-specific adapter, its PostgreSQL/RustFS declarations, historical issue
 reproduction, credentials and evidence were archived on 2026-11-05 and are not part

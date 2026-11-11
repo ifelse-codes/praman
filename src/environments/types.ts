@@ -30,6 +30,7 @@ export interface EnvironmentSpec {
   faultService?: string;
   faults?: Record<string, NetworkFault>;
   application?: { module: string; config?: unknown };
+  outsideCalls?: { minPerRun?: number };
   scenario?: string;
 }
 
@@ -59,7 +60,18 @@ export interface EnvironmentState {
   /** The named fault that is applied now, with the healthy probe time measured just before it. */
   activeFault?: { name: string; healthyMs: number; startedAt: string };
   world?: { id: string; directory: string };
+  /** The saved recording a replay environment was created from (`create --recording`). */
+  recording?: { id: string; directory: string };
+  /**
+   * The owned recorder or replay of the application's outside HTTP calls. Integrations point the
+   * application at `proxyUrl` (it carries the password) and make it trust `caCert` for HTTPS.
+   */
+  outside?: OutsideState;
   privateInputs?: string[];
+}
+export interface OutsideState {
+  name: string; mode: 'record' | 'replay'; proxyPort: number; adminPort: number; password: string;
+  proxyUrl: string; caCert: string; network?: string; recordingId?: string;
 }
 export interface OperationResult {
   verdict: 'passed' | 'failed' | 'not_executed' | 'insufficient_evidence';

@@ -17,6 +17,7 @@ export async function inspectContainer(state: EnvironmentState, name: string) {
 export async function inspectNetwork(state: EnvironmentState, name: string) {
   const names = (await command(state, 'docker', ['network', 'ls', '--format', '{{.Name}}'])).split('\n').map(line => line.trim());
   if (!names.includes(name)) return null;
-  const [network] = z.array(z.object({ Labels: z.record(z.string(), z.string()).nullable() })).parse(JSON.parse(await command(state, 'docker', ['network', 'inspect', name])));
+  const [network] = z.array(z.object({ Labels: z.record(z.string(), z.string()).nullable(), Options: z.record(z.string(), z.string()).nullable().optional() }))
+    .parse(JSON.parse(await command(state, 'docker', ['network', 'inspect', name])));
   return network;
 }

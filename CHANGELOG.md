@@ -4,6 +4,20 @@
 
 ### Added
 
+- Recorded outside calls (spec `recorded-apis`, plan step 4): a Docker declaration may
+  declare `outsideCalls` (`{ minPerRun? }`). PRAMAN then runs an owned Hoverfly container
+  (Apache-2.0, `spectolabs/hoverfly:v1.12.17`) with a per-environment password and a CA
+  generated for the environment; the integration points the application at
+  `state.outside.proxyUrl` / `caCert` through its own proxy settings. Without a recording
+  it records; `environment recording-save <id>` (or `praman_environment`
+  `recording-save`) stores a hashed recording, and `create --recording <id>` replays it on
+  a network with no outbound route, after re-hashing it and observing that an unrecorded
+  call is refused. Managed `verify` checks every run's calls: a refused call, a failed
+  recorded call, an HTTPS call whose TLS the application rejected, or fewer served calls
+  than `minPerRun` (default 1) make the run `insufficient_evidence`. Addresses stay in a
+  private `outside-calls.json` per run; results carry counts and end with
+  `outsideSummary`. The recorder survives `reset`; `demonstrate` is refused with
+  `outsideCalls`. Declarations and scenarios without it keep their meaning and hash.
 - Many users and invariants (spec `many-users`, plan step 3): an `acceptance` scenario
   may declare `users` (2 to 10, 5 when `count` is omitted): the same steps and checks run as N users at once, each
   in its own browser and context, with `{user}`/`{user1}` index tokens, an optional

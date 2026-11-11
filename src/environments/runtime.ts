@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { z } from 'zod';
 import type { EnvironmentState, OwnedProcess, SaveState } from './types.js';
 
-export async function command(state: EnvironmentState, executable: string, args: string[], opts: { input?: string; timeoutMs?: number; cwd?: string; env?: Record<string, string> } = {}): Promise<string> {
+export async function command(state: EnvironmentState, executable: string, args: string[], opts: { input?: string; timeoutMs?: number; cwd?: string; env?: Record<string, string>; withStderr?: boolean } = {}): Promise<string> {
   const started = new Date().toISOString();
   const proc = spawn(executable, args, { cwd: opts.cwd, env: { ...process.env, ...opts.env, DOCKER_HOST: state.spec.dockerHost, KIND_EXPERIMENTAL_PROVIDER: 'docker' }, stdio: ['pipe', 'pipe', 'pipe'] });
   let stdout = '', stderr = '', expired = false;
@@ -20,7 +20,7 @@ export async function command(state: EnvironmentState, executable: string, args:
     const [code] = await once(proc, 'close');
     appendFileSync(join(state.directory, 'commands.jsonl'), JSON.stringify({ started, executable, args, cwd: opts.cwd, code, expired, stdout, stderr }) + '\n', { mode: 0o600 });
     if (code !== 0 || expired) throw new Error(`${executable} ${args.join(' ')}: ${expired ? 'deadline exceeded' : `exit ${code}`}\n${stderr || stdout}`);
-    return stdout;
+    return opts.withStderr ? stdout + stderr : stdout;
   } finally { clearTimeout(timer); }
 }
 

@@ -3,7 +3,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { mkdirSync, writeFileSync, existsSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { chromium, type Browser, type JSHandle, type Page, type Request } from 'playwright';
-import { changeSpecSchema, type ChangeSpec, type ChangeProof, type ScenarioRun, type ScenarioOptions, type CheckEvidence } from '../case/change.js';
+import { changeSpecSchema, type ChangeSpec, type ChangeProof, type ScenarioRun, type ScenarioOptions, type CheckEvidence, type OutsideRunEvidence } from '../case/change.js';
 import type { Verdict } from './eval.js';
 import { z } from 'zod';
 import { saveFeedback, type FeedbackContext } from '../review/feedback.js';
@@ -36,6 +36,11 @@ export function assessProof(spec: ChangeSpec, before: ScenarioRun | undefined, a
   }
   if (!declared.size || after.length !== spec.repeats || (spec.mode === 'acceptance' ? before !== undefined : !before || before.url !== spec.beforeUrl) || after.some(run => run.url !== spec.afterUrl)) {
     return { verdict: 'insufficient_evidence', reason: 'Missing acceptance checks, version evidence, or repeated current-version runs.' };
+  }
+  // Recorded outside calls are judged per run (all users of a run share one recorder); a many-users run's own error is read here too.
+  const outsideBroken = [...(before ? [before] : []), ...after].find(run => (run.outside && !run.outside.ok) || (run.users && run.error));
+  if (outsideBroken) {
+    return { verdict: 'insufficient_evidence', reason: outsideBroken.outside?.reason ?? 'An outside call was refused or not recorded, the outside-call journal was unavailable, or a user did not run.' };
   }
   for (const run of runs) {
     if (!sameIdentity(run.identityBefore, run.identityAfter) || !sameIdentity(runs[0]?.identityBefore, run.identityBefore)) {
@@ -358,6 +363,8 @@ export interface ProofHooks {
   beforeRepeat?: (index: number) => Promise<void>;
   /** Applies and removes the scenario's named fault windows; each call observes its effect or throws. */
   faults?: { apply: (name: string) => Promise<unknown>; remove: (name: string) => Promise<unknown>; clear: () => Promise<unknown> };
+  /** Brackets every run with the environment's outside-call recorder or replay: clear its journal, then judge the run's calls. */
+  outside?: { begin: () => Promise<void>; end: (directory: string) => Promise<OutsideRunEvidence> };
 }
 
 export async function proveChange(input: ChangeSpec, outDir: string, context?: FeedbackContext, hooks: ProofHooks = {}) {
@@ -383,6 +390,14 @@ export async function proveChange(input: ChangeSpec, outDir: string, context?: F
     const options: ScenarioOptions = windows.length ? { version, faultWindows: true,
       beforeStep: async (_page, _step, index) => step(index, 'fromStep'), afterStep: async (_page, _step, index) => step(index, 'throughStep') } : { version };
     let result: ScenarioRun;
+    let outsideError: string | undefined;
+    try { await hooks.outside?.begin(); } catch (error) { outsideError = `Outside-call journal unavailable before the run: ${error instanceof Error ? error.message : String(error)}`; }
+    if (outsideError) {
+      result = { url, verdict: 'insufficient_evidence', checks: [], screenshots: [], error: outsideError };
+      mkdirSync(directory, { recursive: true, mode: 0o700 });
+      writeFileSync(join(directory, 'result.json'), JSON.stringify(result, null, 2), { mode: 0o600 });
+      return result;
+    }
     try { result = spec.users ? await executeUsers(spec, url, directory, executeScenario, options) : await executeScenario(spec, url, directory, options); }
     catch (error) {
       result = { url, verdict: 'insufficient_evidence', checks: [], screenshots: [], error: error instanceof Error ? error.message : String(error) };
@@ -392,6 +407,15 @@ export async function proveChange(input: ChangeSpec, outDir: string, context?: F
       try { const cleared = await faults!.clear(); if (cleared) evidence.push({ clearedAfterRun: cleared }); }
       catch (error) { result.verdict = 'insufficient_evidence'; result.error = `${result.error ? `${result.error}; ` : ''}Fault cleanup failed: ${error instanceof Error ? error.message : String(error)}`; }
       result.faults = evidence;
+      writeFileSync(join(directory, 'result.json'), JSON.stringify(result, null, 2), { mode: 0o600 });
+    }
+    if (hooks.outside) {
+      // An outside call that was refused, or a run whose calls did not go through the recorder, is never a pass.
+      try { result.outside = await hooks.outside.end(directory); }
+      catch (error) { result.outside = undefined; outsideError = `Outside-call journal unavailable after the run: ${error instanceof Error ? error.message : String(error)}`; }
+      const reason = outsideError ?? (result.outside && !result.outside.ok ? result.outside.reason : undefined);
+      if (reason) { result.verdict = 'insufficient_evidence'; result.error = `${result.error ? `${result.error}; ` : ''}${reason}`; }
+      mkdirSync(directory, { recursive: true, mode: 0o700 });
       writeFileSync(join(directory, 'result.json'), JSON.stringify(result, null, 2), { mode: 0o600 });
     }
     return result;

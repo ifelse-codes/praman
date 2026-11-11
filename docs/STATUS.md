@@ -1,4 +1,4 @@
-# PRAMAN — current project status (2026-11-11, Hue-style environment plan, step 3 done)
+# PRAMAN — current project status (2026-11-11, Hue-style environment plan, step 4 done)
 
 PRAMAN (प्रमाण, "evidence") is an evidence-driven verification toolkit for AI coding
 agents. An agent supplies an authored browser scenario or command declaration through
@@ -12,11 +12,37 @@ general simulator and not a sandbox.
   Hue-style environment plan in [ROADMAP.md](ROADMAP.md): step 0 environment re-check
   (**done 2026-11-10**), 1 Worlds (**done 2026-11-10**), 2 real network faults (**done
   2026-11-10**), 3 many users and invariants (**done
-  2026-11-11**), 4 recorded outside APIs, then the video and blog. One step per Kiro session; each
-  session ends with a green PR fast-forwarded to `main`. Real-app proof uses Kan and
-  Shiori (Shiori replaced Miniflux on 2026-11-10, owner decision; see below). Next:
-  step 4, recorded outside APIs; the handoff is in ROADMAP.md ("Handoff for the next session") and
-  the private `.praman/real-apps/HANDOFF.md`.
+  2026-11-11**), 4 recorded outside APIs (**done 2026-11-11**), then the video and blog. One step per Kiro
+  session; each session ends with a green PR fast-forwarded to `main`. Real-app proof uses
+  Kan and Shiori (Shiori replaced Miniflux on 2026-11-10, owner decision; see below).
+  Next: step 5, the video and blog (spec `submission-story` tasks 4 to 6); the handoff is
+  in ROADMAP.md ("Handoff for the next session") and the private
+  `.praman/real-apps/HANDOFF.md`.
+- **Recorded outside calls (2026-11-11, plan step 4, spec `recorded-apis`):** before the
+  change, Shiori's page download (`http://example.com/`) and Kan's server call to
+  `https://formbricks.com/api/oss-friends` reached the internet in every managed `verify`
+  (`passed` 2/2, unseen); with the outside network cut the same scenarios `failed`
+  (Shiori) or stopped (Kan); `outsideCalls` was rejected by the schema. Now a Docker
+  declaration may declare `outsideCalls`: PRAMAN runs an owned Hoverfly container
+  (Apache-2.0, `spectolabs/hoverfly:v1.12.17`, per-environment password and CA) that
+  records; `recording-save` stores a hashed recording; `create --recording` re-hashes it
+  and replays it on a network with no outbound route after observing that an unrecorded
+  call is refused. Every `verify` run is checked: a refused call, a failed recorded call,
+  a rejected TLS handshake or fewer served calls than `minPerRun` (default 1) give
+  `insufficient_evidence`. The integration points the app at `state.outside.proxyUrl` and
+  `caCert` through the app's own settings. Shiori (HTTP) and Kan (HTTPS) recorded and
+  replayed `passed` 2/2; controls: an unrecorded page (1 refused), an app not pointed at
+  the replay (all checks passed, 0 served), an untrusted CA (1 TLS refused) were each
+  `insufficient_evidence`; an appended byte stopped `create` with no container started; a
+  container on the replay network could not reach `example.com` or `1.1.1.1`. Through
+  `praman_environment` in headless Kiro both replays `passed` (`sess_8a40cfeb…` Shiori,
+  `sess_a6b1afe5…` Kan; no seeded secret or recorder password in the output). 17 new
+  tests (fake `docker` and a fake recorder), 13 fail on the old code. Limits: only calls
+  through the app's proxy settings are seen; Go on macOS cannot trust an added CA, so
+  Shiori was proven over HTTP only; Hoverfly's default matching (no headers), no timing
+  replay or stateful sequences; browser-side outside calls are not recorded (no real-app
+  scenario had one). Private inputs and evidence: `.praman/real-apps/{shiori,kan}/outside/`
+  and `kiro-mcp-outside/`.
 - **Many users and invariants (2026-11-11, plan step 3, spec `many-users`):** before the
   change, a declaration with `users` and invariants was rejected by the schema on both
   Kan and Shiori, and a scenario ran one user per run. Now an `acceptance` scenario may
@@ -110,8 +136,8 @@ general simulator and not a sandbox.
   is a squashed public snapshot under the owner identity (see the repository history),
   with CI green and judge access enabled.
 - **Checks:** `npm run build` and `npm run lint` pass; `npm run lint:tests` passes;
-  the **full suite passes 330 tests / 38 files** on the recorded host (2026-11-10,
-  `--maxWorkers=2`), including the 21 many-users tests, the 22 network-fault tests, the 8 Kiro finish-gate tests, the 15 cancellation
+  the **full suite passes 347 tests / 39 files** on the recorded host (2026-11-11,
+  `--maxWorkers=2`), including the 17 outside-call tests, the 21 many-users tests, the 22 network-fault tests, the 8 Kiro finish-gate tests, the 15 cancellation
   tests, the 21 diagnosis tests, the 22 browser-action tests, the 11 step-id tests and
   the managed-verify test. Parallel local runs
   are resource-sensitive while macOS Spotlight/MediaAnalysis indexing saturates the
@@ -238,7 +264,7 @@ general simulator and not a sandbox.
   (a link to a website, functioning demo or test build; failure may disqualify). PRAMAN
   provides the public repository as the test build, Codespaces and [testing instructions](../TESTING.md).
 - **Submission copy:** truthful Kiro account (`docs/kiro-usage.md`, current through
-  2026-11-10), ≤3-minute storyboard built only from recorded Kiro work
+  2026-11-11), ≤3-minute storyboard built only from recorded Kiro work
   (`docs/video-script.md`, rewritten 2026-11-09; the non-Kiro Headlamp clip is dropped)
   and a submission-ready Devpost draft with the public repository URL filled in and a
   `<DEMO_VIDEO_URL>` placeholder (`docs/devpost-draft.md`). Blog and social drafts match
@@ -279,15 +305,14 @@ The shipped/frozen/deferred view is in [ROADMAP.md](ROADMAP.md).
 
 ## Remaining before release / submission
 
-1. **Build plan (Nov 21–24):** step 4 of the Hue-style environment plan in
-   [ROADMAP.md](ROADMAP.md) (steps 0, 1, 2 done 2026-11-10; step 3 done 2026-11-11), one Kiro session each; a step that misses its date is cut,
-   not claimed.
+1. **Build plan:** done. Steps 0 to 4 of the Hue-style environment plan in
+   [ROADMAP.md](ROADMAP.md) are done (steps 0, 1, 2 on 2026-11-10; steps 3 and 4 on 2026-11-11).
 2. **Video and submission (owner):** record the takes in `docs/video-script.md`, edit to
    under 3 minutes, upload publicly to YouTube; replace `<DEMO_VIDEO_URL>` in the Devpost
    draft and social post; save and submit. Target Nov 25–27, deadline Dec 4, 2026.
 3. **Kiro:** done: specs `kiro-evidence-gate`, `power-path-resolution`,
    `verify-cancellation`, `agent-diagnostics`, `scenario-actions`, `named-steps`,
-   `environment-recheck`, `worlds`, `network-faults` and `many-users`.
+   `environment-recheck`, `worlds`, `network-faults`, `many-users` and `recorded-apis`.
    Spec `submission-story`: documents, Kiro write-up, storyboard and submission copy are
    done (tasks 1–3, 5.2 copy); recording, upload, submission and the final fresh-clone
    check are left (tasks 4, 5, 6).

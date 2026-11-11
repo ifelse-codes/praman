@@ -34,6 +34,8 @@ export const environmentSpecSchema = z.object({
     z.object({ service: z.string(), kind: z.literal('down') }).strict(),
   ])).optional(),
   application: z.object({ module: z.string().min(1), config: z.unknown() }).strict().optional(),
+  // The application's own outside HTTP calls go through an owned recorder (or replay of a saved recording).
+  outsideCalls: z.object({ minPerRun: z.number().int().min(0).max(1000).optional() }).strict().optional(),
   scenario: z.string().min(1).optional(),
 }).strict().superRefine((spec, ctx) => {
   if (spec.provider === 'docker') {
@@ -54,6 +56,8 @@ export const environmentSpecSchema = z.object({
         ctx.addIssue({ code: 'custom', path: ['services', name, 'proxy', 'probe'], message: 'A proxied service needs HTTP readiness or a proxy.probe command that uses {proxyPort}' });
       }
     }
+  } else if (spec.outsideCalls) {
+    ctx.addIssue({ code: 'custom', path: ['outsideCalls'], message: 'Recorded outside calls need a Docker environment' });
   } else if (spec.faults || Object.values(spec.services ?? {}).some(service => service.proxy)) {
     ctx.addIssue({ code: 'custom', path: ['faults'], message: 'Network faults need a Docker environment' });
   } else if (!spec.nodeImage || spec.services) {
@@ -90,5 +94,8 @@ export const environmentStateSchema = z.object({
   proxy: z.object({ name: z.string(), apiPort: z.number().int(), token: z.string(), listen: z.record(z.string(), z.number().int()) }).strict().optional(),
   activeFault: z.object({ name: z.string(), healthyMs: z.number(), startedAt: z.string() }).strict().optional(),
   world: z.object({ id: z.string().regex(/^[a-f0-9]{12}$/), directory: z.string() }).strict().optional(),
+  recording: z.object({ id: z.string().regex(/^[a-f0-9]{12}$/), directory: z.string() }).strict().optional(),
+  outside: z.object({ name: z.string(), mode: z.enum(['record', 'replay']), proxyPort: z.number().int(), adminPort: z.number().int(), password: z.string(),
+    proxyUrl: z.string(), caCert: z.string(), network: z.string().optional(), recordingId: z.string().optional() }).strict().optional(),
   privateInputs: z.array(z.string()).optional(),
 });

@@ -1,7 +1,7 @@
 # PRAMAN — current roadmap (2026-11-10)
 
 **Status: shipped and verified; the Hue-style environment plan below is in progress
-(owner decision 2026-11-10; steps 0, 1, 2 and 3 done).** Public repository
+(owner decision 2026-11-10; steps 0 to 4 done, step 5 is the video and blog).** Public repository
 https://github.com/ifelse-codes/praman (MIT), CI green on Ubuntu and macOS, judge
 access via [TESTING.md](../TESTING.md) and Codespaces, project page
 https://ifelse-codes.github.io/praman/. Not submitted: the demo video and the Devpost
@@ -88,7 +88,7 @@ core, schemas, CLI or MCP dispatch.
 | 1 | **Done 2026-11-10.** **Worlds.** Save a declared starting state (the data volumes of declared services) as a hashed snapshot; give every repeat or campaign run its own fresh copy. Two versions can start from the same world. Generic: core copies volumes and never knows the database type. | Docker volumes | Both apps: a change in copy A is absent in copy B; each run's starting hash matches the world; an altered snapshot gives `insufficient_evidence` | Nov 12–14 |
 | 2 | **Done 2026-11-10.** **Real network faults.** Put a proxy between the app and a declared dependency and apply named faults: added delay, timeout, dropped connection, down. Like today's stop fault, the effect must be observed, or the run is `insufficient_evidence`. Faults can start and stop at step ids. | Toxiproxy | Both apps: each fault kind observed on live traffic; checks authored from the app's real behavior; fault removed and recovery observed | Nov 15–17 |
 | 3 | **Done 2026-11-11.** **Many users and invariants.** Run one scenario as N users at once (fresh browser contexts, a per-user index for inputs) against one environment copy. After the run, check caller-declared invariants (rules that must always hold), for example "card count equals N" or "no duplicate entries". | Parallel Playwright contexts | Both apps: N users run at the same time (peak concurrency recorded); per-user verdicts; an invariant that is broken on purpose in a fixture gives `failed` | Nov 18–20 |
-| 4 | **Recorded outside APIs.** Record an app's real outside HTTP calls once, then replay them in later runs. A call that is not in the recording fails closed (`insufficient_evidence`), so a test never reaches the real service by accident. The app is pointed at the replay through its own configuration. | Playwright HAR replay (browser side); Hoverfly or WireMock (server side) | Shiori replays a recorded real page download with no network; an unrecorded call is refused. A second real app is required for a cross-app claim; if none of Kan, Lattice or Luma makes outside calls, that limit is written down instead | Nov 21–24 |
+| 4 | **Done 2026-11-11.** **Recorded outside APIs.** Record an app's real outside HTTP calls once, then replay them in later runs. A call that is not in the recording fails closed (`insufficient_evidence`), so a test never reaches the real service by accident. The app is pointed at the replay through its own configuration. | Playwright HAR replay (browser side); Hoverfly or WireMock (server side) | Shiori replays a recorded real page download with no network; an unrecorded call is refused. A second real app is required for a cross-app claim; if none of Kan, Lattice or Luma makes outside calls, that limit is written down instead | Nov 21–24 |
 | 5 | **Video and blog** (existing `submission-story` tasks 4–6). Record, edit to under 3 minutes and upload; add new footage only from recorded Kiro work in steps 0–4. | — | Video URL in the Devpost draft; owner submits | Nov 25–27 |
 
 **Step 0 result (2026-11-10, spec `environment-recheck`).** Fixed: managed `verify`
@@ -186,32 +186,45 @@ update gives `failed` in the deterministic tests. Limits: one machine, one envir
 copy, shared credentials; the barrier aligns step starts, not server arrival; only `count`
 scales; no faults, recording or baseline modes with users; neither real app showed a race.
 
-### Handoff for the next session (step 4, recorded outside APIs; written 2026-11-11)
+**Step 4 result (2026-11-11, spec `recorded-apis`).** Gap shown first: with the old code,
+Shiori's page download (`http://example.com/`) and Kan's server call to
+`https://formbricks.com/api/oss-friends` reached the internet in every managed `verify`
+(both `passed` 2/2, unseen by PRAMAN); with the app's outside network cut, the same
+scenarios `failed` (Shiori kept the address as the title) or stopped (Kan's list never
+appeared); `outsideCalls` was rejected by the schema. Built: `outsideCalls` on a Docker
+declaration, an owned Hoverfly recorder (Apache-2.0, `spectolabs/hoverfly:v1.12.17`,
+per-environment password and CA, ports on `127.0.0.1`), `environment recording-save`,
+`create --recording` (re-hashed before any container starts; replay on a network with no
+outbound route; an unrecorded call observed to be refused before the app starts), and a
+gate in every `verify` run: a refused call, a failed recorded call, an HTTPS call whose TLS
+the app rejected, or fewer served calls than `minPerRun` make the run
+`insufficient_evidence`. The integration points the app at the recorder through the app's
+own settings (Go `HTTP_PROXY`; Node `NODE_USE_ENV_PROXY`, `HTTPS_PROXY`,
+`NODE_EXTRA_CA_CERTS`). Proven on Shiori (HTTP) and Kan (HTTPS): recorded once, replayed
+`passed` 2/2; controls: a page not in the recording, an app not pointed at the replay
+(every check passed, 0 served), an untrusted CA (1 TLS refused) were each
+`insufficient_evidence`; an appended byte stopped `create`; a container on the replay
+network could not reach `example.com` or `1.1.1.1`. Through `praman_environment` in
+headless Kiro both replays `passed` (Shiori `sess_8a40cfeb…`, Kan `sess_a6b1afe5…`).
+Limits: only calls through the app's proxy settings are seen (`minPerRun` catches a full
+bypass, not a partial one); Go on macOS cannot trust an added CA, so Shiori was proven
+over HTTP only; Hoverfly's default matching (no headers), no timing replay, no stateful
+sequences; browser-side outside calls are not recorded (no real-app scenario had one, so
+HAR replay was not built).
 
-- **State:** step 3 is merged (see STATUS.md for the commit and CI run). Colima profiles
-  are all stopped; docker context is `default`.
-- **Private setup** under `.praman/real-apps/` (see `HANDOFF.md` there): each of `kan/`
-  and `shiori/` now also has `users/` (environment, scenario, world id). Worlds are in
-  `envs/worlds/`. Rebuild nothing unless a source changes.
-- **Shiori is the step 4 target:** it downloads the pages it saves, so adding a bookmark
-  with a real address makes an outside HTTP call from the server. Earlier scenarios used
-  `http://127.0.0.1:9/...` (nothing listens, the title is typed by hand). The app is
-  started by `.praman/real-apps/shiori/integration.mjs` from `./bin/shiori`; point it at a
-  replay through its own configuration (check Shiori's settings and proxy variables
-  such as `HTTP_PROXY`; Go honors them), and verify that with a request log before trusting it.
-- **Where step 4 starts in code:** nothing exists for recorded outside calls. The plan
-  says: browser side with Playwright HAR replay (`routeFromHAR`, fails closed with
-  `notFound: 'abort'`), server side with Hoverfly or WireMock run as a separate owned
-  container or process (check the license first; run AGPL tools only as separate
-  programs). A call that is not in the recording must give `insufficient_evidence`,
-  never reach the real service. Core must stay protocol-light and app-independent.
-- **Show the gap first:** a real Shiori run that saves a bookmark whose page is fetched
-  from a live outside address, then the same run with no network (it fails or differs),
-  and an unrecorded call that cannot be refused today.
-- **Second app:** a cross-app claim needs a second real app that makes outside calls;
-  if none of Kan, Lattice or Luma does, write that limit down instead (plan step 4).
-- **Traps:** the same as before: Kan's sign-in limit (3 per 10 s), one Kan instance at a
-  time, a changed scenario needs a new `create`, macOS `sed -i` needs a suffix (use Python).
+### Handoff for the next session (step 5, video and blog; written 2026-11-11)
+
+- **State:** steps 0 to 4 are merged (see STATUS.md for the commit and CI run). Colima
+  profiles are all stopped; docker context is `default`.
+- **Step 5 is the existing spec `submission-story`, tasks 4 to 6:** record the takes in
+  `docs/video-script.md`, edit to under 3 minutes, upload publicly to YouTube, put the URL
+  in `docs/devpost-draft.md` and `docs/social-post.md`, then the final fresh-clone check.
+  Read `docs/video-guidelines.md` first. Recording and upload are the owner's; an agent
+  may dry-run every take and review the cut against the guidelines.
+- **New footage** only from recorded Kiro work in steps 0 to 4. The usage log in
+  `docs/kiro-usage.md` lists each session id and what it showed. Private inputs for every
+  step are under `.praman/real-apps/{kan,shiori}/` (see `HANDOFF.md` there).
+- **Do not** start infrastructure just to refresh historical state; no new features.
 
 ### Kick-off prompt for the next session
 
@@ -219,9 +232,9 @@ scales; no faults, recording or baseline modes with users; neither real app show
 Continue PRAMAN. Read AGENTS.md, docs/STATUS.md and docs/ROADMAP.md
 ("Plan: Hue-style environments and stimulation", including "Handoff for the
 next session"), then the private .praman/real-apps/HANDOFF.md. Do the next
-step in the table that is not marked done, and only that step. Follow "Rules for every
-session in this plan", including the PR, green CI and fast-forward of main.
-Docker/Colima may be started for this work; return it to its starting state.
+step in the table that is not marked done (step 5, video and blog), and only that
+step. Follow "Rules for every session in this plan" where they apply. Recording,
+upload and submission are the owner's; prepare and check them.
 ```
 
 ## Real-world use so far
@@ -278,6 +291,9 @@ first and review the cut against `docs/video-guidelines.md`.
 
 - Stateful dependency simulation beyond the declared service and the recorded APIs of
   step 4; world restore beyond the declared service volumes of step 1.
+- Recorded outside calls: browser-side recording (Playwright HAR), header matching,
+  stateful sequences, timing replay, HTTPS for clients that cannot trust an added CA
+  (Go on macOS), calls that bypass the application's proxy settings.
 - Network faults: proof that the application's own traffic met a fault window (Toxiproxy
   counts bytes only when a connection closes); several faults at once; faults between
   containers or in kind.
@@ -292,7 +308,7 @@ first and review the cut against `docs/video-guidelines.md`.
 
 ## Next (owner)
 
-1. Step 4 of the plan, one Kiro session (Nov 21–24).
+1. Step 4 of the plan: done 2026-11-11 (recorded outside APIs).
 2. Record and upload the <=3 minute demo video; set `<DEMO_VIDEO_URL>` in
    [the Devpost draft](devpost-draft.md) (Nov 25–26).
 3. Paste the [TESTING.md](../TESTING.md) judge instructions, save and submit the Devpost

@@ -255,6 +255,23 @@ export interface ScenarioRun {
   invariants?: InvariantEvidence[];
   /** Many users: the largest number of users running at the same moment. */
   peakConcurrency?: number;
+  /** A managed environment's recorder or replay of the application's own outside HTTP calls during this run. */
+  outside?: OutsideRunEvidence;
+}
+export interface OutsideRunEvidence {
+  mode: 'record' | 'replay';
+  recordingId?: string;
+  /** Calls the recorder completed or the replay answered from the recording. */
+  served: number;
+  /** Calls the replay refused (not in the recording) or the recorder could not complete. */
+  refused: number;
+  /** HTTPS calls whose TLS the application rejected: it does not trust the environment's CA. */
+  tlsRefused: number;
+  minPerRun: number;
+  ok: boolean;
+  reason?: string;
+  /** Private file in the run folder with each call's address and status. */
+  calls?: string;
 }
 export interface UserRun {
   user: number;

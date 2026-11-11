@@ -7,6 +7,7 @@ import type { EnvironmentState, SaveState } from './types.js';
 import { archiveFile, copyIn, copyOut, loadWorld, worldIdOf, type WorldManifest, type WorldStart } from './world.js';
 import { inspectContainer as inspect, ownerLabel as label } from './container.js';
 import { createNetwork, destroyProxy, proxiedServices, startProxy } from './proxy.js';
+import { checkOutside, destroyOutside, loadRecording, startOutside } from './outside.js';
 
 export async function ownedService(state: EnvironmentState, service: string) {
   const item = state.services?.[service];
@@ -40,6 +41,9 @@ export async function provisionDocker(state: EnvironmentState, save: SaveState):
   state.services ??= {}; save();
   // A world is verified before any container exists; a changed world starts nothing.
   const world = state.world ? { ref: state.world, manifest: await loadWorld(state.world, state) } : undefined;
+  // So is a recording. The recorder is kept across a reset, so only the first provision starts it.
+  const startRecorder = !!state.spec.outsideCalls && !state.outside;
+  const recording = startRecorder && state.recording ? loadRecording(state.recording) : undefined;
   const starts: WorldStart[] = [];
   // Only a declaration with a proxied service gets an owned network and a fault proxy.
   const network = proxiedServices(state).length ? await createNetwork(state, save) : undefined;
@@ -65,6 +69,8 @@ export async function provisionDocker(state: EnvironmentState, save: SaveState):
     writeFileSync(join(state.directory, `${name}-readiness-${Date.now()}.json`), JSON.stringify(readiness, null, 2));
   }
   if (network) await startProxy(state, save);
+  if (startRecorder) await startOutside(state, save, recording);
+  else if (state.outside) await checkOutside(state);
   return starts;
 }
 /**
@@ -150,8 +156,10 @@ export async function faultDocker(state: EnvironmentState, enabled: boolean, sav
   state.fault = false; save();
   return { applied: false, recovered: true, service: name, readiness };
 }
-export async function destroyDocker(state: EnvironmentState, save: SaveState) {
+/** `keepOutside` (reset and world restores) leaves the outside-call recorder running: the outside world is not the application's data. */
+export async function destroyDocker(state: EnvironmentState, save: SaveState, keepOutside = false) {
   const errors: string[] = [];
+  if (!keepOutside) try { await destroyOutside(state, save); } catch (error) { errors.push(String(error)); }
   // The proxy goes first so the application loses its dependencies in one step; the network goes last.
   try { await destroyProxy(state, save, 'container'); } catch (error) { errors.push(String(error)); }
   for (const name of Object.keys(state.services ?? {}).reverse()) {
