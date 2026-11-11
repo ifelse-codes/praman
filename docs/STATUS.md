@@ -38,7 +38,7 @@ general simulator and not a sandbox.
   server arrival; only `count` scales; no faults, recording or baseline modes with
   users; neither real app showed a race. Stress run on this Mac (M5, 10 cores, 16 GB):
   Shiori `passed` up to 27 users, failed at 28; Kan `passed` up to 18, failed at 20 (see
-  README for the causes); the default stays 3 and the cap stays 10. Private inputs and evidence:
+  README for the causes); the default is 5 users (owner decision 2026-11-11) and the cap stays 10. Private inputs and evidence:
   `.praman/real-apps/{kan,shiori}/users/` and `kiro-mcp-users/`.
 - **Network faults (2026-11-10, plan step 2, spec `network-faults`):** before the fix, a
   declaration naming a slow database was rejected by the schema, and `environment fault
@@ -110,8 +110,8 @@ general simulator and not a sandbox.
   is a squashed public snapshot under the owner identity (see the repository history),
   with CI green and judge access enabled.
 - **Checks:** `npm run build` and `npm run lint` pass; `npm run lint:tests` passes;
-  the **full suite passes 329 tests / 38 files** on the recorded host (2026-11-10,
-  `--maxWorkers=2`), including the 20 many-users tests, the 22 network-fault tests, the 8 Kiro finish-gate tests, the 15 cancellation
+  the **full suite passes 330 tests / 38 files** on the recorded host (2026-11-10,
+  `--maxWorkers=2`), including the 21 many-users tests, the 22 network-fault tests, the 8 Kiro finish-gate tests, the 15 cancellation
   tests, the 21 diagnosis tests, the 22 browser-action tests, the 11 step-id tests and
   the managed-verify test. Parallel local runs
   are resource-sensitive while macOS Spotlight/MediaAnalysis indexing saturates the

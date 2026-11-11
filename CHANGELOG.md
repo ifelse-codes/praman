@@ -5,7 +5,7 @@
 ### Added
 
 - Many users and invariants (spec `many-users`, plan step 3): an `acceptance` scenario
-  may declare `users` (2 to 10): the same steps and checks run as N users at once, each
+  may declare `users` (2 to 10, 5 when `count` is omitted): the same steps and checks run as N users at once, each
   in its own browser and context, with `{user}`/`{user1}` index tokens, an optional
   start stagger, an optional `syncAtStep` barrier and caller-declared `invariants`
   (existing check kinds; `count` may scale with the number of users) read once after

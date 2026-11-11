@@ -16,7 +16,7 @@ declaration with `users` is rejected by the schema (`Unrecognized key: "users"`)
 **User story:** As a coding agent, I want one scenario to run as N users at once against
 one environment copy, so concurrency problems can be observed.
 
-1.1 A scenario in `acceptance` mode MAY declare `users: { count }` with 2 to 10 users.
+1.1 A scenario in `acceptance` mode MAY declare `users: { count }` with 2 to 10 users; `count` defaults to 5 when omitted (owner decision 2026-11-11).
 Each user SHALL get its own browser and context (own cookies and storage) and run the
 whole scenario.
 1.2 In strings of steps, checks and the observer steps, `{user}` SHALL be replaced by the

@@ -38,6 +38,14 @@ describe('declaring many users', () => {
     expect(hashSpec(single)).toBe(hashSpec(changeSpecSchema.parse({ ...base, steps, checks })));
   });
 
+  it('runs 5 users when count is omitted, and keeps an explicit count', () => {
+    const { count: _omitted, ...withoutCount } = users;
+    expect(changeSpecSchema.parse(declaration({ users: withoutCount })).users?.count).toBe(5);
+    expect(changeSpecSchema.parse(declaration()).users?.count).toBe(3);
+    const spec = changeSpecSchema.parse(declaration({ users: { ...withoutCount, invariants: users.invariants } }));
+    expect(userSpec(spec, 0).checks.at(-1)).toMatchObject({ equals: 5 });
+  });
+
   it.each([
     ['a single user', { users: { ...users, count: 1 } }, 'users.count'],
     ['more than ten users', { users: { ...users, count: 11 } }, 'users.count'],

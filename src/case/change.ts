@@ -57,7 +57,8 @@ const invariantSchema = z.union([
 ]);
 /** Many users: the same scenario run at once by `count` users against one application instance. */
 const usersSchema = z.object({
-  count: z.number().int().min(2).max(10),
+  /** Number of concurrent users; 5 when omitted (the default of the many-users feature). */
+  count: z.number().int().min(2).max(10).default(5),
   staggerMs: z.number().int().min(0).max(30000).optional(),
   syncAtStep: stepRef.optional(),
   /** Observer steps run by the first user once every user has ended, before the invariants are read. */

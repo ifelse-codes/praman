@@ -1691,7 +1691,7 @@ then check **invariants**: rules that must hold after all users are done. `users
 }
 ```
 
-- Each user gets its own browser and context (own cookies and storage) and runs every
+- `count` is 2 to 10 and defaults to 5 when omitted. Each user gets its own browser and context (own cookies and storage) and runs every
   step and check. `{user}` in any string of the steps, checks and `after` steps becomes the
   zero-based user index, and `{user1}` the one-based index (for example `"Board of user {user1}"`).
 - `staggerMs` starts user k after k times that many milliseconds (for a rate-limited
@@ -1741,7 +1741,7 @@ Deterministic tests use a local fixture whose variant loses an update: the users
   (about 21 GB counted at 27 users, so the OS compressed and swapped; peak swap about
   5.6 GB). Kan needs `staggerMs` above 10 s from the fourth user on: its sign-in limiter
   keeps counting while sign-ins are less than 10 s apart. These are this machine's
-  limits, not guarantees; the default stays 3.
+  limits, not guarantees; the default is 5 users.
 - Neither app showed a concurrency defect in these runs; the proof is that the feature
   observes and gates, not that the apps are race-free.
 

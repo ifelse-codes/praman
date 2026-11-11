@@ -16,4 +16,4 @@
   - _Requirements: 4.2_
   - Both apps `passed` 2/2 (3 users, peak 3); wrong count `failed`; MCP Shiori `sess_f1e93068…`, Kan `sess_0eb1fbfb…`
 - [x] 7. Full checks; README, ROADMAP, STATUS, CHANGELOG, usage log; clean up; deliver
-  - build, lint, lint:tests, 329 tests / 38 files, first-use 12/12
+  - build, lint, lint:tests, 330 tests / 38 files, first-use 12/12
