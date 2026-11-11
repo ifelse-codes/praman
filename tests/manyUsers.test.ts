@@ -145,9 +145,10 @@ beforeEach(async () => {
     if (req.method === 'POST' && url.pathname === '/add') {
       const title = url.searchParams.get('title') ?? '';
       if (!lossy) { items.push(title); res.end('ok'); return; }
-      // Deliberate lost update: read, wait, write back the stale copy.
+      // Deliberate lost update: read, wait, write back the stale copy. The wait is long enough that saves
+      // released together by the sync step overlap even on a loaded runner.
       const stale = [...items];
-      setTimeout(() => { items = [...stale, title]; res.end('ok'); }, 150);
+      setTimeout(() => { items = [...stale, title]; res.end('ok'); }, 1500);
       return;
     }
     if (url.pathname !== '/') { res.statusCode = 404; res.end('missing'); return; }

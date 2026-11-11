@@ -251,7 +251,9 @@ general simulator and not a sandbox.
   same code passed: user 1's `fill` of the input hit the 3 s action limit while three
   browsers started together (it passed 3 of 3 locally). The real-browser many-users tests
   now wait for the input first (`waitFor`, 15 s) and print which user failed and why;
-  the product's 3 s action limit is unchanged. Once, on macOS only, the new
+  the product's 3 s action limit is unchanged. On macOS the lost-update fixture test also
+  failed once (the users' saves did not overlap within its 150 ms window on a loaded
+  runner, so no update was lost); the window is now 1500 ms. Once, on macOS only, the new
   `tests/outsideCalls.test.ts` record test gave `insufficient_evidence` (run 43069576808);
   the cause was not printed and it did not recur (passed locally under CPU load and in the
   next four CI jobs). Its verify assertions now print each run's error and outside-call
