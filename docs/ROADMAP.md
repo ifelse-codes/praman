@@ -1,7 +1,7 @@
 # PRAMAN — current roadmap (2026-11-10)
 
 **Status: shipped and verified; the Hue-style environment plan below is in progress
-(owner decision 2026-11-10; steps 0, 1 and 2 done).** Public repository
+(owner decision 2026-11-10; steps 0, 1, 2 and 3 done).** Public repository
 https://github.com/ifelse-codes/praman (MIT), CI green on Ubuntu and macOS, judge
 access via [TESTING.md](../TESTING.md) and Codespaces, project page
 https://ifelse-codes.github.io/praman/. Not submitted: the demo video and the Devpost
@@ -87,7 +87,7 @@ core, schemas, CLI or MCP dispatch.
 | 0 | **Done 2026-11-10.** **Environment re-check.** Unfreeze the Docker `environment` route (create, verify, reset, destroy) and run it end to end on Kan and Shiori. Fix only what broke since the 2026-11-05 cleanup, each with a regression test. kind stays frozen and is not claimed. | Existing code | Both apps: create, a passing scenario, reset to seed, destroy with no owned leftovers | Nov 11 |
 | 1 | **Done 2026-11-10.** **Worlds.** Save a declared starting state (the data volumes of declared services) as a hashed snapshot; give every repeat or campaign run its own fresh copy. Two versions can start from the same world. Generic: core copies volumes and never knows the database type. | Docker volumes | Both apps: a change in copy A is absent in copy B; each run's starting hash matches the world; an altered snapshot gives `insufficient_evidence` | Nov 12–14 |
 | 2 | **Done 2026-11-10.** **Real network faults.** Put a proxy between the app and a declared dependency and apply named faults: added delay, timeout, dropped connection, down. Like today's stop fault, the effect must be observed, or the run is `insufficient_evidence`. Faults can start and stop at step ids. | Toxiproxy | Both apps: each fault kind observed on live traffic; checks authored from the app's real behavior; fault removed and recovery observed | Nov 15–17 |
-| 3 | **Many users and invariants.** Run one scenario as N users at once (fresh browser contexts, a per-user index for inputs) against one environment copy. After the run, check caller-declared invariants (rules that must always hold), for example "card count equals N" or "no duplicate entries". | Parallel Playwright contexts | Both apps: N users run at the same time (peak concurrency recorded); per-user verdicts; an invariant that is broken on purpose in a fixture gives `failed` | Nov 18–20 |
+| 3 | **Done 2026-11-11.** **Many users and invariants.** Run one scenario as N users at once (fresh browser contexts, a per-user index for inputs) against one environment copy. After the run, check caller-declared invariants (rules that must always hold), for example "card count equals N" or "no duplicate entries". | Parallel Playwright contexts | Both apps: N users run at the same time (peak concurrency recorded); per-user verdicts; an invariant that is broken on purpose in a fixture gives `failed` | Nov 18–20 |
 | 4 | **Recorded outside APIs.** Record an app's real outside HTTP calls once, then replay them in later runs. A call that is not in the recording fails closed (`insufficient_evidence`), so a test never reaches the real service by accident. The app is pointed at the replay through its own configuration. | Playwright HAR replay (browser side); Hoverfly or WireMock (server side) | Shiori replays a recorded real page download with no network; an unrecorded call is refused. A second real app is required for a cross-app claim; if none of Kan, Lattice or Luma makes outside calls, that limit is written down instead | Nov 21–24 |
 | 5 | **Video and blog** (existing `submission-story` tasks 4–6). Record, edit to under 3 minutes and upload; add new footage only from recorded Kiro work in steps 0–4. | — | Video URL in the Devpost draft; owner submits | Nov 25–27 |
 
@@ -170,28 +170,48 @@ a connection closes, so per-window application traffic is not reported); one fau
 time; no container-to-container or kind faults. MCP clients may cut long verify results,
 so the result ends with a one-line `faultSummary`.
 
-### Handoff for the next session (step 3, many users and invariants; written 2026-11-10)
+**Step 3 result (2026-11-11, spec `many-users`).** Gap shown first on both apps: a
+declaration with `users` and invariants was rejected by the schema (`Unrecognized key:
+"users"`); a scenario had one user per run and repeats ran one after another. Built:
+`users` (2 to 10) in `acceptance` mode: one browser and context per user, `{user}` and
+`{user1}` index tokens, `staggerMs`, a `syncAtStep` barrier, caller-declared `invariants`
+(existing check kinds; `count` may use `equals: { perUser, plus }`) read once by the first
+user's page after the others ended, per-user evidence under `after-<n>/user-<k>/`, the peak
+concurrency measured from recorded times, and a gate that needs every user and invariant
+to pass. Proven on Kan and Shiori (each from a saved world): three users at the same time,
+peak 3, invariants `passed` 2/2; the same declaration with a wrong count `failed` with
+every user `passed`; through `praman_environment` in headless Kiro (Shiori
+`sess_f1e93068…`, Kan `sess_0eb1fbfb…`) both `passed`. A fixture with a deliberate lost
+update gives `failed` in the deterministic tests. Limits: one machine, one environment
+copy, shared credentials; the barrier aligns step starts, not server arrival; only `count`
+scales; no faults, recording or baseline modes with users; neither real app showed a race.
 
-- **State:** step 2 is merged (see STATUS.md for the commit and CI run). Colima profiles
+### Handoff for the next session (step 4, recorded outside APIs; written 2026-11-11)
+
+- **State:** step 3 is merged (see STATUS.md for the commit and CI run). Colima profiles
   are all stopped; docker context is `default`.
-- **Private setup** under `.praman/real-apps/` (see `HANDOFF.md` there): `kan/` and
-  `shiori/` each have `environment.json` (read-only seed scenario),
-  `environment-mutate.json` (mutating scenario, `dataPath`, worlds) and
-  `faults/environment.json` (proxied database and fault scenario). Worlds are in
+- **Private setup** under `.praman/real-apps/` (see `HANDOFF.md` there): each of `kan/`
+  and `shiori/` now also has `users/` (environment, scenario, world id). Worlds are in
   `envs/worlds/`. Rebuild nothing unless a source changes.
-- **Traps:** Kan's sign-in limit is 3 per 10 s; N users signing in at once will hit it
-  (HTTP 429, which PRAMAN reports as `insufficient_evidence`). Kan runs one application
-  instance at a time (fixed port 3917). A changed scenario needs a new `create`.
-- **Where step 3 starts in code:** `executeScenario` in `src/eval/change.ts` makes one
-  browser context and one page per run; `proveChange` runs repeats one after another.
-  Many users means several contexts at once against one environment copy, a per-user
-  index for inputs, per-user verdicts and recorded peak concurrency. Invariants are
-  caller-declared rules checked after the run; core must not learn app rules, so an
-  invariant should be a declared probe (for example a `workload` or a JSON path) with an
-  expected value.
-- **Show the gap first:** a real run where two users acting at the same time cannot be
-  expressed (one context per run) or where a concurrency rule (for example "card count
-  equals N") cannot be declared.
+- **Shiori is the step 4 target:** it downloads the pages it saves, so adding a bookmark
+  with a real address makes an outside HTTP call from the server. Earlier scenarios used
+  `http://127.0.0.1:9/...` (nothing listens, the title is typed by hand). The app is
+  started by `.praman/real-apps/shiori/integration.mjs` from `./bin/shiori`; point it at a
+  replay through its own configuration (check Shiori's settings and proxy variables
+  such as `HTTP_PROXY`; Go honors them), and verify that with a request log before trusting it.
+- **Where step 4 starts in code:** nothing exists for recorded outside calls. The plan
+  says: browser side with Playwright HAR replay (`routeFromHAR`, fails closed with
+  `notFound: 'abort'`), server side with Hoverfly or WireMock run as a separate owned
+  container or process (check the license first; run AGPL tools only as separate
+  programs). A call that is not in the recording must give `insufficient_evidence`,
+  never reach the real service. Core must stay protocol-light and app-independent.
+- **Show the gap first:** a real Shiori run that saves a bookmark whose page is fetched
+  from a live outside address, then the same run with no network (it fails or differs),
+  and an unrecorded call that cannot be refused today.
+- **Second app:** a cross-app claim needs a second real app that makes outside calls;
+  if none of Kan, Lattice or Luma does, write that limit down instead (plan step 4).
+- **Traps:** the same as before: Kan's sign-in limit (3 per 10 s), one Kan instance at a
+  time, a changed scenario needs a new `create`, macOS `sed -i` needs a suffix (use Python).
 
 ### Kick-off prompt for the next session
 
@@ -272,7 +292,7 @@ first and review the cut against `docs/video-guidelines.md`.
 
 ## Next (owner)
 
-1. Steps 3–4 of the plan, one Kiro session each (Nov 15–24).
+1. Step 4 of the plan, one Kiro session (Nov 21–24).
 2. Record and upload the <=3 minute demo video; set `<DEMO_VIDEO_URL>` in
    [the Devpost draft](devpost-draft.md) (Nov 25–26).
 3. Paste the [TESTING.md](../TESTING.md) judge instructions, save and submit the Devpost

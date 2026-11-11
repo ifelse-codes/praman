@@ -4,11 +4,13 @@ import { pathToFileURL } from 'node:url';
 import { classifyError, describeDiagnosis, diagnosisNextAction, type Diagnosis } from './classify.js';
 
 export interface Diagnostic {
-  category: 'check_mismatch' | 'execution_unavailable' | 'evidence_unavailable' | 'proof_gate' | 'story_preflight' | 'recording_unavailable';
+  category: 'check_mismatch' | 'invariant_violation' | 'execution_unavailable' | 'evidence_unavailable' | 'proof_gate' | 'story_preflight' | 'recording_unavailable';
   version?: 'before' | 'current';
   run?: number;
   /** Declaration check index, zero-based; -1 denotes the command exit check. */
   checkIndex?: number;
+  /** Many users: zero-based index of the declared invariant. */
+  invariantIndex?: number;
   stage?: 'before' | 'current' | 'code';
   beat?: number;
   step?: number;
@@ -34,6 +36,7 @@ export function formatSummary(result: { verdict: string; diagnostics?: Diagnosti
   for (const diagnostic of shown) {
     const location = [diagnostic.version, diagnostic.run === undefined ? undefined : `run ${diagnostic.run}`,
       diagnostic.checkIndex === undefined ? undefined : diagnostic.checkIndex === -1 ? 'exit check' : `check[${diagnostic.checkIndex}]`,
+      diagnostic.invariantIndex === undefined ? undefined : `invariant[${diagnostic.invariantIndex}]`,
       diagnostic.stage === undefined ? undefined : `stage ${diagnostic.stage}`,
       diagnostic.beat === undefined ? undefined : `beat[${diagnostic.beat}]`,
       diagnostic.step === undefined ? undefined : `step[${diagnostic.step}]`].filter(Boolean).join(' ');
@@ -58,6 +61,7 @@ interface DiagnosticRun {
   error?: string;
   failedStep?: number;
   checks: Array<{ id: string; verdict: string; evidence?: string; screenshot?: string; observed?: unknown }>;
+  invariants?: Array<{ verdict: string; screenshot?: string }>;
 }
 
 /** Indexes and JSON pointers identify private data without copying its contents. */
@@ -78,6 +82,16 @@ export function checkDiagnostics(outDir: string, proof: { verdict: string; mode?
       references: [ref('proof.json', proofPointer), ...(existsSync(join(outDir, result)) ? [ref(result)] : [])],
       nextAction: (runDiagnosis && diagnosisNextAction(runDiagnosis)) ?? 'Inspect the private execution failure; restore prerequisites and rerun in a fresh directory.',
     });
+    for (const [index, row] of (value.invariants ?? []).entries()) {
+      if (row.verdict === 'passed') continue;
+      diagnostics.push({
+        category: 'invariant_violation', version, run, invariantIndex: index,
+        references: [ref('proof.json', `${proofPointer}/invariants/${index}`), ref('scenario.json', `/users/invariants/${index}`)],
+        nextAction: row.verdict === 'failed'
+          ? 'A declared invariant was observed broken after all users ended. Compare the private expectation and observation, check what concurrent users did to the shared state, and rerun all current checks. Root cause is not established.'
+          : 'The invariant could not be observed (a user or the observer step did not finish); restore the missing execution and rerun. Do not infer a broken rule.',
+      });
+    }
     for (const [index, row] of value.checks.entries()) {
       const unavailable = row.verdict !== 'passed' && row.verdict !== 'failed'
         || !command && (!row.screenshot || !existsSync(row.screenshot) || !Object.hasOwn(row, 'observed'));

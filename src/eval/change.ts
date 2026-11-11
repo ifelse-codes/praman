@@ -7,6 +7,7 @@ import { changeSpecSchema, type ChangeSpec, type ChangeProof, type ScenarioRun, 
 import type { Verdict } from './eval.js';
 import { z } from 'zod';
 import { saveFeedback, type FeedbackContext } from '../review/feedback.js';
+import { executeUsers } from './users.js';
 import { captureIdentity, identityComplete, identityScope, sameIdentity } from './identity.js';
 
 const imageObservation = z.object({ src: z.string().nullable(), currentSrc: z.string(), complete: z.boolean(), width: z.number(), height: z.number() });
@@ -24,7 +25,15 @@ export function captureScenarioIdentity(spec: ChangeSpec) {
 }
 export function assessProof(spec: ChangeSpec, before: ScenarioRun | undefined, after: ScenarioRun[]): { verdict: Verdict; reason: string } {
   const declared = new Set(spec.checks.map(check => check.id));
-  const runs = [...(before ? [before] : []), ...after];
+  // A many-users repeat is judged user by user: every user run needs the evidence a single run needs.
+  const userRuns = (run: ScenarioRun) => run.users ? run.users.map(row => row.run) : [run];
+  const runs = [...(before ? [before] : []), ...after.flatMap(userRuns)];
+  const users = spec.users;
+  if (users && after.some(run => run.users?.length !== users.count || run.users.some((row, index) => row.user !== index) || (run.peakConcurrency ?? 0) < 2
+    || run.invariants?.length !== (users.invariants?.length ?? 0)
+    || run.invariants.some(row => !['passed', 'failed'].includes(row.verdict) || !Object.hasOwn(row, 'observed') || !row.screenshot || !existsSync(row.screenshot)))) {
+    return { verdict: 'insufficient_evidence', reason: 'A user did not run, the users did not run at the same time, or an invariant was not observed.' };
+  }
   if (!declared.size || after.length !== spec.repeats || (spec.mode === 'acceptance' ? before !== undefined : !before || before.url !== spec.beforeUrl) || after.some(run => run.url !== spec.afterUrl)) {
     return { verdict: 'insufficient_evidence', reason: 'Missing acceptance checks, version evidence, or repeated current-version runs.' };
   }
@@ -38,10 +47,12 @@ export function assessProof(spec: ChangeSpec, before: ScenarioRun | undefined, a
       return { verdict: 'insufficient_evidence', reason: 'An action/check was unavailable, unexecuted, or lacks observed evidence.' };
     }
   }
-  if (after.some(run => run.verdict !== 'passed' || run.checks.some(check => check.verdict !== 'passed'))) {
-    return { verdict: 'failed', reason: 'The current version fails a declared requirement.' };
+  if (after.some(run => run.verdict !== 'passed' || userRuns(run).some(row => row.verdict !== 'passed' || row.checks.some(check => check.verdict !== 'passed')) || run.invariants?.some(row => row.verdict !== 'passed'))) {
+    return { verdict: 'failed', reason: users && after.some(run => run.invariants?.some(row => row.verdict !== 'passed')) ? 'The current version breaks a declared invariant or requirement under concurrent users.' : 'The current version fails a declared requirement.' };
   }
-  if (spec.mode === 'acceptance') return { verdict: 'passed', reason: `Declared current requirements passed in ${spec.repeats} isolated runs. No baseline or repair claim.` };
+  if (spec.mode === 'acceptance') return { verdict: 'passed', reason: users
+    ? `Declared current requirements and ${users.invariants?.length ?? 0} invariants passed for ${users.count} concurrent users in ${spec.repeats} isolated runs. No baseline or repair claim.`
+    : `Declared current requirements passed in ${spec.repeats} isolated runs. No baseline or repair claim.` };
   if (spec.mode === 'comparison') return { verdict: 'passed', reason: `Complete ${spec.baselineKind} baseline comparison; repeated current requirements passed. Baseline need not fail; no historical repair claim.` };
   if (!before || spec.baselineKind !== 'historical') return { verdict: 'insufficient_evidence', reason: 'Repair requires a caller-declared historical baseline.' };
   const regression = before.checks.find(check => check.id === spec.regressionCheck);
@@ -372,7 +383,7 @@ export async function proveChange(input: ChangeSpec, outDir: string, context?: F
     const options: ScenarioOptions = windows.length ? { version, faultWindows: true,
       beforeStep: async (_page, _step, index) => step(index, 'fromStep'), afterStep: async (_page, _step, index) => step(index, 'throughStep') } : { version };
     let result: ScenarioRun;
-    try { result = await executeScenario(spec, url, directory, options); }
+    try { result = spec.users ? await executeUsers(spec, url, directory, executeScenario, options) : await executeScenario(spec, url, directory, options); }
     catch (error) {
       result = { url, verdict: 'insufficient_evidence', checks: [], screenshots: [], error: error instanceof Error ? error.message : String(error) };
     }

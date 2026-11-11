@@ -93,7 +93,7 @@ The submission release treats two surfaces differently:
   plan in [the roadmap](docs/ROADMAP.md) extends them step by step.
 - **Re-checked 2026-11-10:** the Docker `environment` route (create, verify, workload,
   reset, destroy) on two real apps; see [Docker environments](#docker-environments).
-  Added on 2026-11-10 and proven on the same two apps: worlds and network faults.
+  Added on 2026-11-10/11 and proven on the same two apps: worlds, network faults and many users with invariants.
 
 ## Explicit verification modes
 
@@ -1672,6 +1672,67 @@ scenario that expected Shiori's list to load with the database down `failed`. Li
 - One fault at a time; no random or partial (toxicity) faults, bandwidth or packet
   loss; no faults on traffic between two containers or inside kind clusters.
 - The application's own outside (internet) calls are not covered (plan step 4).
+
+#### Many users and invariants (plan step 3, 2026-11-11)
+
+A scenario can run as **N users at the same time** against one application instance, and
+then check **invariants**: rules that must hold after all users are done. `users` works in
+`acceptance` mode, through `scenario-verify`, `praman_scenario_verify` and managed
+`environment verify`.
+
+```json
+"users": {
+  "count": 3,
+  "staggerMs": 3600,
+  "syncAtStep": "listed",
+  "after": [ { "id": "relist", "action": "goto", "path": "/boards", "note": "Open the list again" },
+             { "id": "relisted", "action": "waitFor", "selector": "a[href^=\"/boards/\"]:has-text(\"Seed\")", "note": "Wait for the list" } ],
+  "invariants": [ { "id": "seed-plus-one-each", "kind": "count", "selector": "a[href^=\"/boards/\"]", "equals": { "perUser": 1, "plus": 1 } } ]
+}
+```
+
+- Each user gets its own browser and context (own cookies and storage) and runs every
+  step and check. `{user}` in any string of the steps, checks and `after` steps becomes the
+  zero-based user index, and `{user1}` the one-based index (for example `"Board of user {user1}"`).
+- `staggerMs` starts user k after k times that many milliseconds (for a rate-limited
+  sign-in). `syncAtStep` (index or step id) makes every user wait before that step until
+  all have reached it or have ended; a wait over 60 s (plus the stagger) is
+  `insufficient_evidence`.
+- `invariants` use the existing check kinds (no `afterStep`, no `network`); a `count` may
+  use `equals: { perUser, plus }`, meaning `perUser * users + plus`. They are read once, by
+  the first user's page, after every other user has ended and after the `after` steps ran
+  (`after` is required with invariants and cannot upload). An invariant that cannot be
+  read is `insufficient_evidence`.
+- Evidence: `after-<n>/user-<k>/` holds each user's own result and screenshots;
+  `after-<n>/result.json` lists the users, the invariants and the **peak concurrency**
+  (the largest number of users running at the same moment, measured from the recorded
+  times). A repeat with a peak below 2 is `insufficient_evidence`. A repeat is `passed`
+  only when every user and every invariant passed. In the merged view of the report, a
+  declared check shows one row (`observed` is the list of the users' values).
+  `feedback.json` and `REPORT.md` list the user verdicts, the peak and the invariants by
+  index and kind (no application text); managed `verify` ends with a one-line
+  `usersSummary`.
+- Refused together with `faults`, `walkthrough`, `diffPath`, `network` checks and the
+  repair/comparison modes. Declarations without `users` keep their meaning and hash.
+
+Proven on 2026-11-11 on Kan (Postgres + RustFS) and Shiori (Postgres), each started from a
+saved world so both repeats begin from the same data: three users each created one board
+(Kan) or added one bookmark (Shiori) at the same time, and the invariants "the list holds
+the seed plus one per user" (and, on Shiori, "no duplicate title") `passed` 2/2 with peak
+concurrency 3; the same declaration with a wrong count (`perUser: 2`) `failed` with every
+user still `passed`. Through `praman_environment` in headless Kiro, both apps `passed`.
+Deterministic tests use a local fixture whose variant loses an update: the users all see
+"saved" and the invariant `failed`. Limits:
+
+- All users run on one machine against one environment copy. They are separate browsers,
+  not separate hosts; `syncAtStep` lines up when the users begin a step, it does not
+  make the requests reach the server at the same instant.
+- Users share the credentials the scenario types in; there is no per-user account
+  creation. Kan's sign-in limit (3 per 10 s) needs `staggerMs` for 3 or more users.
+- Invariants are read through the first user's session, and only `count` scales with the
+  number of users. Between 2 and 10 users. No faults, recording or baseline modes with users.
+- Neither app showed a concurrency defect in these runs; the proof is that the feature
+  observes and gates, not that the apps are race-free.
 
 The Kan-specific adapter, its PostgreSQL/RustFS declarations, historical issue
 reproduction, credentials and evidence were archived on 2026-11-05 and are not part

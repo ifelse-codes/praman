@@ -81,6 +81,7 @@ export async function manageEnvironment(action: EnvironmentAction, request: Envi
   let error: string | undefined;
   // One line about the fault windows, placed last: some MCP clients show only the start and end of a long result.
   let faultSummary: string | undefined;
+  let usersSummary: string | undefined;
   const verificationOutput = action === 'verify' || action === 'demonstrate'
     ? join(state.directory, 'runs', `${Date.now()}-${action}`) : undefined;
   const feedbackContext = { environmentId: state.id, generation: state.generation, sourceHashes: state.sourceHashes,
@@ -190,6 +191,9 @@ export async function manageEnvironment(action: EnvironmentAction, request: Envi
           `${window.name} ${window.failed ? 'failed' : window.applied && window.removed ? 'applied and removed' : window.applied ? 'applied, not removed' : 'not applied'}`).join(', ') : 'no window ran'}`;
         faultSummary = [...(faultWindows.before ? [line('baseline', faultWindows.before)] : []), ...faultWindows.repeats.map((run, index) => line(`repeat ${index + 1}`, run))].join('; ');
       }
+      if (state.scenario.users && 'proof' in verification) {
+        usersSummary = verification.proof.after.map((run, index) => `repeat ${index + 1} ${run.verdict}: ${run.users?.length ?? 0} users [${(run.users ?? []).map(row => row.run.verdict).join(', ')}], peak ${run.peakConcurrency ?? 0}, invariants [${(run.invariants ?? []).map(row => row.verdict).join(', ')}]`).join('; ');
+      }
       result = { verdict: verification.verdict, evidence: { output: verificationOutput, environmentId: state.id, generation: state.generation,
         sourceHashes: state.sourceHashes, observed, ...(state.world ? { world: { id: state.world.id, runs: worldRuns } } : {}), ...(faultWindows ? { faultWindows } : {}), ...verification } };
     } else {
@@ -235,7 +239,7 @@ export async function manageEnvironment(action: EnvironmentAction, request: Envi
         ...saveFeedback(state.scenario, proof, verificationOutput, feedbackContext) } };
     }
   } finally { unlinkSync(lock); }
-  const record = { action, started, finished: new Date().toISOString(), id: state.id, directory: state.directory, phase: state.phase, generation: state.generation, ...result, ...(error ? { error } : {}), ...(faultSummary ? { faultSummary } : {}) };
+  const record = { action, started, finished: new Date().toISOString(), id: state.id, directory: state.directory, phase: state.phase, generation: state.generation, ...result, ...(error ? { error } : {}), ...(faultSummary ? { faultSummary } : {}), ...(usersSummary ? { usersSummary } : {}) };
   appendFileSync(join(state.directory, 'operations.jsonl'), JSON.stringify(record) + '\n', { mode: 0o600 });
   const secrets = [state.ownershipToken, proxyToken, state.proxy?.token, ...(state.privateInputs ?? []),
     ...Object.values(state.spec.services ?? {}).flatMap(service => Object.entries(service.env ?? {})

@@ -49,6 +49,21 @@ const checkSchema = z.discriminatedUnion('kind', [
     equals: z.number().int().nonnegative(), afterStep: z.never().optional(),
   }).strict(),
 ]);
+/** A `count` invariant may scale with the number of users: `perUser * users + plus`. */
+const countScale = z.object({ perUser: z.number().int().min(0).max(1000), plus: z.number().int().min(0).max(1000).optional() }).strict();
+const invariantSchema = z.union([
+  z.object({ id: z.string().min(1), kind: z.literal('count'), selector: z.string().min(1), equals: countScale }).strict(),
+  checkSchema,
+]);
+/** Many users: the same scenario run at once by `count` users against one application instance. */
+const usersSchema = z.object({
+  count: z.number().int().min(2).max(10),
+  staggerMs: z.number().int().min(0).max(30000).optional(),
+  syncAtStep: stepRef.optional(),
+  /** Observer steps run by the first user once every user has ended, before the invariants are read. */
+  after: z.array(stepSchema).min(1).optional(),
+  invariants: z.array(invariantSchema).min(1).optional(),
+}).strict();
 const httpUrl = z.string().url().refine(value => ['http:', 'https:'].includes(new URL(value).protocol), 'Use an HTTP(S) app URL');
 const narrationText = z.string().min(1).refine(value => value.trim().length > 0, 'Narration must contain non-whitespace text');
 
@@ -94,6 +109,7 @@ const rawSpecSchema = z.object({
   walkthrough: walkthroughSchema.optional(),
   identity: identityDeclarationSchema.optional(),
   // Named faults of a managed environment, active from before `fromStep` until after the checks of `throughStep`.
+  users: usersSchema.optional(),
   faults: z.array(z.object({ name: z.string().regex(/^[a-z][a-z0-9-]*$/), fromStep: stepRef, throughStep: stepRef }).strict()).min(1).optional(),
 }).strict();
 
@@ -103,7 +119,8 @@ type Indexed<T, K extends PropertyKey> = T extends unknown ? { [P in keyof T]: P
 type ResolvedCheck<C> = C extends { kind: 'network'; window: infer W } ? { [P in keyof C]: P extends 'window' ? Indexed<W, 'fromStep' | 'throughStep'> : C[P] } : Indexed<C, 'afterStep'>;
 type ResolvedBeats<A> = A extends Array<infer B> ? Array<Indexed<B, 'step'>> : A;
 type ResolvedWalkthrough<W> = W extends undefined ? W : { [P in keyof W]: P extends 'startStep' ? number : P extends 'before' | 'after' ? ResolvedBeats<W[P]> : W[P] };
-type ResolvedSpec = { [P in keyof RawSpec]: P extends 'checks' ? Array<ResolvedCheck<RawSpec['checks'][number]>>
+type ResolvedSpec = { [P in keyof RawSpec]: P extends 'users' ? (Omit<NonNullable<RawSpec['users']>, 'syncAtStep'> & { syncAtStep?: number }) | undefined
+  : P extends 'checks' ? Array<ResolvedCheck<RawSpec['checks'][number]>>
   : P extends 'walkthrough' ? ResolvedWalkthrough<RawSpec['walkthrough']>
   : P extends 'faults' ? Array<{ name: string; fromStep: number; throughStep: number }> | undefined : RawSpec[P] };
 
@@ -132,8 +149,9 @@ function resolveStepRefs(spec: RawSpec, ctx: z.RefinementCtx): ResolvedSpec {
   const walkthrough = story && { ...story, startStep: resolve(story.startStep, ['walkthrough', 'startStep']),
     ...(story.before ? { before: beats('before') } : {}), after: beats('after')! };
   const faults = spec.faults?.map((fault, i) => ({ ...fault, fromStep: resolve(fault.fromStep, ['faults', i, 'fromStep']), throughStep: resolve(fault.throughStep, ['faults', i, 'throughStep']) }));
+  const users = spec.users && { ...spec.users, ...(spec.users.syncAtStep === undefined ? {} : { syncAtStep: resolve(spec.users.syncAtStep, ['users', 'syncAtStep']) }) };
   if (invalid) return z.NEVER;
-  return { ...spec, checks, ...(walkthrough ? { walkthrough } : {}), ...(faults ? { faults } : {}) } as ResolvedSpec;
+  return { ...spec, checks, ...(walkthrough ? { walkthrough } : {}), ...(faults ? { faults } : {}), ...(users ? { users } : {}) } as ResolvedSpec;
 }
 
 export const changeSpecSchema = rawSpecSchema.transform(resolveStepRefs).superRefine((spec, ctx) => {
@@ -155,6 +173,21 @@ export const changeSpecSchema = rawSpecSchema.transform(resolveStepRefs).superRe
     if (check.kind === 'json' && [spec.afterUrl, ...(spec.beforeUrl ? [spec.beforeUrl] : [])].some(url => new URL(check.path, url).origin !== new URL(url).origin)) ctx.addIssue({ code: 'custom', message: 'JSON checks must remain on the app origin', path: ['checks', i] });
     if (check.kind === 'network' && (check.window.fromStep > check.window.throughStep || check.window.throughStep >= spec.steps.length)) ctx.addIssue({ code: 'custom', path: ['checks', i, 'window'], message: 'Network windows require ordered existing step indexes.' });
     if (check.afterStep !== undefined && (check.afterStep >= spec.steps.length || check.kind === 'pageErrors')) ctx.addIssue({ code: 'custom', path: ['checks', i, 'afterStep'], message: 'Checkpoints require an existing step; runtime errors must be checked at the end' });
+  }
+  if (spec.users) {
+    const users = spec.users;
+    if (spec.mode !== 'acceptance') ctx.addIssue({ code: 'custom', path: ['users'], message: 'Many users run in acceptance mode only.' });
+    if (spec.faults || spec.walkthrough || spec.diffPath) ctx.addIssue({ code: 'custom', path: ['users'], message: 'Many users cannot be combined with faults, a walkthrough or a diff.' });
+    if (spec.checks.some(check => check.kind === 'network')) ctx.addIssue({ code: 'custom', path: ['users'], message: 'Many users cannot be combined with network checks.' });
+    if (users.syncAtStep !== undefined && users.syncAtStep >= spec.steps.length) ctx.addIssue({ code: 'custom', path: ['users', 'syncAtStep'], message: 'syncAtStep requires an existing step.' });
+    if (users.invariants && !users.after) ctx.addIssue({ code: 'custom', path: ['users', 'after'], message: 'Invariants are read after the observer steps; declare users.after.' });
+    if (users.after?.some(step => step.action === 'upload')) ctx.addIssue({ code: 'custom', path: ['users', 'after'], message: 'Observer steps cannot upload files.' });
+    const invariantIds = (users.invariants ?? []).map(invariant => invariant.id);
+    if (new Set(invariantIds).size !== invariantIds.length) ctx.addIssue({ code: 'custom', path: ['users', 'invariants'], message: 'Invariant ids must be unique' });
+    for (const [i, invariant] of (users.invariants ?? []).entries()) {
+      if (invariant.kind === 'network' || ('afterStep' in invariant && invariant.afterStep !== undefined)) ctx.addIssue({ code: 'custom', path: ['users', 'invariants', i], message: 'Invariants are read once after all users ended: no network kind and no afterStep.' });
+      if (invariant.kind === 'json' && new URL(invariant.path, spec.afterUrl).origin !== new URL(spec.afterUrl).origin) ctx.addIssue({ code: 'custom', path: ['users', 'invariants', i], message: 'JSON invariants must remain on the app origin' });
+    }
   }
   for (const [i, fault] of (spec.faults ?? []).entries()) {
     const previous = spec.faults![i - 1];
@@ -215,6 +248,28 @@ export interface ScenarioRun {
   identityAfter?: IdentitySnapshot;
   /** Evidence of each fault window of a managed environment, in order. */
   faults?: unknown[];
+  /** Many users: one entry per user; this run's `checks` are then the merged view (one row per declared check). */
+  users?: UserRun[];
+  /** Many users: the declared invariants, read by the first user's page after every user ended. */
+  invariants?: InvariantEvidence[];
+  /** Many users: the largest number of users running at the same moment. */
+  peakConcurrency?: number;
+}
+export interface UserRun {
+  user: number;
+  /** Epoch milliseconds of the first step and of the end of the run; absent when the user never reached a step. */
+  startedAt?: number;
+  endedAt: number;
+  run: ScenarioRun;
+}
+export interface InvariantEvidence {
+  id: string;
+  kind: string;
+  verdict: Verdict;
+  expected: unknown;
+  observed?: unknown;
+  evidence: string;
+  screenshot?: string;
 }
 export interface ChangeProof {
   mode: ChangeSpec['mode'];

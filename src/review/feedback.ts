@@ -107,6 +107,8 @@ export interface ChangeFeedback {
   identityStatus: 'stable' | 'unavailable_or_changed';
   identityEvidence: { path: string; private: true };
   issues: string[];
+  /** Many users: per repeat, the user verdicts, invariant kinds and verdicts and the peak concurrency (no application text). */
+  concurrency?: Array<{ run: number; users: Verdict[]; peakConcurrency: number; invariants: Array<{ index: number; kind: string; verdict: Verdict }> }>;
   reproduction: { setup: string; steps: unknown[] };
   findings: CheckFeedback[];
 }
@@ -128,6 +130,13 @@ export function buildFeedback(spec: ChangeSpec, proof: ChangeProof, outDir: stri
     if (run.value.checks.length !== spec.checks.length || new Set(run.value.checks.map(row => row.id)).size !== spec.checks.length
       || run.value.checks.some(row => !spec.checks.some(check => check.id === row.id))) issues.push(`${label}: declared check coverage is incomplete or ambiguous.`);
     if (!['passed', 'failed'].includes(run.value.verdict)) issues.push(`${label}: run verdict is ${run.value.verdict}; no complete run claim.`);
+  }
+  const concurrency = spec.users ? proof.after.map((value, i) => ({ run: i + 1, users: (value.users ?? []).map(row => row.run.verdict), peakConcurrency: value.peakConcurrency ?? 0,
+    invariants: (value.invariants ?? []).map((row, index) => ({ index, kind: row.kind, verdict: row.verdict })) })) : undefined;
+  for (const row of concurrency ?? []) {
+    if (row.peakConcurrency < 2) issues.push(`current run ${row.run}: the users did not run at the same time (peak concurrency ${row.peakConcurrency}).`);
+    row.users.forEach((verdict, user) => { if (verdict !== 'passed') issues.push(`current run ${row.run}: user ${user + 1} ended ${verdict}.`); });
+    for (const invariant of row.invariants) if (invariant.verdict !== 'passed') issues.push(`current run ${row.run}: invariant[${invariant.index}] (${invariant.kind}) is ${invariant.verdict}.`);
   }
   const findings = spec.checks.map((check): CheckFeedback => {
     const occurrences = runs.map(({ version, run, value }): FeedbackOccurrence => {
@@ -196,7 +205,7 @@ export function buildFeedback(spec: ChangeSpec, proof: ChangeProof, outDir: stri
     identityStatus: [...(proof.before ? [proof.before] : []), ...proof.after].every(run => sameIdentity(run.identityBefore, run.identityAfter) && sameIdentity(proof.after[0]?.identityBefore, run.identityBefore)) ? 'stable' : 'unavailable_or_changed',
     identityEvidence: { path: resolve(outDir, 'proof.json'), private: true as const },
     privacyLimit: 'Application text, identifiers, selectors, string/object expectations and observations, raw errors, known credentials and private fill inputs are withheld. Numeric scalars matching known private numeric values are also withheld, including equivalent leading-zero/exponent forms. Other numeric/boolean observations and caller-owned local evidence paths remain visible. Raw screenshots, scenarios, result/proof/network files remain private; no sanitized-export guarantee.',
-    issues, reproduction: { setup: context.environmentId
+    issues, ...(concurrency ? { concurrency } : {}), reproduction: { setup: context.environmentId
       ? `If the recorded instance is destroyed or unavailable, run praman environment create \"${context.declarationPath ?? '<original-private-declaration>'}\" --base <owned-base>, then praman environment verify <new-id> --base <owned-base>. Create a fresh managed instance, restore the failing run's state/preconditions from the private operation history (${context.operationLog ?? 'caller-owned history'}) and scenario before verifying; a fresh seed alone may not reproduce a stateful failure. Recorded localhost URLs are historical targets, not a live service guarantee. Workflow step indexes are zero-based.`
       : `Start caller-owned isolated ${spec.mode === 'acceptance' ? 'current application' : 'baseline/current applications'}, restore the declared seed and private inputs, and rerun this ${spec.mode} scenario. Recorded URLs may no longer be live. Verification does not require video.`,
       steps: spec.steps.map((step, index) => ({ step: index, action: step.action })) }, findings }, spec);
@@ -212,6 +221,8 @@ export function formatFeedback(feedback: ChangeFeedback): string {
     `Requirement: ${markdown(feedback.requirement)}`, '', `Scope: ${markdown(feedback.scope)}`, '',
     `Context: ${markdown(feedback.context)}`, '', feedback.provenanceLimit, '', feedback.privacyLimit, '',
     `Identity: ${feedback.identityStatus}. [Private identity coverage and hashes](${pathToFileURL(feedback.identityEvidence.path).href}) are in per-run identityBefore/identityAfter entries.`, '',
+    ...(feedback.concurrency ? ['## Users and invariants', '', ...formatTable(['Run', 'Users', 'Peak concurrency', 'Invariants'], feedback.concurrency.map(row =>
+      [String(row.run), row.users.map((verdict, user) => `${user + 1}: ${verdict}`).join(', '), String(row.peakConcurrency), row.invariants.map(item => `[${item.index}] ${item.kind}: ${item.verdict}`).join(', ') || 'none'])), ''] : []),
     '## Reproduction', '', markdown(feedback.reproduction.setup), '',
     ...feedback.reproduction.steps.map(step => `- ${markdown(step)}`), '', '## Evidence and findings', '',
     ...feedback.issues.map(issue => `- ${markdown(issue)}`)];

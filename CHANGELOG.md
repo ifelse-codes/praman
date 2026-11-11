@@ -4,6 +4,17 @@
 
 ### Added
 
+- Many users and invariants (spec `many-users`, plan step 3): an `acceptance` scenario
+  may declare `users` (2 to 10): the same steps and checks run as N users at once, each
+  in its own browser and context, with `{user}`/`{user1}` index tokens, an optional
+  start stagger, an optional `syncAtStep` barrier and caller-declared `invariants`
+  (existing check kinds; `count` may scale with the number of users) read once after
+  every user ended by the first user's page. Evidence is kept per user
+  (`after-<n>/user-<k>/`) with the peak concurrency; a repeat passes only when every
+  user and invariant passes, a broken invariant is `failed`, and an unobserved one or
+  a peak below 2 is `insufficient_evidence`. Reports and feedback list user and
+  invariant verdicts by index; managed `verify` ends with `usersSummary`. Declarations
+  without `users` keep their meaning and hash.
 - Network faults (spec `network-faults`, plan step 2): a Docker service may declare
   `proxy`; PRAMAN then runs an owned Toxiproxy container on an owned network between
   the application and the service (`state.services[name].port` becomes the proxy port,

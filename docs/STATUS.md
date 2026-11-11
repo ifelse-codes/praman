@@ -1,4 +1,4 @@
-# PRAMAN — current project status (2026-11-10, Hue-style environment plan, step 2 done)
+# PRAMAN — current project status (2026-11-11, Hue-style environment plan, step 3 done)
 
 PRAMAN (प्रमाण, "evidence") is an evidence-driven verification toolkit for AI coding
 agents. An agent supplies an authored browser scenario or command declaration through
@@ -11,12 +11,33 @@ general simulator and not a sandbox.
 - **Plan (2026-11-10):** the owner lifted the feature freeze. Work follows the
   Hue-style environment plan in [ROADMAP.md](ROADMAP.md): step 0 environment re-check
   (**done 2026-11-10**), 1 Worlds (**done 2026-11-10**), 2 real network faults (**done
-  2026-11-10**), 3 many users and invariants,
-  4 recorded outside APIs, then the video and blog. One step per Kiro session; each
+  2026-11-10**), 3 many users and invariants (**done
+  2026-11-11**), 4 recorded outside APIs, then the video and blog. One step per Kiro session; each
   session ends with a green PR fast-forwarded to `main`. Real-app proof uses Kan and
   Shiori (Shiori replaced Miniflux on 2026-11-10, owner decision; see below). Next:
-  step 3, many users and invariants; the handoff is in ROADMAP.md ("Handoff for the next session") and
+  step 4, recorded outside APIs; the handoff is in ROADMAP.md ("Handoff for the next session") and
   the private `.praman/real-apps/HANDOFF.md`.
+- **Many users and invariants (2026-11-11, plan step 3, spec `many-users`):** before the
+  change, a declaration with `users` and invariants was rejected by the schema on both
+  Kan and Shiori, and a scenario ran one user per run. Now an `acceptance` scenario may
+  declare `users` (2 to 10): each user gets its own browser and context and runs every
+  step and check (`{user}`/`{user1}` tokens, `staggerMs`, a `syncAtStep` barrier), and
+  caller-declared `invariants` (existing check kinds; `count` may use
+  `{ perUser, plus }`) are read once by the first user's page after all others ended.
+  Evidence is per user (`after-<n>/user-<k>/`) plus the peak concurrency; a repeat passes
+  only when every user and invariant passes; a broken invariant is `failed`; an
+  unobserved invariant or a peak below 2 is `insufficient_evidence`. On Kan (Postgres +
+  RustFS) and Shiori (Postgres), from saved worlds: three users at once (peak 3), the
+  invariant "seed plus one each" `passed` 2/2 (Shiori also "no duplicate title"); a wrong
+  count (`perUser: 2`) `failed` with every user `passed`; through `praman_environment` in
+  headless Kiro both apps `passed` (`sess_f1e93068…` Shiori, `sess_0eb1fbfb…` Kan; no
+  seeded secret in the files; the 36 to 38 KB verify result is cut by Kiro, so the
+  agent read the last-field `usersSummary`). 20 new tests (a fixture with a deliberate
+  lost update gives `failed`; the file cannot load on the old code). Limits: one machine
+  and one environment copy; shared credentials; the barrier aligns step starts, not
+  server arrival; only `count` scales; no faults, recording or baseline modes with
+  users; neither real app showed a race. Private inputs and evidence:
+  `.praman/real-apps/{kan,shiori}/users/` and `kiro-mcp-users/`.
 - **Network faults (2026-11-10, plan step 2, spec `network-faults`):** before the fix, a
   declaration naming a slow database was rejected by the schema, and `environment fault
   <id> db-slow` passed but ignored the name and stopped the whole database, on both Kan
@@ -87,8 +108,8 @@ general simulator and not a sandbox.
   is a squashed public snapshot under the owner identity (see the repository history),
   with CI green and judge access enabled.
 - **Checks:** `npm run build` and `npm run lint` pass; `npm run lint:tests` passes;
-  the **full suite passes 309 tests / 37 files** on the recorded host (2026-11-10,
-  `--maxWorkers=2`), including the 22 network-fault tests, the 8 Kiro finish-gate tests, the 15 cancellation
+  the **full suite passes 329 tests / 38 files** on the recorded host (2026-11-10,
+  `--maxWorkers=2`), including the 20 many-users tests, the 22 network-fault tests, the 8 Kiro finish-gate tests, the 15 cancellation
   tests, the 21 diagnosis tests, the 22 browser-action tests, the 11 step-id tests and
   the managed-verify test. Parallel local runs
   are resource-sensitive while macOS Spotlight/MediaAnalysis indexing saturates the
@@ -250,15 +271,15 @@ The shipped/frozen/deferred view is in [ROADMAP.md](ROADMAP.md).
 
 ## Remaining before release / submission
 
-1. **Build plan (Nov 15–24):** steps 3–4 of the Hue-style environment plan in
-   [ROADMAP.md](ROADMAP.md) (steps 0, 1 and 2 done 2026-11-10), one Kiro session each; a step that misses its date is cut,
+1. **Build plan (Nov 21–24):** step 4 of the Hue-style environment plan in
+   [ROADMAP.md](ROADMAP.md) (steps 0, 1, 2 done 2026-11-10; step 3 done 2026-11-11), one Kiro session each; a step that misses its date is cut,
    not claimed.
 2. **Video and submission (owner):** record the takes in `docs/video-script.md`, edit to
    under 3 minutes, upload publicly to YouTube; replace `<DEMO_VIDEO_URL>` in the Devpost
    draft and social post; save and submit. Target Nov 25–27, deadline Dec 4, 2026.
 3. **Kiro:** done: specs `kiro-evidence-gate`, `power-path-resolution`,
    `verify-cancellation`, `agent-diagnostics`, `scenario-actions`, `named-steps`,
-   `environment-recheck`, `worlds` and `network-faults`.
+   `environment-recheck`, `worlds`, `network-faults` and `many-users`.
    Spec `submission-story`: documents, Kiro write-up, storyboard and submission copy are
    done (tasks 1–3, 5.2 copy); recording, upload, submission and the final fresh-clone
    check are left (tasks 4, 5, 6).
