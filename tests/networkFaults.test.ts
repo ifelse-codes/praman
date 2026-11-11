@@ -257,8 +257,9 @@ export default integration;`;
     const env = await setup(windows);
     expect(env.verdict).toBe('passed');
     const result = await manageEnvironment('verify', { id: env.id, baseDir: base }) as Result;
-    expect(result.verdict).toBe('passed');
     const proof = JSON.parse(readFileSync(join(result.evidence.output, 'proof.json'), 'utf8'));
+    // A timing-based failure on a loaded runner must say which window failed and why.
+    expect(result.verdict, JSON.stringify(proof.after.map((run: { error?: string; faults?: unknown }) => ({ error: run.error, faults: run.faults })))).toBe('passed');
     for (const run of proof.after) {
       expect(run.faults.map((row: { name: string }) => row.name)).toEqual(['db-slow', 'db-down']);
       for (const row of run.faults) expect(row).toMatchObject({ applied: { applied: true }, removed: { removed: true, recovery: { ok: true } } });

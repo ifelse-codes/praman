@@ -210,13 +210,19 @@ general simulator and not a sandbox.
   [browser scenario cheat sheet](schema-cheatsheet.md) plus explicit
   selector/zero-based/private-evidence guidance in the README and browser guide;
   product behavior and test counts are unchanged.
-- **CI:** green on **Ubuntu and macOS** (Node 22) for public `main` `ce383e9` (plan
-  step 1, PR #20) — run https://github.com/ifelse-codes/praman/actions/runs/42809966916.
-  The earlier step 0 run (`1832643`, run 42786511955) reported 262 passed / 16 skipped
-  of 278 tests on each runner; the skips are the
-  environment-guarded media/speech suites (no ffmpeg/ffprobe on the runners). The
-  Ubuntu job also runs the judge route. `tests/networkPolicy.test.ts` failed once on
-  macOS CI (PR #8) and passed on rerun; it has passed since, locally and in CI.
+- **CI:** PR #22 (plan step 3) was green on Ubuntu and macOS (runs 42970668040 and
+  42970675509) and fast-forwarded to `main` `f604355`. The push run on `main`
+  (42972408874) failed once on macOS in `tests/networkFaults.test.ts` ("applies each
+  window in every repeat": `insufficient_evidence`, 22 s on a loaded runner) while Ubuntu
+  passed; the same code had passed twice in the PR. The failure could not be reproduced
+  locally (six runs under CPU load). Likely cause, not proven: `applyFault` compared the
+  delayed probe with one healthy sample, so a single slow healthy sample (cold start,
+  busy host) can hide a real delay. Fix: the baseline is now the fastest of three healthy
+  probes, and the test prints the failing window. The earlier step 2 run (`ce383e9`, run
+  42809966916) and step 0 run (`1832643`, run 42786511955) were green on both runners;
+  the skips are the environment-guarded media/speech suites (no ffmpeg/ffprobe on the
+  runners). The Ubuntu job also runs the judge route. `tests/networkPolicy.test.ts`
+  failed once on macOS CI (PR #8) and passed on rerun; it has passed since.
 - **Final verification (2026-11-05, historical):** an independent fresh clone of public
   HEAD `a84788e` passed `npm ci`, lint, lint:tests, build, the then-current full suite
   (190/190) and the judge route (12/12). A deterministic candidate (101 members) built

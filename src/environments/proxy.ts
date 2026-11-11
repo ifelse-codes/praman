@@ -130,8 +130,13 @@ export function declaredFault(state: EnvironmentState, name: string) {
 export async function applyFault(state: EnvironmentState, name: string, save: SaveState) {
   const fault = declaredFault(state, name);
   if (state.fault) throw new Error('A fault is already active; recover first');
-  const healthy = await probeProxy(state, fault.service, 10_000);
+  // The healthy baseline is the fastest of three probes, so one slow sample (a cold start, a busy host) cannot hide a real delay.
+  let healthy = await probeProxy(state, fault.service, 10_000);
   if (!healthy.ok) throw new Error(`${fault.service} is not healthy through the proxy before the fault: ${healthy.error}`);
+  for (let extra = 0; extra < 2; extra++) {
+    const again = await probeProxy(state, fault.service, 10_000);
+    if (again.ok && again.ms < healthy.ms) healthy = again;
+  }
   state.fault = true; state.activeFault = { name, healthyMs: healthy.ms, startedAt: new Date().toISOString() }; save();
   if (fault.kind === 'down') await api(state, 'POST', `/proxies/${fault.service}`, { enabled: false });
   else await api(state, 'POST', `/proxies/${fault.service}/toxics`, { name: toxicName, stream: 'downstream', toxicity: 1, ...toxic(fault) });
