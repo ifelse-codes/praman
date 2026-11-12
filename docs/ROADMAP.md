@@ -233,7 +233,9 @@ headless Kiro the result carries the `reportHtml` path and no HTML (Shiori
 Limits: command-run reports have no HTML page; the world snapshot hash is written after the
 page, so the page shows source hashes only; an invariant is read after all users ended, so
 no step is marked for it; the page is private (screenshots and text show application
-content); one machine, Chromium only.
+content); one machine, Chromium only. Found in review: on Shiori the returned path shows
+`[REDACTED]` for one folder, because the database user `shiori` is a known secret value
+and output redaction also rewrites paths (see Deferred).
 
 ### Handoff for the next session (step 5, video and blog; rewritten 2026-11-12)
 
@@ -315,6 +317,10 @@ first and review the cut against `docs/video-guidelines.md`.
 - Browser engine: a navigation guard that does not use Playwright request routing, so
   apps with CSS cross-document page transitions (Miniflux v2.3.5) can pass. Found in
   plan step 0; needs its own spec.
+- Output redaction rewrites file paths: a known secret value that is also part of a path
+  (Shiori's database user `shiori` is also a folder name) turns the returned `reportHtml`,
+  `report` and `feedbackPath` into `[REDACTED]` paths that cannot be opened. Found
+  2026-11-12 when reviewing step 4b; affects every output path, not only the HTML report.
 
 - Stateful dependency simulation beyond the declared service and the recorded APIs of
   step 4; world restore beyond the declared service volumes of step 1.
