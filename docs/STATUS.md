@@ -257,7 +257,10 @@ general simulator and not a sandbox.
   `tests/outsideCalls.test.ts` record test gave `insufficient_evidence` (run 43069576808);
   the cause was not printed and it did not recur (passed locally under CPU load and in the
   next four CI jobs). Its verify assertions now print each run's error and outside-call
-  evidence, so a recurrence will name the cause.
+  evidence, so a recurrence will name the cause. The first push run on `main`
+  (43087269880) then failed on macOS in `tests/cancellation.test.ts` ("Unexpected end of
+  JSON input"): the test read a pids file that its child process had created but not yet
+  written. The test now treats an empty or partial pids file as not written yet.
 - **CI (step 3):** PR #22 (plan step 3) was green on Ubuntu and macOS (runs 42970668040 and
   42970675509) and fast-forwarded to `main` `f604355`. The push run on `main`
   (42972408874) failed once on macOS in `tests/networkFaults.test.ts` ("applies each

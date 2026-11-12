@@ -33,9 +33,13 @@ async function until<T>(read: () => T | undefined, ms = 15000): Promise<T | unde
   for (;;) { const value = read(); if (value !== undefined || Date.now() > end) return value; await sleep(25); }
 }
 function pidFile(index: number) { return path.join(dir, `pids-${index}.json`); }
+/** A pids file may exist before its writer finished; an empty or partial file reads as not there yet. */
+function readPids(file: string): number[] | undefined {
+  try { return JSON.parse(readFileSync(file, 'utf8')) as number[]; } catch { return undefined; }
+}
 function startedPids(): number[] {
   const pids: number[] = [];
-  for (let i = 1; existsSync(pidFile(i)); i++) pids.push((JSON.parse(readFileSync(pidFile(i), 'utf8')) as number[])[0]);
+  for (let i = 1; existsSync(pidFile(i)); i++) { const row = readPids(pidFile(i)); if (row) pids.push(row[0]); }
   return pids;
 }
 function groupAlive(pid: number) { try { process.kill(-pid, 0); return true; } catch { return false; } }
@@ -68,7 +72,7 @@ function planDeclaration() {
   return file;
 }
 const readJson = (file: string) => JSON.parse(readFileSync(file, 'utf8')) as { verdict: string; interrupted?: boolean; current?: unknown[]; runs?: unknown[] };
-async function firstLeader() { return until(() => existsSync(pidFile(1)) ? (JSON.parse(readFileSync(pidFile(1), 'utf8')) as number[])[0] : undefined); }
+async function firstLeader() { return until(() => existsSync(pidFile(1)) ? readPids(pidFile(1))?.[0] : undefined); }
 
 describe('interrupted verification (in process)', () => {
   it('command verification stops the owned group, starts no further repeat and records interrupted insufficient evidence', async () => {
