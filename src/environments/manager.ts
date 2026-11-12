@@ -267,7 +267,9 @@ export async function manageEnvironment(action: EnvironmentAction, request: Envi
         ...saveFeedback(state.scenario, proof, verificationOutput, feedbackContext) } };
     }
   } finally { unlinkSync(lock); }
-  const record = { action, started, finished: new Date().toISOString(), id: state.id, directory: state.directory, phase: state.phase, generation: state.generation, ...result, ...(error ? { error } : {}), ...(faultSummary ? { faultSummary } : {}), ...(usersSummary ? { usersSummary } : {}), ...(outsideSummary ? { outsideSummary } : {}) };
+  // Path only, never page content. Placed before the three summaries so it stays inside the last 500 characters an MCP client may show.
+  const reportHtml = typeof (result.evidence as { reportHtml?: unknown } | undefined)?.reportHtml === 'string' ? (result.evidence as { reportHtml: string }).reportHtml : undefined;
+  const record = { action, started, finished: new Date().toISOString(), id: state.id, directory: state.directory, phase: state.phase, generation: state.generation, ...result, ...(error ? { error } : {}), ...(reportHtml ? { reportHtml } : {}), ...(faultSummary ? { faultSummary } : {}), ...(usersSummary ? { usersSummary } : {}), ...(outsideSummary ? { outsideSummary } : {}) };
   appendFileSync(join(state.directory, 'operations.jsonl'), JSON.stringify(record) + '\n', { mode: 0o600 });
   const secrets = [state.ownershipToken, proxyToken, state.proxy?.token, outsidePassword, state.outside?.password, ...(state.privateInputs ?? []),
     ...Object.values(state.spec.services ?? {}).flatMap(service => Object.entries(service.env ?? {})

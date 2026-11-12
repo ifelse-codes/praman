@@ -27,7 +27,7 @@ export function formatTable(header: string[], rows: string[][]): string[] {
 }
 
 /** `overview` lines (for example a check table) are placed right after the outcome in Markdown reports. */
-export function formatSummary(result: { verdict: string; diagnostics?: Diagnostic[]; report?: string; proofVerdict?: string; proof?: { verdict: string } }, markdown = false, overview: string[] = []): string {
+export function formatSummary(result: { verdict: string; diagnostics?: Diagnostic[]; report?: string; reportHtml?: string; proofVerdict?: string; proof?: { verdict: string } }, markdown = false, overview: string[] = []): string {
   const lines = [`Outcome: ${result.verdict}`];
   const proofVerdict = result.proofVerdict ?? result.proof?.verdict;
   if (proofVerdict && proofVerdict !== result.verdict) lines.push(`Proof: ${proofVerdict} (separate from delivery)`);
@@ -53,6 +53,7 @@ export function formatSummary(result: { verdict: string; diagnostics?: Diagnosti
     ? 'Next: Preserve private evidence; rerun after relevant changes.'
     : 'Next: Inspect the private report and restore complete mode-specific evidence before rerunning.');
   if (result.report) lines.push(`Report: ${result.report}`);
+  if (result.reportHtml) lines.push(`HTML report: ${result.reportHtml}`);
   return lines.join('\n');
 }
 

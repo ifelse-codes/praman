@@ -1917,6 +1917,22 @@ step that stopped its run. The command report uses the same table without the st
 column; kinds are `exit`, `stdout`, `stderr` or `artifact`, and a run that did not exit
 shows its status (`run timeout`, `run interrupted`, `run unavailable`).
 
+`REPORT.html` (every browser run, next to `REPORT.md`; the path is `reportHtml` in the
+result and `HTML report:` in `scenario-verify`) is one offline page for a person: the
+verdict in text with what it means, "Look here first" (every check run and invariant that
+is not `passed`), run facts, the checks table, a card per check with the expected and
+observed values, the diagnosis and next action and the screenshot inline, the numbered
+steps (a run that stopped is marked), many users and invariants, the environment gates
+(faults, outside calls), issues, limits and links to the evidence files. It is a private
+local view: it shows application text, selectors and expected and observed values, but
+never a `fill` value, `type` text or credential-like value, and starts with "Private
+evidence: contains application data. Do not share." It is written with mode 0600 in the
+private run folder, has inline CSS, no script and a Content-Security-Policy that blocks
+every network source, uses relative links (the folder can be moved) and escapes every
+value. It does not change a verdict, `proof.json`, `feedback.json` or an exit code. Limits:
+command runs have no HTML page yet; the world snapshot hash is written after the page, so
+only source hashes are shown; the page shows only what was declared and observed.
+
 Recording failures expose only structurally reached positions, never selectors,
 DOM text or exception excerpts. Unknown positions are omitted. Successful
 preflight positions are not reused as later failure locations. Recording outcome

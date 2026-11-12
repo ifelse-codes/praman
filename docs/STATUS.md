@@ -12,12 +12,31 @@ general simulator and not a sandbox.
   Hue-style environment plan in [ROADMAP.md](ROADMAP.md): step 0 environment re-check
   (**done 2026-11-10**), 1 Worlds (**done 2026-11-10**), 2 real network faults (**done
   2026-11-10**), 3 many users and invariants (**done
-  2026-11-11**), 4 recorded outside APIs (**done 2026-11-11**), then the video and blog. One step per Kiro
+  2026-11-11**), 4 recorded outside APIs (**done 2026-11-11**), 4b the HTML evidence report (**done
+  2026-11-12**), then the video and blog. One step per Kiro
   session; each session ends with a green PR fast-forwarded to `main`. Real-app proof uses
   Kan and Shiori (Shiori replaced Miniflux on 2026-11-10, owner decision; see below).
   Next: step 5, the video and blog (spec `submission-story` tasks 4 to 6); the handoff is
   in ROADMAP.md ("Handoff for the next session") and the private
   `.praman/real-apps/HANDOFF.md`.
+- **HTML evidence report (2026-11-12, plan step 4b, spec `html-evidence-report`):** an
+  outside review found no single review screen. Before: on Shiori a failing invariant
+  needed 4 files to see its screenshot, expected and observed values and next action. Now
+  every browser run writes `REPORT.html` (private local view, owner option B: application
+  text and expected/observed values shown; fill values, typed text and credentials
+  redacted; mode 0600; offline, no script, CSP blocks network sources; relative links).
+  Verdicts, `proof.json`, `feedback.json`, exit codes and schemas are unchanged
+  (`feedback.json` and `REPORT.md` bytes pinned by a test). Results carry `reportHtml`
+  (managed `verify` puts it before the summaries); `scenario-verify` prints `HTML report:`.
+  Real proof on Kan and Shiori (managed `verify`): `passed`, `failed`,
+  `insufficient_evidence` pages, each banner equal to `proof.json`, opened from `file://`
+  in Chromium: every image loaded, only `file:` requests, no CSP violation; the failing
+  run needs 1 file. Headless Kiro: Shiori `sess_154d90ca…` (path seen, no HTML or seeded
+  secret in the result; first run `sess_67513873…` could not see the path in the cut
+  middle of a 44 000-character result, fixed). 10 new tests, 9 fail on the old code; full
+  suite 357 tests / 40 files; first-use 12/12. Limits: no HTML for command runs; the
+  world hash is written after the page; invariants are not tied to a step; the page is
+  private; Chromium only.
 - **Recorded outside calls (2026-11-11, plan step 4, spec `recorded-apis`):** before the
   change, Shiori's page download (`http://example.com/`) and Kan's server call to
   `https://formbricks.com/api/oss-friends` reached the internet in every managed `verify`

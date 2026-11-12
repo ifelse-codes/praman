@@ -34,6 +34,10 @@ Expected: exit 0 and the same 12/12 matrix (about 25 seconds after setup).
 
 ## What the judge will see
 
+- Every browser run also writes an offline `REPORT.html` (private evidence; open it from
+  the saved evidence folder in a browser): verdict, expected and observed values and
+  screenshots on one page.  In the first-use output, look for `REPORT.html` inside the browser cases' private evidence folder.
+
 - The runner starts a loopback HTTP fixture and a real stdio MCP server.
 - Command checks run real Node subprocesses; browser checks run real headless Chromium.
 - Verdicts are printed per outcome with the expected CLI exit code (0/1/2) and MCP

@@ -4,6 +4,17 @@
 
 ### Added
 
+- HTML evidence report (spec `html-evidence-report`, plan step 4b): every browser run
+  writes an offline, private `REPORT.html` next to `REPORT.md` with the verdict, a "Look
+  here first" list, the checks table, a card per check (expected, observed, diagnosis,
+  next action, inline screenshot), steps, many users and invariants, environment gates,
+  issues, limits and evidence links. Application text and expected/observed values are
+  shown; fill values, typed text and credential-like values are redacted. Mode 0600, inline
+  CSS, no script, a Content-Security-Policy that blocks network sources, relative links,
+  escaped values. `saveFeedback` returns `reportHtml`; managed `verify` and the MCP result
+  carry the path (never the page); `scenario-verify` prints `HTML report:`. Verdicts,
+  `proof.json`, `feedback.json`, exit codes and schemas are unchanged. Not yet for command
+  runs.
 - Recorded outside calls (spec `recorded-apis`, plan step 4): a Docker declaration may
   declare `outsideCalls` (`{ minPerRun? }`). PRAMAN then runs an owned Hoverfly container
   (Apache-2.0, `spectolabs/hoverfly:v1.12.17`) with a per-environment password and a CA

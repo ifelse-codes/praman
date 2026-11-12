@@ -1,10 +1,11 @@
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { ChangeSpec, ChangeProof, ScenarioRun } from '../case/change.js';
 import type { Verdict } from '../eval/eval.js';
 import { checkDiagnostics, formatSummary, formatTable, type Diagnostic } from './diagnostics.js';
 import { describeDiagnosis } from './classify.js';
+import { renderEvidenceHtml, type EvidenceHtmlModel, type HtmlCheck, type HtmlImage, type HtmlRunCell, type HtmlUsersRun } from './html.js';
 import { identityComplete, sameIdentity, type IdentitySnapshot } from '../eval/identity.js';
 
 export interface FeedbackContext {
@@ -18,7 +19,9 @@ const sensitive = /password|passwd|secret|token|cookie|authorization|credential|
 const privateText = /^(evidence|error|recordingError|body)$/i;
 
 /** Safe presentation only. Raw browser/network artifacts remain private, not sanitized exports. */
-export function safeFeedbackValue<T>(value: T, spec?: ChangeSpec, secrets: string[] = []): T {
+export function safeFeedbackValue<T>(value: T, spec?: ChangeSpec, secrets: string[] = [], options: { reveal?: boolean } = {}): T {
+  // `reveal` is the private local view: declaration text and expected/observed values stay, secrets and credential-like fields do not.
+  const reveal = options.reveal === true;
   const hidden = new Set(secrets.filter(Boolean));
   for (const step of spec?.steps ?? []) {
     // Typed text is a private input like a fill value; select options are application text, already withheld by field.
@@ -59,9 +62,9 @@ export function safeFeedbackValue<T>(value: T, spec?: ChangeSpec, secrets: strin
     return Object.fromEntries(Object.entries(item).map(([key, child]) => [/^[A-Za-z_$][\w$]*$/.test(key) ? key : text(key),
       sensitive.test(key) ? '[REDACTED]'
         : /^(identityBefore|identityAfter)$/.test(key) ? { status: identityComplete(child as IdentitySnapshot) ? 'recorded' : 'unavailable', details: 'Inspect private proof/result identity entries.' }
-        : /^(expected|observed)$/i.test(key) && child !== null && !['number', 'boolean', 'undefined'].includes(typeof child) ? '[Private value; inspect indexed evidence.]'
-        : (/^(selector|target|title|scenario|requirement|change|note|text|url|checkId|afterStepId|failedStepId)$/i.test(key) && typeof child === 'string') || (key === 'id' && 'expected' in item) ? '[Private declaration field; inspect indexed evidence.]'
-        : privateText.test(key) && typeof child === 'string' ? '[Private raw detail; inspect the referenced evidence locally.]' : visit(child)]));
+        : !reveal && /^(expected|observed)$/i.test(key) && child !== null && !['number', 'boolean', 'undefined'].includes(typeof child) ? '[Private value; inspect indexed evidence.]'
+        : !reveal && ((/^(selector|target|title|scenario|requirement|change|note|text|url|checkId|afterStepId|failedStepId)$/i.test(key) && typeof child === 'string') || (key === 'id' && 'expected' in item)) ? '[Private declaration field; inspect indexed evidence.]'
+        : !reveal && privateText.test(key) && typeof child === 'string' ? '[Private raw detail; inspect the referenced evidence locally.]' : visit(child)]));
   }
   return visit(value) as T;
 }
@@ -113,7 +116,8 @@ export interface ChangeFeedback {
   findings: CheckFeedback[];
 }
 
-export function buildFeedback(spec: ChangeSpec, proof: ChangeProof, outDir: string, context: FeedbackContext = {}): ChangeFeedback {
+/** Unredacted feedback for the private local view; every other caller uses `buildFeedback`. */
+function rawFeedback(spec: ChangeSpec, proof: ChangeProof, outDir: string, context: FeedbackContext = {}): ChangeFeedback {
   const reference = (kind: EvidenceReference['kind'], path: string): EvidenceReference => ({ kind, path: resolve(path), exists: existsSync(path), private: true });
   const runs: Array<{ version: 'before' | 'current'; run: number; value?: ScenarioRun }> = [
     ...(spec.mode === 'acceptance' ? [] : [{ version: 'before' as const, run: 1, value: proof.before }]),
@@ -200,7 +204,7 @@ export function buildFeedback(spec: ChangeSpec, proof: ChangeProof, outDir: stri
       finding.nextAction = 'Restore complete evidence and rerun all declared current checks before claiming resolution.';
     }
   }
-  return safeFeedbackValue({ mode: spec.mode, baselineKind: spec.baselineKind, scenario: spec.title, requirement: spec.change, verdict: proof.verdict, verifiedAt: proof.verifiedAt, specHash: proof.specHash,
+  return ({ mode: spec.mode, baselineKind: spec.baselineKind, scenario: spec.title, requirement: spec.change, verdict: proof.verdict, verifiedAt: proof.verifiedAt, specHash: proof.specHash,
     scope: proof.scope, context, provenanceLimit: 'Source/build hashes and a supplied diff are context, not signed source-to-deployment provenance.',
     identityStatus: [...(proof.before ? [proof.before] : []), ...proof.after].every(run => sameIdentity(run.identityBefore, run.identityAfter) && sameIdentity(proof.after[0]?.identityBefore, run.identityBefore)) ? 'stable' : 'unavailable_or_changed',
     identityEvidence: { path: resolve(outDir, 'proof.json'), private: true as const },
@@ -208,7 +212,10 @@ export function buildFeedback(spec: ChangeSpec, proof: ChangeProof, outDir: stri
     issues, ...(concurrency ? { concurrency } : {}), reproduction: { setup: context.environmentId
       ? `If the recorded instance is destroyed or unavailable, run praman environment create \"${context.declarationPath ?? '<original-private-declaration>'}\" --base <owned-base>, then praman environment verify <new-id> --base <owned-base>. Create a fresh managed instance, restore the failing run's state/preconditions from the private operation history (${context.operationLog ?? 'caller-owned history'}) and scenario before verifying; a fresh seed alone may not reproduce a stateful failure. Recorded localhost URLs are historical targets, not a live service guarantee. Workflow step indexes are zero-based.`
       : `Start caller-owned isolated ${spec.mode === 'acceptance' ? 'current application' : 'baseline/current applications'}, restore the declared seed and private inputs, and rerun this ${spec.mode} scenario. Recorded URLs may no longer be live. Verification does not require video.`,
-      steps: spec.steps.map((step, index) => ({ step: index, action: step.action })) }, findings }, spec);
+      steps: spec.steps.map((step, index) => ({ step: index, action: step.action })) }, findings });
+}
+export function buildFeedback(spec: ChangeSpec, proof: ChangeProof, outDir: string, context: FeedbackContext = {}): ChangeFeedback {
+  return safeFeedbackValue(rawFeedback(spec, proof, outDir, context), spec);
 }
 
 function markdown(value: unknown): string {
@@ -247,6 +254,84 @@ export function formatCheckOverview(feedback: Pick<ChangeFeedback, 'findings'>, 
   });
   return ['## Checks', '', ...formatTable(header, rows)];
 }
+/** Relative, URL-encoded link from the run folder; `undefined` when the file is outside it. */
+function relativeHref(outDir: string, path: string, directory = false): string | undefined {
+  const rel = relative(resolve(outDir), resolve(path));
+  if (!rel || rel.startsWith('..') || isAbsolute(rel)) return undefined;
+  return rel.split(sep).map(encodeURIComponent).join('/') + (directory ? '/' : '');
+}
+
+/** The one-page model: private values from the proof and spec, redacted with the same rules as feedback (except the withheld declaration text). */
+function evidenceHtmlModel(spec: ChangeSpec, proof: ChangeProof, outDir: string, context: FeedbackContext, diagnostics: Diagnostic[]): EvidenceHtmlModel {
+  const raw = rawFeedback(spec, proof, outDir, context);
+  const runOf = (version: 'before' | 'current', run: number): ScenarioRun | undefined => version === 'before' ? proof.before : proof.after[run - 1];
+  const label = (version: 'before' | 'current', run: number) => version === 'before' ? 'Before' : `Run ${run}`;
+  const picture = (path: string | undefined, alt: string): HtmlImage => {
+    const href = path ? relativeHref(outDir, path) : undefined;
+    return { alt, ...(href ? { href } : {}), missing: !path || !href || !existsSync(path) };
+  };
+  const diagnosticsFor = (checkIndex: number, version: 'before' | 'current', run: number, notExecuted: boolean) => diagnostics.filter(item => item.version === version && item.run === run
+    && (((item.category === 'evidence_unavailable' || item.category === 'check_mismatch') && item.checkIndex === checkIndex) || (item.category === 'execution_unavailable' && notExecuted)));
+  const diagnosisLabel = (item: Diagnostic) => item.diagnosis ? `${describeDiagnosis(item.diagnosis)}${item.category === 'execution_unavailable' && item.step !== undefined ? ` at step ${item.step}` : ''}` : item.category;
+  const checks = raw.findings.map((finding): HtmlCheck => {
+    const runs = finding.occurrences.map((occurrence): HtmlRunCell => {
+      const row = runOf(occurrence.version, occurrence.run)?.checks.find(item => item.id === finding.checkId);
+      const found = diagnosticsFor(finding.checkIndex, occurrence.version, occurrence.run, occurrence.verdict === 'not_executed');
+      return { label: label(occurrence.version, occurrence.run), verdict: occurrence.verdict, recorded: occurrence.recordedVerdict, ...(occurrence.afterStep === undefined ? {} : { afterStep: occurrence.afterStep }),
+        expected: occurrence.expected, ...(Object.hasOwn(occurrence, 'observed') ? { observed: occurrence.observed } : {}), gaps: occurrence.gaps,
+        diagnoses: found.map(item => ({ label: diagnosisLabel(item), nextAction: item.nextAction })),
+        image: picture(row?.screenshot, `Check ${finding.checkIndex}, ${label(occurrence.version, occurrence.run).toLowerCase()} screenshot`) };
+    });
+    const tableLabels = finding.occurrences.flatMap(occurrence => diagnosticsFor(finding.checkIndex, occurrence.version, occurrence.run, occurrence.verdict === 'not_executed')
+      .filter(item => item.diagnosis).map(diagnosisLabel));
+    return { index: finding.checkIndex, id: finding.checkId, kind: finding.kind, target: finding.target, status: finding.status, summary: finding.summary, nextAction: finding.nextAction, runs, diagnosisLabels: [...new Set(tableLabels)] };
+  });
+  const stops = (index: number) => [
+    ...(proof.before?.failedStep === index ? ['Before'] : []),
+    ...proof.after.flatMap((run, i) => [...(run.failedStep === index ? [`Run ${i + 1}`] : []), ...(run.users ?? []).filter(user => user.run.failedStep === index).map(user => `Run ${i + 1}, user ${user.user + 1}`)])];
+  const users: HtmlUsersRun[] | undefined = spec.users ? proof.after.map((run, i) => ({ label: `Run ${i + 1}`, peakConcurrency: run.peakConcurrency ?? 0,
+    users: (run.users ?? []).map(user => { const folder = join(outDir, `after-${i + 1}`, `user-${user.user + 1}`); return { index: user.user, verdict: user.run.verdict, ...(existsSync(folder) ? { href: relativeHref(outDir, folder, true) } : {}) }; }),
+    invariants: (run.invariants ?? []).map((item, index) => ({ index, id: item.id, kind: item.kind, verdict: item.verdict, expected: item.expected, ...(Object.hasOwn(item, 'observed') ? { observed: item.observed } : {}),
+      image: picture(item.screenshot, `Invariant ${index}, run ${i + 1} screenshot`),
+      ...(diagnostics.find(d => d.category === 'invariant_violation' && d.version === 'current' && d.run === i + 1 && d.invariantIndex === index) ? { nextAction: diagnostics.find(d => d.category === 'invariant_violation' && d.version === 'current' && d.run === i + 1 && d.invariantIndex === index)!.nextAction } : {}) })) })) : undefined;
+  // Same data as the manager's faultSummary/outsideSummary/usersSummary, taken from the proof so the manager does not change.
+  const gates = [...(proof.before ? [{ label: 'baseline', run: proof.before }] : []), ...proof.after.map((run, i) => ({ label: `repeat ${i + 1}`, run }))].flatMap(({ label: where, run }) => {
+    const windows = (run.faults ?? []).filter((row): row is Record<string, unknown> => typeof row === 'object' && row !== null && 'name' in row);
+    return [
+      ...(spec.faults ? [`Faults, ${where} ${run.verdict}: ${windows.length ? windows.map(window => `${window.name} ${window.error ? 'failed' : window.applied && window.removed ? 'applied and removed' : window.applied ? 'applied, not removed' : 'not applied'}`).join(', ') : 'no window ran'}`] : []),
+      ...(run.outside ? [`Outside calls, ${where} ${run.verdict}: ${run.outside.mode === 'replay' ? `replay of ${run.outside.recordingId}` : 'recording'}, ${run.outside.served} served, ${run.outside.refused} refused, ${run.outside.tlsRefused} TLS refused`] : []),
+      ...(spec.users && where !== 'baseline' ? [`Users, ${where} ${run.verdict}: ${run.users?.length ?? 0} users [${(run.users ?? []).map(row => row.run.verdict).join(', ')}], peak ${run.peakConcurrency ?? 0}, invariants [${(run.invariants ?? []).map(row => row.verdict).join(', ')}]`] : []),
+    ];
+  });
+  const folders = [...(proof.before ? ['before'] : []), ...proof.after.map((_, i) => `after-${i + 1}`)].map(name => join(outDir, name));
+  const networkFiles = new Set<string>();
+  for (const run of [...(proof.before ? [proof.before] : []), ...proof.after]) for (const shot of [...run.screenshots, ...run.checks.map(row => row.screenshot ?? ''), ...(run.users ?? []).flatMap(user => user.run.screenshots)]) if (shot) networkFiles.add(join(dirname(shot), 'network.json'));
+  const fileLinks = [['proof.json', join(outDir, 'proof.json')], ['feedback.json', join(outDir, 'feedback.json')], ['REPORT.md', join(outDir, 'REPORT.md')],
+    ...folders.map(folder => [`${relative(resolve(outDir), folder)}/result.json`, join(folder, 'result.json')]),
+    ...[...networkFiles].sort().map(file => [relative(resolve(outDir), file).split(sep).join('/'), file])]
+    .flatMap(([name, path]) => { const href = existsSync(path) ? relativeHref(outDir, path) : undefined; return href ? [{ label: name, href }] : []; });
+  const model: EvidenceHtmlModel = {
+    title: spec.title, requirement: spec.change, verdict: proof.verdict,
+    facts: [['Mode', spec.mode], ['Baseline kind', spec.baselineKind ?? 'none (current-only)'], ['Repeats', String(spec.repeats)], ...(spec.users ? [['Users', String(spec.users.count)] as [string, string]] : []),
+      ['Verified at', proof.verifiedAt], ['Spec hash', proof.specHash], ['Identity status', raw.identityStatus], ['Proof reason', proof.reason],
+      ...(context.environmentId ? [['Environment id', context.environmentId] as [string, string], ['Generation', String(context.generation ?? 0)] as [string, string]] : []),
+      ...Object.entries(context.sourceHashes ?? {}).map(([key, value]): [string, string] => [`Source: ${key}`, value])],
+    runLabels: checks[0]?.runs.map(run => run.label) ?? [], checks,
+    steps: spec.steps.map((step, index) => ({ index, action: step.action, ...(step.id ? { id: step.id } : {}), ...(step.note ? { note: step.note } : {}), stoppedRuns: stops(index) })),
+    attention: [
+      ...checks.flatMap(check => check.runs.filter(cell => cell.verdict !== 'passed').map(cell => ({ text: `Check ${check.index} (${check.id}), ${cell.label}`, verdict: cell.verdict, anchor: `check-${check.index}` }))),
+      ...(users ?? []).flatMap(run => run.invariants.filter(item => item.verdict !== 'passed').map(item => ({ text: `Invariant ${item.index} (${item.id}), ${run.label}`, verdict: item.verdict, anchor: `invariant-${run.label.replace(/\W+/g, '-')}-${item.index}` })))],
+    ...(users ? { users } : {}), gates, issues: raw.issues,
+    limits: [raw.scope, raw.provenanceLimit, 'This page is a private local view: it shows application text, selectors and expected and observed values. Fill values, typed text, credentials and known secrets are redacted. Do not share it; the linked screenshots and result files show application content too.', `Privacy rule of feedback.json and REPORT.md: ${raw.privacyLimit}`, 'This page shows only what was declared and observed. It is not proof that the whole app is correct.'], files: fileLinks };
+  // Redact every text value; links are paths made by PRAMAN and must not be changed by a private value that happens to occur in them.
+  const safe = <T,>(value: T): T => safeFeedbackValue(value, spec, [], { reveal: true });
+  // Structure and PRAMAN-made text (verdicts, kinds, labels, links, run facts, file names) is not private; app text is.
+  const plain = new Set(['href', 'alt', 'verdict', 'recorded', 'kind', 'status', 'label', 'runLabels', 'stoppedRuns', 'action', 'anchor', 'facts', 'files', 'index', 'afterStep', 'peakConcurrency']);
+  const walk = (value: unknown, key?: string): unknown => key !== undefined && plain.has(key) ? value : Array.isArray(value) ? value.map(item => walk(item, key))
+    : value && typeof value === 'object' && key !== 'expected' && key !== 'observed' ? Object.fromEntries(Object.entries(value).map(([name, child]) => [name, walk(child, name)])) : safe(value);
+  return walk(model) as EvidenceHtmlModel;
+}
+
 export function saveFeedback(spec: ChangeSpec, proof: ChangeProof, outDir: string, context?: FeedbackContext) {
   mkdirSync(outDir, { recursive: true });
   const diagnostics = checkDiagnostics(outDir, { ...proof, regressionCheck: spec.regressionCheck }, spec.checks.map(check => check.id));
@@ -254,5 +339,8 @@ export function saveFeedback(spec: ChangeSpec, proof: ChangeProof, outDir: strin
   const feedbackPath = join(outDir, 'feedback.json'), report = join(outDir, 'REPORT.md');
   writeFileSync(feedbackPath, JSON.stringify(feedback, null, 2), { mode: 0o600 });
   writeFileSync(report, formatSummary({ verdict: proof.verdict, diagnostics }, true, formatCheckOverview(feedback, diagnostics)) + '\n\n' + formatFeedback(feedback), { mode: 0o600 });
-  return { feedback, feedbackPath, report, diagnostics };
+  // Written last so its links to the files above exist; rewritten whenever the folder is saved again.
+  const reportHtml = join(outDir, 'REPORT.html');
+  writeFileSync(reportHtml, renderEvidenceHtml(evidenceHtmlModel(spec, proof, outDir, context ?? {}, diagnostics)), { mode: 0o600 });
+  return { feedback, feedbackPath, report, reportHtml, diagnostics };
 }

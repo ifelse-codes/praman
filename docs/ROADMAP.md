@@ -89,7 +89,7 @@ core, schemas, CLI or MCP dispatch.
 | 2 | **Done 2026-11-10.** **Real network faults.** Put a proxy between the app and a declared dependency and apply named faults: added delay, timeout, dropped connection, down. Like today's stop fault, the effect must be observed, or the run is `insufficient_evidence`. Faults can start and stop at step ids. | Toxiproxy | Both apps: each fault kind observed on live traffic; checks authored from the app's real behavior; fault removed and recovery observed | Nov 15–17 |
 | 3 | **Done 2026-11-11.** **Many users and invariants.** Run one scenario as N users at once (fresh browser contexts, a per-user index for inputs) against one environment copy. After the run, check caller-declared invariants (rules that must always hold), for example "card count equals N" or "no duplicate entries". | Parallel Playwright contexts | Both apps: N users run at the same time (peak concurrency recorded); per-user verdicts; an invariant that is broken on purpose in a fixture gives `failed` | Nov 18–20 |
 | 4 | **Done 2026-11-11.** **Recorded outside APIs.** Record an app's real outside HTTP calls once, then replay them in later runs. A call that is not in the recording fails closed (`insufficient_evidence`), so a test never reaches the real service by accident. The app is pointed at the replay through its own configuration. | Playwright HAR replay (browser side); Hoverfly or WireMock (server side) | Shiori replays a recorded real page download with no network; an unrecorded call is refused. A second real app is required for a cross-app claim; if none of Kan, Lattice or Luma makes outside calls, that limit is written down instead | Nov 21–24 |
-| 4b | **HTML evidence report.** One offline `REPORT.html` next to `REPORT.md` for every browser scenario run: verdict, checks, per-run screenshots inline, expected and observed, diagnosis, steps, many users, issues and limits. No verdict, schema or exit-code change. Added 2026-11-12 after an outside review found no single review screen (spec `html-evidence-report`). | `saveFeedback` data; plain HTML and CSS | Kan and Shiori: passed, failed and `insufficient_evidence` runs each give a report whose verdict equals `proof.json`, opened from `file://` in Chromium with every image loaded and no network request | Nov 12–15 |
+| 4b | **Done 2026-11-12.** **HTML evidence report.** One offline `REPORT.html` next to `REPORT.md` for every browser scenario run: verdict, checks, per-run screenshots inline, expected and observed, diagnosis, steps, many users, issues and limits. No verdict, schema or exit-code change. Added 2026-11-12 after an outside review found no single review screen (spec `html-evidence-report`). | `saveFeedback` data; plain HTML and CSS | Kan and Shiori: passed, failed and `insufficient_evidence` runs each give a report whose verdict equals `proof.json`, opened from `file://` in Chromium with every image loaded and no network request | Nov 12–15 |
 | 5 | **Video and blog** (existing `submission-story` tasks 4–6). Record, edit to under 3 minutes and upload; add new footage only from recorded Kiro work in steps 0–4. | — | Video URL in the Devpost draft; owner submits | Nov 25–27 |
 
 **Step 0 result (2026-11-10, spec `environment-recheck`).** Fixed: managed `verify`
@@ -213,9 +213,31 @@ over HTTP only; Hoverfly's default matching (no headers), no timing replay, no s
 sequences; browser-side outside calls are not recorded (no real-app scenario had one, so
 HAR replay was not built).
 
-### Handoff for the next session (step 5, video and blog; written 2026-11-11)
+**Step 4b result (2026-11-12, spec `html-evidence-report`).** Gap shown first on Shiori:
+to see one failing invariant (expected 7, observed 4) a person had to open 4 files
+(`REPORT.md`, `proof.json` by pointer, `scenario.json` by pointer, a screenshot that
+Markdown does not show). Owner decision: option B, a private local view. Built:
+`REPORT.html` next to `REPORT.md` for every browser run (written inside `saveFeedback`,
+mode 0600, offline, no script, a Content-Security-Policy that blocks every network source,
+relative links, escaped values): verdict banner in text, "Look here first", run facts,
+checks table, a card per check with inline screenshots, steps (a stopped run is marked),
+many users and invariants, environment gates, issues, limits and evidence links. Fill
+values, typed text and credential-like values stay redacted. Verdicts, `proof.json`,
+`feedback.json`, exit codes and schemas are unchanged. Proven on Kan and Shiori through
+managed `verify`: `passed`, `failed` and `insufficient_evidence` pages whose banner equals
+`proof.json`, opened from `file://` in Chromium with every image loaded and no request other
+than `file:`; the same failing run now needs 1 file. Through `praman_environment` in
+headless Kiro the result carries the `reportHtml` path and no HTML (Shiori
+`sess_154d90ca…`; a first run `sess_67513873…` showed MCP clients cut the middle of the
+44 000-character result, so the path is now also a top-level field before the summaries).
+Limits: command-run reports have no HTML page; the world snapshot hash is written after the
+page, so the page shows source hashes only; an invariant is read after all users ended, so
+no step is marked for it; the page is private (screenshots and text show application
+content); one machine, Chromium only.
 
-- **State:** steps 0 to 4 are merged (see STATUS.md for the commit and CI run). Colima
+### Handoff for the next session (step 5, video and blog; rewritten 2026-11-12)
+
+- **State:** steps 0 to 4b are merged (see STATUS.md for the commit and CI run). Colima
   profiles are all stopped; docker context is `default`.
 - **Step 5 is the existing spec `submission-story`, tasks 4 to 6:** record the takes in
   `docs/video-script.md`, edit to under 3 minutes, upload publicly to YouTube, put the URL
@@ -225,6 +247,10 @@ HAR replay was not built).
 - **New footage** only from recorded Kiro work in steps 0 to 4. The usage log in
   `docs/kiro-usage.md` lists each session id and what it showed. Private inputs for every
   step are under `.praman/real-apps/{kan,shiori}/` (see `HANDOFF.md` there).
+- **New screen to film:** `REPORT.html` of a failed many-users run (Shiori or Kan, see
+  `.praman/real-apps/<app>/html-report/fail.png`): verdict, "Look here first", expected and
+  observed and the inline screenshot on one page. It is private evidence: film only seeded
+  demo data.
 - **Do not** start infrastructure just to refresh historical state; no new features.
 
 ### Kick-off prompt for the next session
