@@ -2012,12 +2012,24 @@ node dist/cli.js demonstrate ./scenario.json -o ./.praman/change-report
   runtime errors are insufficient evidence—not a pass. Checks include text equality,
   form `value`, visibility, decoded `image` dimensions, JSON fields and `pageErrors: 0`.
   A screen rendering or HTTP 200 alone does not prove the acceptance criteria.
-- Known limit (found 2026-11-10 on Miniflux v2.3.5): PRAMAN's same-origin navigation
-  guard uses Playwright request routing. On that app, routing made Chromium abort the
-  CSS cross-document page transition (`@view-transition`) after each in-app
-  navigation and report `InvalidStateError: Transition was aborted…`; PRAMAN counts
-  it as an app runtime error, so such scenarios cannot pass. Without routing the
-  error did not appear. Not fixed yet; the exact Chromium trigger is unknown.
+- Same-origin navigation guard (spec `navigation-guard`, 2026-11-12): every top-level
+  navigation to another origin is stopped before its request leaves the browser. This
+  covers the page, a new tab or window, a redirect hop, a form post, a script navigation
+  and an iframe that navigates the top. The run then ends as `insufficient_evidence`
+  with the diagnosis `navigation_failed` ("Navigation left the app origin"), because the
+  scenario could not go on as a user would. It is not reported as an app failure.
+  Iframe documents and subresources from other origins load as before. The guard uses
+  Chromium's Fetch interception for document requests only, and leaves the browser's
+  HTTP cache on. Playwright request routing turns the cache off, and Chromium then
+  aborted CSS cross-document view transitions (`@view-transition`) with an
+  `InvalidStateError`, which PRAMAN counted as an app error. This was found on
+  Miniflux v2.3.5, which now passes. Before 2026-11-12, a redirect hop or a new tab to
+  another origin was not stopped, and a stopped link ended as `failed` or as a locator
+  timeout on Chromium's error page. Limits: with the cache on, a file loaded twice in
+  one run may be recorded as `304` (revalidated) instead of `200`. Each run still starts
+  a new browser, so nothing is cached across runs. A start URL that redirects to another
+  origin (for example `127.0.0.1` to `localhost`) is now stopped, so start at a URL that
+  stays on the declared origin. Chromium only.
 - Additional native browser checks use the same `id`, `selector`, `equals` and
   optional `afterStep` fields:
   - `kind: "attribute", name: "aria-expanded", equals: "true"` checks exact

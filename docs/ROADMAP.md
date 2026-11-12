@@ -1,7 +1,7 @@
 # PRAMAN — current roadmap (2026-11-10)
 
 **Status: shipped and verified; the Hue-style environment plan below is in progress
-(owner decision 2026-11-10; steps 0 to 4 done, step 5 is the video and blog).** Public repository
+(owner decision 2026-11-10; steps 0 to 4c done, step 5 is the video and blog).** Public repository
 https://github.com/ifelse-codes/praman (MIT), CI green on Ubuntu and macOS, judge
 access via [TESTING.md](../TESTING.md) and Codespaces, project page
 https://ifelse-codes.github.io/praman/. Not submitted: the demo video and the Devpost
@@ -45,6 +45,10 @@ form are the remaining release blockers.
 - Step ids (2026-11-09, spec `named-steps`): checks and story beats can point at a step
   by `id`, so inserting a step no longer moves them; unknown ids are rejected before
   anything runs.
+- Navigation guard (2026-11-12, spec `navigation-guard`, plan step 4c): apps with CSS
+  page transitions (Miniflux v2.3.5) no longer get a false failure; every top-level
+  navigation to another origin is stopped before it is sent and reported as
+  `navigation_failed`.
 
 ## Plan: Hue-style environments and stimulation (decided 2026-11-10)
 
@@ -74,7 +78,7 @@ uncommitted work):
 | App | Why it fits | Where |
 | --- | --- | --- |
 | Kan (kanban board) | Real Postgres and S3-style file storage; used before | `../kan` (existing checkout) |
-| Shiori (bookmark manager) | Go, Postgres, MIT; it downloads the pages it saves, so it has a real outside dependency for network faults and recorded APIs. Replaced Miniflux on 2026-11-10 (owner decision): PRAMAN's request routing made Chromium abort Miniflux's page transitions, so no Miniflux scenario could pass (see README known limit) | Cloned at `v1.8.0` into `../shiori` in session 0 |
+| Shiori (bookmark manager) | Go, Postgres, MIT; it downloads the pages it saves, so it has a real outside dependency for network faults and recorded APIs. Replaced Miniflux on 2026-11-10 (owner decision): PRAMAN's request routing made Chromium abort Miniflux's page transitions, so no Miniflux scenario could pass (fixed in step 4c; Miniflux now passes) | Cloned at `v1.8.0` into `../shiori` in session 0 |
 
 Integration modules, scenarios and evidence for these apps stay private under ignored
 `.praman/real-apps/<app>/`. No app name, selector, route, credential or seed goes into
@@ -90,7 +94,7 @@ core, schemas, CLI or MCP dispatch.
 | 3 | **Done 2026-11-11.** **Many users and invariants.** Run one scenario as N users at once (fresh browser contexts, a per-user index for inputs) against one environment copy. After the run, check caller-declared invariants (rules that must always hold), for example "card count equals N" or "no duplicate entries". | Parallel Playwright contexts | Both apps: N users run at the same time (peak concurrency recorded); per-user verdicts; an invariant that is broken on purpose in a fixture gives `failed` | Nov 18–20 |
 | 4 | **Done 2026-11-11.** **Recorded outside APIs.** Record an app's real outside HTTP calls once, then replay them in later runs. A call that is not in the recording fails closed (`insufficient_evidence`), so a test never reaches the real service by accident. The app is pointed at the replay through its own configuration. | Playwright HAR replay (browser side); Hoverfly or WireMock (server side) | Shiori replays a recorded real page download with no network; an unrecorded call is refused. A second real app is required for a cross-app claim; if none of Kan, Lattice or Luma makes outside calls, that limit is written down instead | Nov 21–24 |
 | 4b | **Done 2026-11-12.** **HTML evidence report.** One offline `REPORT.html` next to `REPORT.md` for every browser scenario run: verdict, checks, per-run screenshots inline, expected and observed, diagnosis, steps, many users, issues and limits. No verdict, schema or exit-code change. Added 2026-11-12 after an outside review found no single review screen (spec `html-evidence-report`). | `saveFeedback` data; plain HTML and CSS | Kan and Shiori: passed, failed and `insufficient_evidence` runs each give a report whose verdict equals `proof.json`, opened from `file://` in Chromium with every image loaded and no network request | Nov 12–15 |
-| 4c | **Navigation guard without false failures.** PRAMAN's same-origin navigation guard (Playwright request routing) makes Chromium abort CSS cross-document view transitions, and PRAMAN then reports the app's `InvalidStateError` as an app runtime error: a false `failed` it caused itself (found on Miniflux v2.3.5 in step 0). Find the exact trigger in a local fixture, then the smallest fix that keeps the guard: a main-frame navigation to another origin is stopped before the request leaves the browser and is reported as `navigation_failed`, for every user context. No page error is filtered. Added 2026-11-12 (owner decision, spec `navigation-guard`). | Playwright 1.64.1, Chromium | A view-transition fixture and Miniflux pass with `pageErrors: 0` observed; a cross-origin link is still stopped (the other server receives no request) and gives `navigation_failed`; a real page error still fails; Kan and Shiori keep the same verdicts and network counts | Nov 13–15 |
+| 4c | **Done 2026-11-12.** **Navigation guard without false failures.** PRAMAN's same-origin navigation guard (Playwright request routing) makes Chromium abort CSS cross-document view transitions, and PRAMAN then reports the app's `InvalidStateError` as an app runtime error: a false `failed` it caused itself (found on Miniflux v2.3.5 in step 0). Find the exact trigger in a local fixture, then the smallest fix that keeps the guard: a main-frame navigation to another origin is stopped before the request leaves the browser and is reported as `navigation_failed`, for every user context. No page error is filtered. Added 2026-11-12 (owner decision, spec `navigation-guard`). | Playwright 1.64.1, Chromium | A view-transition fixture and Miniflux pass with `pageErrors: 0` observed; a cross-origin link is still stopped (the other server receives no request) and gives `navigation_failed`; a real page error still fails; Kan and Shiori keep the same verdicts and network counts | Nov 13–15 |
 | 5 | **Video and blog** (existing `submission-story` tasks 4–6). Record, edit to under 3 minutes and upload; add new footage only from recorded Kiro work in steps 0–4. | — | Video URL in the Devpost draft; owner submits | Nov 25–27 |
 
 **Step 0 result (2026-11-10, spec `environment-recheck`).** Fixed: managed `verify`
@@ -100,8 +104,8 @@ and through `praman_environment` in headless Kiro: create, seed scenario `passed
 data-changing workload made it `failed`, reset, `passed` again, destroy with no
 labelled container or owned process left. One Kan MCP run was `insufficient_evidence`
 because Kan's sign-in rate limit answered HTTP 429; PRAMAN did not count it as a
-failure. Found, not fixed: on Miniflux, PRAMAN's request routing makes Chromium abort
-page transitions and PRAMAN blames the app (README known limit); Miniflux was replaced
+failure. Found, not fixed then: on Miniflux, PRAMAN's request routing made Chromium abort
+page transitions and PRAMAN blamed the app (fixed in step 4c); Miniflux was replaced
 by Shiori.
 
 If a step misses its date, it is cut, not claimed. Step 4 is cut first. Hard deadline:
@@ -238,9 +242,36 @@ content); one machine, Chromium only. Found in review: on Shiori the returned pa
 `[REDACTED]` for one folder, because the database user `shiori` is a known secret value
 and output redaction also rewrites paths (see Deferred).
 
+**Step 4c result (2026-11-12, spec `navigation-guard`).** Trigger found first in a local
+fixture and on Miniflux v2.3.5: any Playwright route (even one that matches nothing)
+turns off Chromium's HTTP cache, and with the cache off Chromium aborts a CSS
+cross-document view transition on a page that also loads an image, SVG sprite or module
+script (5/5 runs with a route, 0/5 without; request interception with the cache on 0/5).
+Gap on Miniflux with the old code: managed `verify` `failed`, `pageErrors` observed 2 in
+both runs. Also found in the old guard: a same-origin URL that redirects to another
+origin, and a link that opens a new tab, reached the other server; a stopped link ended
+as `failed` or a locator timeout on Chromium's error page, not `navigation_failed`.
+Owner decision: do the correct fix. Built: `src/eval/navigationGuard.ts`, a browser-level
+Chromium Fetch guard for document requests only (cache left on), installed before any
+page exists. Every top-level navigation to another origin (page, new tab, redirect hop,
+form post, script, iframe navigating the top) is failed before its request is sent, and
+the run ends `insufficient_evidence` with `navigation_failed`. No page error is filtered.
+Proven: Miniflux `passed` 2/2 with `pageErrors: 0` observed; the control (the About page's
+license link to another origin) was stopped (`net::ERR_FAILED`, no response) and gave
+`navigation_failed` in both runs; `REPORT.html` showed `passed` with all 6 images loaded
+from `file://`. Kan and Shiori, from saved worlds, kept `passed` 2/2 with the same checks
+and observed values, and their network-check (faults) scenarios kept every verdict and
+observed count (Kan 6, Shiori 5 network checks). Through `praman_environment` in headless
+Kiro (`sess_f1f02f98…`) Miniflux `passed` with no seeded secret in any tool result.
+Limits: with the cache on, the same file loaded twice in one run can be recorded as `304`
+(Kan: 3 of 258 rows, `__ENV.js`), and the app's server sees fewer requests for cacheable
+files; each run still starts a new browser. A start URL that redirects to another origin
+is now stopped (Kan's `/` goes to `localhost`, so its private integration now starts at
+`/login`). Chromium only.
+
 ### Handoff for the next session (step 5, video and blog; rewritten 2026-11-12)
 
-- **State:** steps 0 to 4b are merged (see STATUS.md for the commit and CI run). Colima
+- **State:** steps 0 to 4c are merged (see STATUS.md for the commit and CI run). Colima
   profiles are all stopped; docker context is `default`.
 - **Step 5 is the existing spec `submission-story`, tasks 4 to 6:** record the takes in
   `docs/video-script.md`, edit to under 3 minutes, upload publicly to YouTube, put the URL
@@ -254,6 +285,10 @@ and output redaction also rewrites paths (see Deferred).
   `.praman/real-apps/<app>/html-report/fail.png`): verdict, "Look here first", expected and
   observed and the inline screenshot on one page. It is private evidence: film only seeded
   demo data.
+- **Possible new footage (step 4c):** the Miniflux gap and fix are recorded in the usage
+  log (`sess_9b9feb5a…`, `sess_f1f02f98…`): the old run `failed` with 2 page errors PRAMAN
+  caused, the new run `passed`. Private evidence: `.praman/real-apps/miniflux/navigation-guard/`.
+  Miniflux has no saved world; re-running it needs a clone and binary again.
 - **Do not** start infrastructure just to refresh historical state; no new features.
 
 ### Kick-off prompt for the next session
@@ -315,9 +350,6 @@ first and review the cut against `docs/video-guidelines.md`.
 
 ## Deferred
 
-- Browser engine: a navigation guard that does not use Playwright request routing, so
-  apps with CSS cross-document page transitions (Miniflux v2.3.5) can pass. Found in
-  plan step 0; needs its own spec.
 - Output redaction rewrites file paths: a known secret value that is also part of a path
   (Shiori's database user `shiori` is also a folder name) turns the returned `reportHtml`,
   `report` and `feedbackPath` into `[REDACTED]` paths that cannot be opened. Found

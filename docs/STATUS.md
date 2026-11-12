@@ -1,4 +1,4 @@
-# PRAMAN — current project status (2026-11-11, Hue-style environment plan, step 4 done)
+# PRAMAN — current project status (2026-11-12, Hue-style environment plan, step 4c done)
 
 PRAMAN (प्रमाण, "evidence") is an evidence-driven verification toolkit for AI coding
 agents. An agent supplies an authored browser scenario or command declaration through
@@ -13,12 +13,38 @@ general simulator and not a sandbox.
   (**done 2026-11-10**), 1 Worlds (**done 2026-11-10**), 2 real network faults (**done
   2026-11-10**), 3 many users and invariants (**done
   2026-11-11**), 4 recorded outside APIs (**done 2026-11-11**), 4b the HTML evidence report (**done
-  2026-11-12**), then the video and blog. One step per Kiro
+  2026-11-12**), 4c the navigation guard (**done 2026-11-12**), then the video and blog. One step per Kiro
   session; each session ends with a green PR fast-forwarded to `main`. Real-app proof uses
-  Kan and Shiori (Shiori replaced Miniflux on 2026-11-10, owner decision; see below).
+  Kan and Shiori (Shiori replaced Miniflux on 2026-11-10, owner decision; see below); step 4c
+  also proves the Miniflux fix.
   Next: step 5, the video and blog (spec `submission-story` tasks 4 to 6); the handoff is
   in ROADMAP.md ("Handoff for the next session") and the private
   `.praman/real-apps/HANDOFF.md`.
+- **Navigation guard (2026-11-12, plan step 4c, spec `navigation-guard`):** before the
+  fix, on Miniflux v2.3.5 (clean clone `faecfa2f`) a managed `verify` that follows two
+  in-app links `failed` with `pageErrors` 2 in both runs (`InvalidStateError ...
+  ViewTransition opt-in disabled`), an error PRAMAN caused. Trigger, measured in a local
+  fixture and on Miniflux: any Playwright route turns off Chromium's HTTP cache, and with
+  the cache off Chromium aborts CSS cross-document view transitions on pages that also
+  load an image, SVG sprite or module script (5/5 runs with a route, 0/5 without). The
+  old guard also let a same-origin redirect to another origin and a new tab reach the
+  other server, and a stopped link ended as `failed` or a locator timeout, not
+  `navigation_failed`. Owner decision: the correct fix. Now a browser-level Chromium Fetch
+  guard for document requests only (cache on) stops every top-level navigation to another
+  origin before its request is sent (page, new tab, redirect hop, form post, script,
+  iframe navigating the top), and the run ends `insufficient_evidence` with
+  `navigation_failed`. No page error is filtered. Proof: Miniflux `passed` 2/2 with
+  `pageErrors: 0` observed; a control link to another origin stopped with
+  `navigation_failed` in both runs; `REPORT.html` `passed` with 6/6 images from
+  `file://`; Kan and Shiori (saved worlds) `passed` 2/2 with the same checks and values,
+  and their network-check scenarios kept every verdict and observed count; headless Kiro
+  `sess_f1f02f98…` `passed` with no seeded secret in any tool result. 11 new tests (8 fail
+  on the old code) and one classifier case; `tests/networkPolicy.test.ts` passed 5 of 5
+  runs after the change. Limits: with the cache on, a file loaded twice in one run can be
+  recorded as `304` (Kan: 3 of 258 rows) and the app's server sees fewer requests for
+  cacheable files; a start URL that redirects to another origin is now stopped (Kan's
+  private integration now starts at `/login`); Chromium only. Private evidence:
+  `.praman/real-apps/{miniflux,kan,shiori}/navigation-guard/`.
 - **HTML evidence report (2026-11-12, plan step 4b, spec `html-evidence-report`):** an
   outside review found no single review screen. Before: on Shiori a failing invariant
   needed 4 files to see its screenshot, expected and observed values and next action. Now
@@ -150,18 +176,18 @@ general simulator and not a sandbox.
   started by PRAMAN and stopped again afterwards. Limits: no Docker network (apps
   run on the host); `readinessWorkloads` run before the app restarts on reset;
   `destroy` does not sweep other labelled containers or remove images; kind not
-  re-checked. Found, not fixed: on Miniflux v2.3.5, PRAMAN's Playwright request
-  routing (its same-origin navigation guard) makes Chromium abort the CSS page
+  re-checked. Found then: on Miniflux v2.3.5, PRAMAN's Playwright request
+  routing (its same-origin navigation guard) made Chromium abort the CSS page
   transition after each in-app navigation and report `InvalidStateError`; PRAMAN
-  counts it as an app runtime error, so no Miniflux scenario can pass (2 of 2 probes
-  with routing, 0 of 2 without). Miniflux was dropped; the fix is deferred to its own
-  spec. Private inputs and evidence: `.praman/real-apps/{kan,shiori,miniflux}/`.
+  counted it as an app runtime error, so no Miniflux scenario could pass (2 of 2 probes
+  with routing, 0 of 2 without). Miniflux was dropped then; fixed in plan step 4c
+  (2026-11-12, see above), and Miniflux now passes. Private inputs and evidence: `.praman/real-apps/{kan,shiori,miniflux}/`.
 - **History:** the private working history ends at `cc83be3`; the **public repository**
   is a squashed public snapshot under the owner identity (see the repository history),
   with CI green and judge access enabled.
 - **Checks:** `npm run build` and `npm run lint` pass; `npm run lint:tests` passes;
-  the **full suite passes 347 tests / 39 files** on the recorded host (2026-11-11,
-  `--maxWorkers=2`), including the 17 outside-call tests, the 21 many-users tests, the 22 network-fault tests, the 8 Kiro finish-gate tests, the 15 cancellation
+  the **full suite passes 369 tests / 41 files** on the recorded host (2026-11-12,
+  `--maxWorkers=2`), including the 11 navigation-guard tests, including the 17 outside-call tests, the 21 many-users tests, the 22 network-fault tests, the 8 Kiro finish-gate tests, the 15 cancellation
   tests, the 21 diagnosis tests, the 22 browser-action tests, the 11 step-id tests and
   the managed-verify test. Parallel local runs
   are resource-sensitive while macOS Spotlight/MediaAnalysis indexing saturates the
@@ -352,14 +378,16 @@ The shipped/frozen/deferred view is in [ROADMAP.md](ROADMAP.md).
 
 ## Remaining before release / submission
 
-1. **Build plan:** done. Steps 0 to 4 of the Hue-style environment plan in
-   [ROADMAP.md](ROADMAP.md) are done (steps 0, 1, 2 on 2026-11-10; steps 3 and 4 on 2026-11-11).
+1. **Build plan:** done. Steps 0 to 4c of the Hue-style environment plan in
+   [ROADMAP.md](ROADMAP.md) are done (steps 0, 1, 2 on 2026-11-10; steps 3 and 4 on
+   2026-11-11; steps 4b and 4c on 2026-11-12).
 2. **Video and submission (owner):** record the takes in `docs/video-script.md`, edit to
    under 3 minutes, upload publicly to YouTube; replace `<DEMO_VIDEO_URL>` in the Devpost
    draft and social post; save and submit. Target Nov 25–27, deadline Dec 4, 2026.
 3. **Kiro:** done: specs `kiro-evidence-gate`, `power-path-resolution`,
    `verify-cancellation`, `agent-diagnostics`, `scenario-actions`, `named-steps`,
-   `environment-recheck`, `worlds`, `network-faults`, `many-users` and `recorded-apis`.
+   `environment-recheck`, `worlds`, `network-faults`, `many-users`, `recorded-apis`,
+   `html-evidence-report` and `navigation-guard`.
    Spec `submission-story`: documents, Kiro write-up, storyboard and submission copy are
    done (tasks 1–3, 5.2 copy); recording, upload, submission and the final fresh-clone
    check are left (tasks 4, 5, 6).

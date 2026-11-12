@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+### Fixed
+
+- Navigation guard (spec `navigation-guard`, plan step 4c): PRAMAN no longer uses
+  Playwright request routing for its same-origin navigation guard. Routing turns off
+  Chromium's HTTP cache, and Chromium then aborted CSS cross-document view transitions
+  with an `InvalidStateError` that PRAMAN reported as an app runtime error (Miniflux
+  v2.3.5 could not pass). A browser-level Chromium Fetch guard for document requests
+  only, with the cache left on, now stops every top-level navigation to another origin
+  before its request is sent: the page, a new tab or window, a redirect hop, a form post,
+  a script navigation and an iframe that navigates the top (redirect hops and new tabs
+  were not stopped before). Such a run now ends as `insufficient_evidence` with the
+  diagnosis `navigation_failed` instead of `failed` or a locator timeout on the browser's
+  error page. No page error is filtered. Schemas, hashes and exit codes are unchanged.
+  With the cache on, a file loaded twice in one run can be recorded as `304`.
+
 ### Added
 
 - HTML evidence report (spec `html-evidence-report`, plan step 4b): every browser run
