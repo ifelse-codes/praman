@@ -8,6 +8,7 @@ import type { Verdict } from './eval.js';
 import { z } from 'zod';
 import { saveFeedback, type FeedbackContext } from '../review/feedback.js';
 import { executeUsers } from './users.js';
+import { guardNavigation, leftOriginMessage } from './navigationGuard.js';
 import { captureIdentity, identityComplete, identityScope, sameIdentity } from './identity.js';
 
 const imageObservation = z.object({ src: z.string().nullable(), currentSrc: z.string(), complete: z.boolean(), width: z.number(), height: z.number() });
@@ -134,12 +135,16 @@ export async function executeScenario(spec: ChangeSpec, url: string, outDir: str
     if (!identityComplete(identityBefore) || options.expectedIdentity && !sameIdentity(options.expectedIdentity, identityBefore)) throw new Error('Declared browser execution identity is unavailable or changed before replay.');
     // Explicit launch selects the binary whose bytes are recorded, not Playwright's implicit headless-shell choice.
     browser = await chromium.launch({ headless: true, executablePath: identityBefore.entries.find(entry => entry.role === 'browser')!.path! });
+    const origin = new URL(url).origin;
+    // Installed before any page exists, so a page, a new tab or a redirect hop cannot leave the origin unseen.
+    const guard = await guardNavigation(browser, origin);
     if (options.storageState) result.initialStorageState = { path: resolve(options.storageState), sha256: createHash('sha256').update(readFileSync(options.storageState)).digest('hex') };
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 }, serviceWorkers: spec.checks.some(check => check.kind === 'network') ? 'block' : 'allow',
       ...(options.storageState ? { storageState: options.storageState } : {}),
       ...(options.record ? { recordVideo: { dir: outDir, size: { width: 1280, height: 720 } } } : {}) });
     if (options.record) result.recordingStartedAt = Date.now();
     const page = await ctx.newPage();
+    await guard.attach(page);
     page.setDefaultTimeout(3000);
     const errors: string[] = [];
     page.on('pageerror', error => errors.push(error.message));
@@ -167,12 +172,6 @@ export async function executeScenario(spec: ChangeSpec, url: string, outDir: str
     ctx.on('requestfailed', request => {
       const row = requests.get(request);
       if (row) { row.error = request.failure()?.errorText; row.failedAt = performance.now(); }
-    });
-    const origin = new URL(url).origin;
-    await page.route('**/*', route => {
-      const request = route.request();
-      if (request.isNavigationRequest() && request.frame() === page.mainFrame() && new URL(request.url()).origin !== origin) return route.abort();
-      return route.continue();
     });
     async function runChecks(checks: ChangeSpec['checks']) {
       for (const check of checks) {
@@ -272,8 +271,11 @@ export async function executeScenario(spec: ChangeSpec, url: string, outDir: str
       }
     }
     try {
+      // A navigation the guard stopped ends the run as not proven: the scenario could not continue as a user would.
+      const stayedOnOrigin = () => { if (guard.stopped.length) throw new Error(leftOriginMessage(guard.stopped)); };
       const initial = await page.goto(url, { waitUntil: 'networkidle', timeout: 10000 });
       if (!initial?.ok()) throw new Error(`App navigation returned ${initial?.status() ?? 'no response'}`);
+      stayedOnOrigin();
       for (const [i, step] of spec.steps.entries()) {
         result.failedStep = i;
         if (step.id) result.failedStepId = step.id; else delete result.failedStepId;
@@ -315,6 +317,7 @@ export async function executeScenario(spec: ChangeSpec, url: string, outDir: str
           }
           else await locator.press(step.key);
         }
+        stayedOnOrigin();
         const actionEnded = performance.now();
         const closing = spec.checks.filter(check => check.kind === 'network' && check.window.throughStep === i);
         for (const check of closing) if (check.kind === 'network') windows.get(check.id)!.end = actionEnded + check.window.settleMs;
@@ -327,15 +330,18 @@ export async function executeScenario(spec: ChangeSpec, url: string, outDir: str
         delete result.failedStepId;
       }
       await runChecks(spec.checks.filter(check => check.kind !== 'network' && check.afterStep === undefined));
+      stayedOnOrigin();
       if (errors.length && !spec.checks.some(check => check.kind === 'pageErrors')) throw new Error(`Unasserted app runtime errors: ${errors.join('; ')}`);
       result.verdict = result.checks.some(check => check.verdict === 'insufficient_evidence') ? 'insufficient_evidence'
         : result.checks.some(check => check.verdict === 'failed') ? 'failed' : result.checks.length ? 'passed' : 'not_executed';
       const errorCount = errors.length;
       await options.afterChecks?.(page, result.checks);
       if (errors.length !== errorCount) throw new Error(`Additional runtime errors during recording: ${errors.slice(errorCount).join('; ')}`);
+      stayedOnOrigin();
     } catch (error) {
       result.verdict = 'insufficient_evidence';
-      result.error = error instanceof Error ? error.message : String(error);
+      // A step that then timed out on the browser's error page was stopped by the guard, not by the app.
+      result.error = guard.stopped.length ? leftOriginMessage(guard.stopped) : error instanceof Error ? error.message : String(error);
     }
     const videoHandle = page.video();
     if (options.record) result.recordingEndedAt = Date.now();
