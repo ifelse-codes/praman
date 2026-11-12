@@ -33,7 +33,7 @@ general simulator and not a sandbox.
   in Chromium: every image loaded, only `file:` requests, no CSP violation; the failing
   run needs 1 file. Headless Kiro: Shiori `sess_154d90ca…` (path seen, no HTML or seeded
   secret in the result; first run `sess_67513873…` could not see the path in the cut
-  middle of a 44 000-character result, fixed). 10 new tests, 9 fail on the old code; full
+  middle of a 44 000-character result, fixed; Kan `sess_88dac836…` saw the path, no HTML or seeded credential in the saved result). Follow-up checks: all six pages pass a script check at 1280 px (no horizontal overflow, one h1, alt text on every image, table headers with scope, no duplicate ids, every in-page link resolves, no script, worst text contrast 6.38:1) and print to PDF; WebKit loads every image with only `file:` requests and blocks a remote image; Firefox did not launch in this environment (not tested). 10 new tests, 9 fail on the old code; full
   suite 357 tests / 40 files; first-use 12/12. Limits: no HTML for command runs; the
   world hash is written after the page; invariants are not tied to a step; the page is
   private; Chromium only.

@@ -103,6 +103,11 @@ else process.exit(1);
       const result = await manageEnvironment('verify', { id: state.id, baseDir: base }) as { verdict: string; evidence: { output: string } };
       expect(result.verdict).toBe('passed');
       const run = result.evidence.output;
+      // The page path (never the page) is a top-level field, so a client that shows only the end of a long result still sees it.
+      const reportHtml = (result as unknown as { reportHtml?: string }).reportHtml;
+      expect(reportHtml).toBe(join(run, 'REPORT.html'));
+      expect(readFileSync(reportHtml!, 'utf8')).toContain('class="banner v-passed"');
+      expect(JSON.stringify(result).includes('<!doctype')).toBe(false);
       expect(JSON.parse(readFileSync(join(run, 'proof.json'), 'utf8')).verdict).toBe('passed');
       const declaration = JSON.parse(readFileSync(join(run, 'declaration.json'), 'utf8'));
       expect(declaration.scenario).toBe(join(run, 'scenario.json'));
