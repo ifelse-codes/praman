@@ -18,7 +18,7 @@ export interface FeedbackContext {
 const sensitive = /password|passwd|secret|token|cookie|authorization|credential|api[-_]?key|session|signature|headers|postData|formData/i;
 const privateText = /^(evidence|error|recordingError|body)$/i;
 // Fields that hold a file path PRAMAN made, or was given as its output location. A caller-chosen folder name may equal a private value.
-const outputPathKeys = /^(report|reportHtml|feedbackPath|proofPath|output|directory)$/;
+const outputPathKeys = /^(report|reportHtml|feedbackPath|proofPath|output|directory|declarationPath|operationLog|screenshot|screenshots|demoVideo|video)$/;
 export const pathNote = 'A known private value occurs in a returned path; the folder name was chosen by the caller.';
 
 /** Safe presentation only. Raw browser/network artifacts remain private, not sanitized exports. */
@@ -73,6 +73,7 @@ export function safeFeedbackValue<T>(value: T, spec?: ChangeSpec, secrets: strin
     return Object.fromEntries(Object.entries(item).map(([key, child]) => [/^[A-Za-z_$][\w$]*$/.test(key) ? key : text(key),
       sensitive.test(key) ? '[REDACTED]'
         : typeof child === 'string' && (outputPathKeys.test(key) || (key === 'path' && isReference)) && isPathValue(child) ? keepPath(child)
+        : Array.isArray(child) && outputPathKeys.test(key) ? child.map(entry => typeof entry === 'string' && isPathValue(entry) ? keepPath(entry) : visit(entry))
         : /^(identityBefore|identityAfter)$/.test(key) ? { status: identityComplete(child as IdentitySnapshot) ? 'recorded' : 'unavailable', details: 'Inspect private proof/result identity entries.' }
         : !reveal && /^(expected|observed)$/i.test(key) && child !== null && !['number', 'boolean', 'undefined'].includes(typeof child) ? '[Private value; inspect indexed evidence.]'
         : !reveal && ((/^(selector|target|title|scenario|requirement|change|note|text|url|checkId|afterStepId|failedStepId)$/i.test(key) && typeof child === 'string') || (key === 'id' && 'expected' in item)) ? '[Private declaration field; inspect indexed evidence.]'

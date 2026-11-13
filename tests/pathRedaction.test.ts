@@ -13,7 +13,7 @@ beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), 'praman-paths-'));
   outDir = join(root, privateName, 'runs', '1-verify');
   mkdirSync(outDir, { recursive: true });
-  for (const file of ['REPORT.html', 'REPORT.md', 'feedback.json', 'proof.json']) writeFileSync(join(outDir, file), 'x');
+  for (const file of ['REPORT.html', 'REPORT.md', 'feedback.json', 'proof.json', 'check-1.png', 'check-2.png']) writeFileSync(join(outDir, file), 'x');
 });
 afterEach(() => rmSync(root, { recursive: true, force: true }));
 
@@ -31,6 +31,8 @@ function record() {
       feedbackPath: join(outDir, 'feedback.json'), report: join(outDir, 'REPORT.md'), reportHtml: join(outDir, 'REPORT.html'),
       identityEvidence: { path: join(outDir, 'proof.json'), private: true },
       references: [{ kind: 'proof', path: join(outDir, 'proof.json'), exists: true, private: true }],
+      declarationPath: join(outDir, 'proof.json'), operationLog: join(root, privateName, 'runs', 'proof.json'),
+      screenshot: join(outDir, 'check-1.png'), screenshots: [join(outDir, 'check-1.png'), join(outDir, 'check-2.png')],
       message: `Signed in as ${privateName} with gopher-pass`,
       observedUrl: `http://127.0.0.1:1/users/${privateName}`,
     },
@@ -42,7 +44,7 @@ describe('returned output paths', () => {
   it('keeps a path that contains a declared private value openable and says so once', () => {
     const shown = safeFeedbackValue(record(), spec) as ReturnType<typeof record> & { pathNote?: string };
     for (const path of [shown.reportHtml, shown.evidence.reportHtml, shown.evidence.report, shown.evidence.feedbackPath, shown.evidence.proofPath,
-      shown.evidence.output, shown.directory, shown.evidence.identityEvidence.path, shown.evidence.references[0].path]) {
+      shown.evidence.output, shown.evidence.declarationPath, shown.evidence.screenshot, ...shown.evidence.screenshots, shown.directory, shown.evidence.identityEvidence.path, shown.evidence.references[0].path]) {
       expect(path, path).not.toContain('[REDACTED]');
       expect(existsSync(path), path).toBe(true);
     }
