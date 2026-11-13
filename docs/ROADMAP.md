@@ -96,7 +96,7 @@ core, schemas, CLI or MCP dispatch.
 | 4b | **Done 2026-11-12.** **HTML evidence report.** One offline `REPORT.html` next to `REPORT.md` for every browser scenario run: verdict, checks, per-run screenshots inline, expected and observed, diagnosis, steps, many users, issues and limits. No verdict, schema or exit-code change. Added 2026-11-12 after an outside review found no single review screen (spec `html-evidence-report`). | `saveFeedback` data; plain HTML and CSS | Kan and Shiori: passed, failed and `insufficient_evidence` runs each give a report whose verdict equals `proof.json`, opened from `file://` in Chromium with every image loaded and no network request | Nov 12–15 |
 | 4c | **Done 2026-11-12.** **Navigation guard without false failures.** PRAMAN's same-origin navigation guard (Playwright request routing) makes Chromium abort CSS cross-document view transitions, and PRAMAN then reports the app's `InvalidStateError` as an app runtime error: a false `failed` it caused itself (found on Miniflux v2.3.5 in step 0). Find the exact trigger in a local fixture, then the smallest fix that keeps the guard: a main-frame navigation to another origin is stopped before the request leaves the browser and is reported as `navigation_failed`, for every user context. No page error is filtered. Added 2026-11-12 (owner decision, spec `navigation-guard`). | Playwright 1.64.1, Chromium | A view-transition fixture and Miniflux pass with `pageErrors: 0` observed; a cross-origin link is still stopped (the other server receives no request) and gives `navigation_failed`; a real page error still fails; Kan and Shiori keep the same verdicts and network counts | Nov 13–15 |
 | 4d | **Done 2026-11-13.** **Freeze prep** (spec and branch `freeze-prep`, owner decision 2026-11-12). Three small jobs before the Nov 19 freeze, no new features: (1) returned output paths are no longer rewritten by secret redaction; (2) find and fix the cause of the flaky `tests/networkPolicy.test.ts` failure of 2026-11-12; (3) make the trust and privacy wording agree across the README, first-use guide, TESTING, Devpost draft, blog and social post. | Existing code | Shiori managed `verify` returns a `reportHtml` path that exists, also through headless Kiro, with no seeded password in the result; the flaky test's cause is found and recorded; the docs say the same true things | Nov 13–14 |
-| 5 | **Video and blog** (existing `submission-story` tasks 4–6). Record, edit to under 3 minutes and upload; add new footage only from recorded Kiro work in steps 0–4. | — | Video URL in the Devpost draft; owner submits | Nov 25–27 |
+| 5 | **Video and blog** (existing `submission-story` tasks 4–6). Update the storyboard for steps 0–4d, then record, edit to under 3 minutes and upload; add new footage only from recorded Kiro work in steps 0–4d. | — | Video URL in the Devpost draft; owner submits | Nov 25–27 |
 
 **Step 0 result (2026-11-10, spec `environment-recheck`).** Fixed: managed `verify`
 never ran the scenario (the manager filled the run folder before the proof engine,
@@ -294,16 +294,21 @@ rows. 10/10 under CPU load (10 CPUs saturated) and 10/10 while the full suite ra
 and privacy wording now agrees in the README, first-use guide, TESTING, Devpost draft and
 blog (the social post makes no trust claim).
 
-### Handoff for the next session (step 5, video and blog; rewritten 2026-11-12)
+### Handoff for the next session (step 5, video and blog; rewritten 2026-11-13)
 
-- **State:** steps 0 to 4d are merged (see STATUS.md for the commit and CI run). Colima
-  profiles are all stopped; docker context is `default`.
+- **State:** steps 0 to 4d are merged; `main` `3c7a4e0` (PR #32) was green on Ubuntu and
+  macOS. PRAMAN's Colima profile `praman-headlamp` is stopped and the docker context is
+  `default`. Colima `default` may be running for another project of the owner: do not stop
+  it, and touch only PRAMAN-labelled containers. Feature freeze from Nov 19.
+- **First task: update `docs/video-script.md`.** It was written on 2026-11-09 and does not
+  show the work since then (steps 0 to 4d). Keep its repair story unless the owner chooses
+  another; add the `REPORT.html` screen; keep it under 3:00. Then dry-run every take.
 - **Step 5 is the existing spec `submission-story`, tasks 4 to 6:** record the takes in
   `docs/video-script.md`, edit to under 3 minutes, upload publicly to YouTube, put the URL
   in `docs/devpost-draft.md` and `docs/social-post.md`, then the final fresh-clone check.
   Read `docs/video-guidelines.md` first. Recording and upload are the owner's; an agent
   may dry-run every take and review the cut against the guidelines.
-- **New footage** only from recorded Kiro work in steps 0 to 4. The usage log in
+- **New footage** only from recorded Kiro work in steps 0 to 4d. The usage log in
   `docs/kiro-usage.md` lists each session id and what it showed. Private inputs for every
   step are under `.praman/real-apps/{kan,shiori}/` (see `HANDOFF.md` there).
 - **New screen to film:** `REPORT.html` of a failed many-users run (Shiori or Kan, see
@@ -314,6 +319,11 @@ blog (the social post makes no trust claim).
   log (`sess_9b9feb5a…`, `sess_f1f02f98…`): the old run `failed` with 2 page errors PRAMAN
   caused, the new run `passed`. Private evidence: `.praman/real-apps/miniflux/navigation-guard/`.
   Miniflux has no saved world; re-running it needs a clone and binary again.
+- **Headless Kiro takes:** the workspace MCP server connects about 3 s after the first
+  prompt, so a prompt that calls a PRAMAN tool at once sees no tool; ask for a short pause
+  first. File reads need `--trust-tools=read`. Do not pass `--require-mcp-startup`.
+- **Known CI flake:** `tests/outsideCalls.test.ts` can hit the 3 s screenshot limit on a
+  loaded macOS runner (see STATUS, CI). Re-run the failed job; fix it after the submission.
 - **Do not** start infrastructure just to refresh historical state; no new features.
 
 ### Kick-off prompt for the next session
@@ -395,7 +405,7 @@ first and review the cut against `docs/video-guidelines.md`.
 
 ## Next (owner)
 
-1. Step 4 of the plan: done 2026-11-11 (recorded outside APIs).
+1. Steps 0 to 4d of the plan: done (2026-11-10 to 2026-11-13).
 2. Record and upload the <=3 minute demo video; set `<DEMO_VIDEO_URL>` in
    [the Devpost draft](devpost-draft.md) (Nov 25–26).
 3. Paste the [TESTING.md](../TESTING.md) judge instructions, save and submit the Devpost

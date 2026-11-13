@@ -314,6 +314,12 @@ general simulator and not a sandbox.
   timing, not a product bug: the window is now 2500 ms (the 50 ms "outside" window is
   unchanged) and each check's assertion prints its index, id, observed value and window
   rows. 10/10 with all 10 CPUs saturated and 10/10 while the full suite ran.
+- **CI (known flake, left as is until after the submission; owner decision 2026-11-13):**
+  the push run on `main` after step 4d (43397070667) failed on macOS in its first attempt in
+  `tests/outsideCalls.test.ts` (record test): `page.screenshot: Timeout 3000ms exceeded` on
+  a loaded runner, the product's 3 s action limit. The second attempt passed. This is also
+  the likely cause of the unexplained one-off of 2026-11-11 (run 43069576808). The result
+  was `insufficient_evidence`, never a false pass. If it recurs, re-run the failed job.
 - **CI:** PR #26 (plan step 4) was green on Ubuntu and macOS (first on commit `cf5a2d6`,
   runs 43062385840 and 43062395264, then on its final commit) and `main` is fast-forwarded
   to it. Before that, every
@@ -404,16 +410,18 @@ The shipped/frozen/deferred view is in [ROADMAP.md](ROADMAP.md).
 
 ## Remaining before release / submission
 
-1. **Build plan:** done. Steps 0 to 4c of the Hue-style environment plan in
+1. **Build plan:** done. Steps 0 to 4d of the Hue-style environment plan in
    [ROADMAP.md](ROADMAP.md) are done (steps 0, 1, 2 on 2026-11-10; steps 3 and 4 on
-   2026-11-11; steps 4b and 4c on 2026-11-12).
-2. **Video and submission (owner):** record the takes in `docs/video-script.md`, edit to
-   under 3 minutes, upload publicly to YouTube; replace `<DEMO_VIDEO_URL>` in the Devpost
+   2026-11-11; steps 4b and 4c on 2026-11-12; step 4d on 2026-11-13). Feature freeze from
+   2026-11-19; no new features before the submission.
+2. **Video and submission (owner):** first update `docs/video-script.md` (written
+   2026-11-09) for the work since then, mainly the `REPORT.html` screen; then record the
+   takes, edit to under 3 minutes, upload publicly to YouTube; replace `<DEMO_VIDEO_URL>` in the Devpost
    draft and social post; save and submit. Target Nov 25–27, deadline Dec 4, 2026.
 3. **Kiro:** done: specs `kiro-evidence-gate`, `power-path-resolution`,
    `verify-cancellation`, `agent-diagnostics`, `scenario-actions`, `named-steps`,
    `environment-recheck`, `worlds`, `network-faults`, `many-users`, `recorded-apis`,
-   `html-evidence-report` and `navigation-guard`.
+   `html-evidence-report`, `navigation-guard` and `freeze-prep`.
    Spec `submission-story`: documents, Kiro write-up, storyboard and submission copy are
    done (tasks 1–3, 5.2 copy); recording, upload, submission and the final fresh-clone
    check are left (tasks 4, 5, 6).
