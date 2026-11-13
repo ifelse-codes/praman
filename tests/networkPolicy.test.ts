@@ -36,12 +36,19 @@ it('counts request attempts, redirects and frame traffic only inside each explic
       network('absent', '/never$', 0), network('initial-excluded', '/initial$', 0),
       network('redirect', '/redirect$', 1), network('redirect-target', '/target$', 1, 600, { status: 201 }),
       network('failed-attempt', '/fail$', 1), network('frame', '/child$', 1),
-      network('late-outside', '/late$', 0, 50), network('late-inside', '/late$', 1),
+      // The page sends /late 300 ms after the click. On a loaded runner the request event can reach the host far later, so the
+      // inside window is wide (2500 ms); a timing margin of 300 ms flipped this check once on macOS CI (2026-11-12). The outside window stays 50 ms.
+      network('late-outside', '/late$', 0, 50), network('late-inside', '/late$', 1, 2500),
       network('pending-status', '/slow$', 0, 50, { status: 200 }),
     ] });
     const run = await executeScenario(spec, spec.afterUrl, dir);
-    expect(run.checks.map(row => row.verdict)).toEqual(['passed', 'failed', 'passed', 'passed', 'passed', 'passed', 'passed', 'passed', 'passed', 'passed', 'insufficient_evidence']);
-    expect(run.checks.slice(0, 10).map(row => row.observed)).toEqual([1, 1, 0, 0, 1, 1, 1, 1, 0, 1]);
+    const verdicts = ['passed', 'failed', 'passed', 'passed', 'passed', 'passed', 'passed', 'passed', 'passed', 'passed', 'insufficient_evidence'];
+    const observed = [1, 1, 0, 0, 1, 1, 1, 1, 0, 1];
+    // Name the check, its observed value and the network rows of its window, so a slow-runner failure is diagnosable from CI output.
+    const detail = (index: number) => `check ${index} "${run.checks[index]?.id}": verdict ${run.checks[index]?.verdict}, observed ${JSON.stringify(run.checks[index]?.observed)}, window and rows ${run.checks[index]?.evidence}`;
+    expect(run.checks).toHaveLength(verdicts.length);
+    verdicts.forEach((verdict, index) => expect(run.checks[index].verdict, detail(index)).toBe(verdict));
+    observed.forEach((value, index) => expect(run.checks[index].observed, detail(index)).toBe(value));
     expect(run.checks[10].evidence).toContain('Status unavailable');
   } finally { server.closeAllConnections(); server.close(); await once(server, 'close'); rmSync(dir, { recursive: true, force: true }); }
 }, 90000);
