@@ -17,6 +17,9 @@ export interface FeedbackContext {
 }
 const sensitive = /password|passwd|secret|token|cookie|authorization|credential|api[-_]?key|session|signature|headers|postData|formData/i;
 const privateText = /^(evidence|error|recordingError|body)$/i;
+// Fields that hold a file path PRAMAN made, or was given as its output location. A caller-chosen folder name may equal a private value.
+const outputPathKeys = /^(report|reportHtml|feedbackPath|proofPath|output|directory)$/;
+export const pathNote = 'A known private value occurs in a returned path; the folder name was chosen by the caller.';
 
 /** Safe presentation only. Raw browser/network artifacts remain private, not sanitized exports. */
 export function safeFeedbackValue<T>(value: T, spec?: ChangeSpec, secrets: string[] = [], options: { reveal?: boolean } = {}): T {
@@ -40,6 +43,9 @@ export function safeFeedbackValue<T>(value: T, spec?: ChangeSpec, secrets: strin
   collect(value);
   const variants = [...hidden].flatMap(text => [text, encodeURIComponent(text), encodeURIComponent(encodeURIComponent(text))]).sort((a, b) => b.length - a.length);
   const hiddenNumbers = new Set([...hidden].filter(value => value.trim() && Number.isFinite(Number(value))).map(Number));
+  let pathMatched = false;
+  /** An absolute file path, not a URL and not multi-line text. Anything else in a path field is redacted as usual. */
+  const isPathValue = (value: string): boolean => value.startsWith('/') || /^[A-Za-z]:[\\/]/.test(value) ? !/[\r\n]|:\/\/|\b(?:authorization|cookie|password|passwd|secret|token|signature|credential|api[-_]?key)\s*[=:]/i.test(value) : false;
   function text(input: string): string {
     let result = input;
     for (const secret of variants) result = result.split(secret).join('[REDACTED]');
@@ -52,6 +58,10 @@ export function safeFeedbackValue<T>(value: T, spec?: ChangeSpec, secrets: strin
     result = result.replace(/\b(?:authorization|cookie|set-cookie|password|passwd|secret|token|signature|credential|api[-_]?key)\s*[=:]\s*[^\r\n]+/gi, '[PRIVATE CREDENTIAL FIELD]');
     return result;
   }
+  function keepPath(path: string): string {
+    if (variants.some(secret => path.includes(secret))) pathMatched = true;
+    return path;
+  }
   function visit(item: unknown): unknown {
     if (typeof item === 'number' && hiddenNumbers.has(item)) return '[REDACTED]';
     if (typeof item === 'string') return text(item);
@@ -59,14 +69,19 @@ export function safeFeedbackValue<T>(value: T, spec?: ChangeSpec, secrets: strin
     if (!item || typeof item !== 'object') return item;
     if ('name' in item && typeof item.name === 'string' && sensitive.test(item.name)) return { name: text(item.name), value: '[REDACTED]' };
     // Plain identifier keys are PRAMAN field names; redacting a short private value inside them broke the structure.
+    const isReference = (item as { private?: unknown }).private === true;
     return Object.fromEntries(Object.entries(item).map(([key, child]) => [/^[A-Za-z_$][\w$]*$/.test(key) ? key : text(key),
       sensitive.test(key) ? '[REDACTED]'
+        : typeof child === 'string' && (outputPathKeys.test(key) || (key === 'path' && isReference)) && isPathValue(child) ? keepPath(child)
         : /^(identityBefore|identityAfter)$/.test(key) ? { status: identityComplete(child as IdentitySnapshot) ? 'recorded' : 'unavailable', details: 'Inspect private proof/result identity entries.' }
         : !reveal && /^(expected|observed)$/i.test(key) && child !== null && !['number', 'boolean', 'undefined'].includes(typeof child) ? '[Private value; inspect indexed evidence.]'
         : !reveal && ((/^(selector|target|title|scenario|requirement|change|note|text|url|checkId|afterStepId|failedStepId)$/i.test(key) && typeof child === 'string') || (key === 'id' && 'expected' in item)) ? '[Private declaration field; inspect indexed evidence.]'
         : !reveal && privateText.test(key) && typeof child === 'string' ? '[Private raw detail; inspect the referenced evidence locally.]' : visit(child)]));
   }
-  return visit(value) as T;
+  const result = visit(value);
+  // One note at the top of the result, never the value itself.
+  if (pathMatched && result && typeof result === 'object' && !Array.isArray(result)) (result as Record<string, unknown>).pathNote = pathNote;
+  return result as T;
 }
 
 export interface EvidenceReference { kind: 'proof' | 'result' | 'screenshot' | 'network'; path: string; exists: boolean; private: true; }
