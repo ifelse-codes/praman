@@ -3,21 +3,23 @@
 This is the truthful usage account for the Kiroween submission. It separates what
 Kiro actually did from what an AI coding assistant and the submitter did.
 
-## Current state (2026-11-07 onward, updated 2026-11-09)
+## Current state (2026-11-07 onward, updated 2026-11-13)
 
 **Short version: from 2026-11-07, Kiro CLI agents built and proved PRAMAN's Kiro
-integration, and then fixed and extended PRAMAN itself through six spec-driven changes,
-in recorded Kiro CLI sessions. The owner ran the interactive checks and made every scope
-and publishing decision. Kiro did not build PRAMAN's original verification core
-(everything that existed by 2026-11-05).**
+integration, then fixed and extended PRAMAN itself through thirteen spec-driven
+changes in recorded Kiro CLI sessions: five on 2026-11-08/09 (listed below), and eight from 2026-11-10
+to 2026-11-13 (the Hue-style environment plan, steps 0 to 4d). The owner ran the
+interactive checks and made every scope and publishing decision. Kiro did not build
+PRAMAN's original verification core (everything that existed by 2026-11-05).**
 
 - **Where:** Kiro CLI 2.37.1 with the V3 agent, in this repository. The main working
   sessions are `sess_bdb9debc-8d36-4e92-bbd9-095eeb828b60` (2026-11-07/08),
-  `sess_90d45003-fc3a-45b8-88cb-dc94739e0f80` (2026-11-08) and
-  `sess_c1fcf2e4-6dba-4de9-8370-e464f14df771` (2026-11-09). Headless proof runs and
-  owner-run interactive CLI and IDE sessions are listed in the
-  [usage log](#usage-log-2026-11-07-onward), each with what it showed (28 distinct
-  sessions, 84 rows on 2026-11-09).
+  `sess_90d45003-fc3a-45b8-88cb-dc94739e0f80` (2026-11-08),
+  `sess_c1fcf2e4-6dba-4de9-8370-e464f14df771` (2026-11-09), and one session per plan
+  step from 2026-11-10 (listed under "Hue-style environment plan" below). Headless proof
+  runs and owner-run interactive CLI and IDE sessions are listed in the
+  [usage log](#usage-log-2026-11-07-onward), each with what it showed (59 distinct
+  sessions, 122 rows on 2026-11-13).
 - **What Kiro built (spec `kiro-evidence-gate`, closed 2026-11-08):**
   - the `praman-explorer` custom agent with a permission rule allowing only `praman/*`;
   - a v1 `PostFileSave` lint hook, replacing an invalid hook file;
@@ -40,6 +42,30 @@ and publishing decision. Kiro did not build PRAMAN's original verification core
   - Delivered to the public repository in PRs #3–#5, #9, #11 and #12 (with docs in
     #6–#8 and #10), with the owner's yes for each push and merge. Since PR #4 every merge
     was a fast-forward after green CI on Ubuntu and macOS.
+- **Hue-style environment plan (2026-11-10 to 2026-11-13, one step per session, see
+  [ROADMAP.md](ROADMAP.md)):** each step showed the gap on a real app with the old code
+  first, then was built, tested (tests that fail on the old code) and proven on two real
+  apps, Kan and Shiori, and through MCP in a headless `praman-explorer` session:
+  - bugfix `environment-recheck` (step 0, `sess_f36680ce…`): managed `environment
+    verify` never ran the scenario; fixed and re-checked on Kan and Shiori;
+  - feature `worlds` (step 1, `sess_cd41df18…`): hashed starting states, a fresh copy
+    for every repeat;
+  - feature `network-faults` (step 2, `sess_abb30c56…`): Toxiproxy between the app and
+    a dependency, named faults whose effect must be observed;
+  - feature `many-users` (step 3, `sess_50032248…`): 2 to 10 users at once and
+    caller-declared invariants;
+  - feature `recorded-apis` (step 4, `sess_3c3cb261…`): an app's outside HTTP calls
+    recorded once (Hoverfly) and replayed with no outbound network;
+  - feature `html-evidence-report` (step 4b, `sess_adb042ec…`): one offline
+    `REPORT.html` per browser run;
+  - bugfix `navigation-guard` (step 4c, `sess_9b9feb5a…`): a false failure PRAMAN
+    caused on Miniflux, fixed while still stopping every navigation to another origin;
+  - `freeze-prep` (step 4d, `sess_17e672fd…`): returned paths kept readable, one flaky
+    test fixed, trust and privacy wording aligned;
+  - step 5 (spec `submission-story`, `sess_a0c57c9a…`): video storyboard updated and
+    every take dry-run; recording and upload are the owner's.
+  - Delivered in PRs #18 to #32, each pushed and fast-forwarded after green CI under the
+    owner's standing yes for plan sessions (2026-11-10).
 - **What the owner did:** created `.kiro/settings/mcp.json` by hand (Kiro does not let
   the agent change its own MCP configuration), ran the interactive CLI and IDE
   sessions, approved each edit in the recorded gate demo, chose the scope of every spec
@@ -59,6 +85,7 @@ and publishing decision. Kiro did not build PRAMAN's original verification core
 | Power path bug | Spec `power-path-resolution` (bugfix: current, expected and unchanged behavior) | `.kiro/specs/power-path-resolution/` |
 | Orphaned processes on Ctrl-C | Spec `verify-cancellation` (bugfix) | `.kiro/specs/verify-cancellation/` |
 | Failure diagnosis, new actions, step ids | Specs `agent-diagnostics`, `scenario-actions`, `named-steps` (feature, requirements → design → tasks) | `.kiro/specs/` |
+| Environment plan steps 0–4d | Specs `environment-recheck` and `navigation-guard` (bugfix), `worlds`, `network-faults`, `many-users`, `recorded-apis`, `html-evidence-report` (feature), `freeze-prep` (three small jobs) | `.kiro/specs/` |
 | Submission material | Spec `submission-story` (feature) | `.kiro/specs/submission-story/` |
 | Onboarding, CI fixes, Git/GitHub delivery, docs updates | Vibe (conversation in the CLI) | Usage log rows marked Git/GitHub or docs |
 
@@ -70,7 +97,7 @@ code are recorded in the spec tasks.
 | --- | --- | --- |
 | Kiro CLI (V3, interactive and headless) | Used | Usage log, every row |
 | Kiro IDE | Used for checks only (MCP tool listing, lint hook). Not a target: PRAMAN is built for agents through the CLI and MCP (owner decision 2026-11-08) | `sess_7732334c…`; one earlier run invalid (Restricted Mode) |
-| Specs | Used: 5 feature specs (`kiro-evidence-gate`, `agent-diagnostics`, `scenario-actions`, `named-steps`, `submission-story`), 2 bugfix specs (`power-path-resolution`, `verify-cancellation`). Written as files by the agent, not through `/spec new` | `.kiro/specs/` |
+| Specs | Used: 10 feature specs (`kiro-evidence-gate`, `agent-diagnostics`, `scenario-actions`, `named-steps`, `submission-story`, `worlds`, `network-faults`, `many-users`, `recorded-apis`, `html-evidence-report`), 4 bugfix specs (`power-path-resolution`, `verify-cancellation`, `environment-recheck`, `navigation-guard`) and `freeze-prep`; `praman-core` describes the earlier engine. Written as files by the agent, not through `/spec new` | `.kiro/specs/` |
 | Steering | Used: always-on files, plus new `fileMatch` and `auto` files | `sess_1266542d…` |
 | Agent hooks | Used: `PostFileSave` (fires, result not shown to the agent) and `Stop` (finish gate) | `sess_2bee93f1…`, `sess_d3717c15…`, `sess_c6010529…` |
 | Custom agents | Used: `praman-explorer` with capability permissions, including the proof runs for each 2026-11-09 spec | `sess_cf1d826d…`, `sess_0db97c0c…`, `sess_1cf21d4c…`, `sess_fc0aef1b…` |
@@ -351,3 +378,7 @@ session.
 | 2026-11-13 | sess_3e1fa7b6-e42a-4490-8d89-93d909665927 | Headless V3 + `praman-explorer` (Shiori paths), invalid run | No PRAMAN tool call: the agent saw no `praman_*` tool. Kiro's log shows the workspace MCP server connected about 3 s after the prompt started; a second run with the same prompt behaved the same |
 | 2026-11-13 | sess_64dfb259-95ae-4722-b9f6-356093964854 | Headless V3 + `praman-explorer` + MCP `praman_environment` (Shiori paths) | The prompt asked for a 15 s pause first (the shell call was refused, but the server was connected by the next turn). create from a world, verify `passed`, destroy `passed`; the returned `reportHtml` names the real `shiori` folder and exists; the result carried `pathNote`; no seeded password, secret key or database password in any tool result (also checked in the saved 40 342-character result). The agent's file read was refused (no headless permission) |
 | 2026-11-13 | sess_693aca20-036a-423c-8d98-652bb3bf91c2 | Headless V3 + `praman-explorer`, read only | With `--trust-tools=read`, the agent opened the returned `REPORT.html` path and quoted its first line |
+| 2026-11-13 | sess_a0c57c9a-c17a-4b6f-a318-431f56fed1e8 | Plan step 5 (`submission-story`, agent part) | Owner asked the agent to finish everything an agent may do. Kiro CLI agent updated `docs/video-script.md` (new one-page report scene, the old code shown before the fix, timings measured with a 150 words-per-minute timer: 386 words, about 2:49), then dry-ran every take: old build left `sleep 30` running after Ctrl-C and the current build left nothing (exit 130); the repair self-check `passed` (baseline `orphan: yes`, current `orphan: no` 3/3); the judge route 12/12; a fresh clone of public `main` passed `npm ci`, build and the judge route 12/12 |
+| 2026-11-13 | sess_da6546e1-8188-4f98-a22c-24b0dfe5fdf3 | Headless V3 + `praman-explorer` + MCP `praman_command_verify` (video take 3 dry run) | One call on `examples/self-check/cancellation/commands.json`: `passed`, the named check failed on the baseline and passed 3/3 current runs. The agent found the argument is `specPath`; its file reads were refused in headless mode |
+| 2026-11-13 | sess_788cd3e1-1e18-48b4-a36c-42fcf9b5d7fe | Agent hook (`Stop` finish gate, headless), video take 5 dry run | Separate `/tmp` project with the hook and `praman-gate.json` (entries need `kind` and `path`; a first try with a plain string was rejected, `sess_0429ca28…`). Turn 1: the agent added the comment and said it was finished; the gate ran and said `failed` (the sum printed `11`, declared `10`); the agent read the gate report and changed the start value to `0`. Turn 2 (`--resume-id`): the gate `passed` and the rejection counter went back to 0. Folder deleted afterwards |
+| 2026-11-13 | sess_2aa3f753-0f82-4117-a87e-2a6951a4e3a7 | Headless V3 + `praman-explorer` + MCP `praman_environment` (video take 7 dry run, Shiori) | create from world `27110d95efc6` with the wrong-count declaration, verify `failed` (3 users `passed`, peak 3, invariant 0 failed in both repeats), destroy `passed`; `reportHtml` under `/tmp`. The page opened from `file://`: 8/8 images, 0 non-`file:` requests, card *Expected 7, Observed 4*, no seeded secret or home path. Colima `praman-headlamp` was stopped again |

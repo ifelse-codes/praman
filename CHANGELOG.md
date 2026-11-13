@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Documentation
+
+- Submission (plan step 5, spec `submission-story`, agent part): the video storyboard
+  `docs/video-script.md` covers plan steps 0 to 4d (a one-page `REPORT.html` scene, the
+  old code before the fix, corrected take instructions, measured narration of about
+  2:49), with a dry run of every take; the Devpost draft, blog, Kiro usage write-up and
+  project page include steps 0 to 4d and the current test count. No product change.
+
 ### Fixed
 
 - Returned output paths (plan step 4d, spec `freeze-prep`): CLI and MCP output no longer

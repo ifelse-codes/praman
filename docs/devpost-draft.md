@@ -18,7 +18,7 @@ public URL placeholder for anything readers must open.
 | Full product name | PRAMAN (प्रमाण) — "evidence" |
 | Elevator pitch | AI writes the code. Praman checks that it actually works — testing it in realistic environments, finding what breaks, and showing you the evidence before you ship. |
 | Category | **Frankenstein** — stitches browser automation, trusted command execution, authored HTTP/state checks, a stdio MCP server, a CLI, a static project page and an evidence report into one verification platform. |
-| Built with | TypeScript, Node.js, Playwright, Zod, Model Context Protocol SDK, Commander, Sharp, node:sqlite, Chromium, FFmpeg, Kiro |
+| Built with | TypeScript, Node.js, Playwright, Zod, Model Context Protocol SDK, Commander, Sharp, node:sqlite, Chromium, FFmpeg, Docker, Toxiproxy, Hoverfly, Kiro |
 | Public repository | https://github.com/ifelse-codes/praman (MIT license) |
 | Judge access / testing | https://github.com/ifelse-codes/praman/blob/main/TESTING.md (test build, Codespaces, expected 12/12) |
 | Project page | https://ifelse-codes.github.io/praman/ (static, no hosted execution) |
@@ -84,6 +84,15 @@ Kiro did not build Praman's original engine. It built Praman's Kiro integration,
 - *Feature `scenario-actions`:* double-click, select, typing, scrolling, dragging, and waits for an exact element count, so a half-rendered chart can no longer pass.
 - *Feature `named-steps`:* checks can point at a step by name, so inserting a step no longer moves them.
 
+Then a second round, from 10 to 13 November, gave apps a realistic place to run, one step per Kiro session. Each step was shown first on a real failing or refused run, then built and proven on two real open-source apps (Kan, a kanban board, and Shiori, a bookmark manager) and through Praman's MCP tools in a headless Kiro session:
+
+- *Worlds:* save an app's starting data once as a hashed copy; every repeat starts from a fresh copy, so one run's changes cannot leak into the next.
+- *Network faults:* slow, hang, drop or stop a real dependency, such as the database, through a proxy; the fault only counts if its effect is observed.
+- *Many users:* run one scenario as 2 to 10 users at the same time, then check rules that must hold for all of them, such as "the list holds the seed plus one per user".
+- *Recorded outside calls:* record an app's real outside HTTP calls once and replay them with no internet; a call that is not in the recording makes the run not proven.
+- *One-page report:* every browser run writes an offline `REPORT.html` with the verdict, each check's expected and observed values and the screenshots.
+- *Two fixes found on the way:* the managed Docker route never ran the scenario (Praman filled the run folder before its own proof engine, which refuses a used folder), and Praman's own navigation guard caused a false failure on a third app (Miniflux).
+
 Work that was conversation rather than spec (onboarding, CI fixes, delivery) is marked as such in the write-up. The Kiro IDE was used only for checks, and property-based testing was not used (owner decision). The owner created Kiro's MCP configuration by hand, chose every scope and approved every push.
 
 Kiro's earlier history with this project is also disclosed: one 86-minute IDE session on 1 November 2026 on a Headlamp feature, which ended at the monthly usage limit.
@@ -123,7 +132,9 @@ Verified on the recorded host and in Ubuntu/macOS CI:
 - Failure diagnosis that names what went wrong (for example `locator_ambiguous (3 elements)`) with a next action, while keeping selectors and values private; a pass/fail table at the top of every report.
 - Thirteen browser actions (including double-click, select, typing, scroll and drag), waits for a state or an exact element count, a `count` check, and step ids that checks can reference.
 - A 14-tool stdio MCP server; a CLI; optional proof-gated narrated walkthroughs that require live replays to match the stored proof.
-- Managed kind/Docker environment lifecycle plus declared HTTP service, workflow, coverage and campaign tooling, implemented and documented. These paths are not part of the validated public first-use route in this submission.
+- Managed Docker environments, proven on Kan and Shiori on the recorded host (each also through MCP in a headless Kiro session): hashed starting worlds with a fresh copy per repeat, named network faults through Toxiproxy whose effect is observed, 2 to 10 concurrent users with declared invariants, and recorded outside HTTP calls replayed with no outbound network (Hoverfly). The app integrations for those runs are private, so this route is not part of the public first-use route.
+- An offline `REPORT.html` for every browser run, checked on Kan and Shiori for passed, failed and not-proven runs.
+- Kind environments, the declared HTTP service, workflow replay, coverage review and campaign tooling are implemented, documented and unit-tested, but have no new end-to-end claim.
 
 Explicit limits:
 
@@ -142,7 +153,7 @@ Explicit limits:
 
 ### What’s next
 
-The environment layer is now part of the product: declaration-selected Docker/kind lifecycles can provision real dependencies, exercise workloads, inject controlled failures, reset and tear down owned resources. That is the direction I described, and it is documented, and it is not part of the verified public first-use route; independent-human validation is still pending.
+The environment layer is now part of the product and proven on two real apps: saved starting worlds, network faults, many users at once and recorded outside calls, each with its observed limits written down (for example, one machine and one environment copy for many users, and only calls that use the app's proxy settings are recorded). It is not part of the public first-use route, and independent-human validation is still pending.
 
 The next steps are hardening and independent validation: have someone who did not build it follow the first-use guide, publish a package, and keep widening real-target evidence without letting a demo dictate the product’s architecture.
 

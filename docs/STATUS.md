@@ -1,4 +1,4 @@
-# PRAMAN — current project status (2026-11-13, Hue-style environment plan, step 4d done)
+# PRAMAN — current project status (2026-11-13, Hue-style environment plan, step 5 agent part done)
 
 PRAMAN (प्रमाण, "evidence") is an evidence-driven verification toolkit for AI coding
 agents. An agent supplies an authored browser scenario or command declaration through
@@ -17,9 +17,31 @@ general simulator and not a sandbox.
   session; each session ends with a green PR fast-forwarded to `main`. Real-app proof uses
   Kan and Shiori (Shiori replaced Miniflux on 2026-11-10, owner decision; see below); step 4c
   also proves the Miniflux fix.
-  Next: step 5, the video and blog (spec `submission-story` tasks 4 to 6); the handoff is
-  in ROADMAP.md ("Handoff for the next session") and the private
+  Next: step 5, the video and blog (spec `submission-story` tasks 4 to 6). The agent part
+  is done (see the next item); recording, upload and submission are the owner's. The
+  handoff is in ROADMAP.md ("Handoff for the next session") and the private
   `.praman/real-apps/HANDOFF.md`.
+- **Step 5, agent part (2026-11-13, spec `submission-story`):** `docs/video-script.md`
+  now covers the work since 2026-11-09: a one-page report scene (`REPORT.html` of a
+  failed three-user run on Shiori from a saved world; the rule is wrong on purpose and
+  labeled), the old code (`643fbe0` lines 69–71) before the fix (lines 93–100), and
+  corrected take instructions (the MCP argument is `specPath`; a `praman-gate.json` entry
+  needs `kind` and `path`). Narration timed at 150 words per minute: 386 words, about
+  152 s, a cut of about 2:49. Every take was dry-run: Ctrl-C on the old build left
+  `sleep 30` running and on the current build left nothing (exit 130); the repair
+  self-check `passed` (CLI and headless Kiro `sess_da6546e1…`); the finish gate in a
+  separate `/tmp` project said `failed`, the agent fixed the sum, and the next stop
+  `passed` (`sess_788cd3e1…`, two turns because a headless run fires the gate once); the
+  Shiori report take through `praman_environment` gave `failed` (3 users, peak 3) and a
+  `REPORT.html` under `/tmp` with 8/8 images, no non-`file:` request, *Expected 7,
+  Observed 4* and no seeded secret or home path (`sess_2aa3f753…`); the judge route
+  12/12. A fresh clone of public `main` `3c7a4e0` passed `npm ci`, build and the judge
+  route 12/12 (repeat on the day of submission). The submission copy (Devpost draft,
+  blog, Kiro write-up, project page) now includes plan steps 0 to 4d and the current
+  test count. Open owner decision: whether the `REPORT.html` frames, which the page marks
+  private and which hold only sample data, may be public. Colima was stopped again; no
+  owned container, network or process is left. Private evidence:
+  `.praman/submission-story/dryrun/`.
 - **Freeze prep (2026-11-13, plan step 4d, spec `freeze-prep`):** three small jobs, no
   new features. (1) Returned paths: on Shiori the folder `shiori` became `[REDACTED]` in
   `reportHtml`, `report`, `feedbackPath` and every screenshot path because the scenario's
@@ -369,12 +391,13 @@ general simulator and not a sandbox.
   (a link to a website, functioning demo or test build; failure may disqualify). PRAMAN
   provides the public repository as the test build, Codespaces and [testing instructions](../TESTING.md).
 - **Submission copy:** truthful Kiro account (`docs/kiro-usage.md`, current through
-  2026-11-11), ≤3-minute storyboard built only from recorded Kiro work
-  (`docs/video-script.md`, rewritten 2026-11-09; the non-Kiro Headlamp clip is dropped)
-  and a submission-ready Devpost draft with the public repository URL filled in and a
-  `<DEMO_VIDEO_URL>` placeholder (`docs/devpost-draft.md`). Blog and social drafts match
-  the same account. Rehearsal 2026-11-09: a fresh clone of public `main` `3c37ec3`
-  passed `npm ci`, build and the judge route 12/12.
+  2026-11-13), ≤3-minute storyboard built only from recorded Kiro work
+  (`docs/video-script.md`, rewritten 2026-11-09 and updated 2026-11-13; the non-Kiro
+  Headlamp clip is dropped) and a submission-ready Devpost draft with the public
+  repository URL filled in and a `<DEMO_VIDEO_URL>` placeholder (`docs/devpost-draft.md`,
+  plan steps 0 to 4d added 2026-11-13). Blog, social drafts and the project page match the
+  same account. Rehearsals: a fresh clone of public `main` passed `npm ci`, build and the
+  judge route 12/12 on 2026-11-09 (`3c37ec3`) and 2026-11-13 (`3c7a4e0`).
 - **Release candidate:** rebuilt and sanitized. Packaging is deterministic and the
   procedure is in [release validation](release-validation.md);
   [release-identity.json](../release-identity.json) documents the per-build procedure
@@ -414,17 +437,18 @@ The shipped/frozen/deferred view is in [ROADMAP.md](ROADMAP.md).
    [ROADMAP.md](ROADMAP.md) are done (steps 0, 1, 2 on 2026-11-10; steps 3 and 4 on
    2026-11-11; steps 4b and 4c on 2026-11-12; step 4d on 2026-11-13). Feature freeze from
    2026-11-19; no new features before the submission.
-2. **Video and submission (owner):** first update `docs/video-script.md` (written
-   2026-11-09) for the work since then, mainly the `REPORT.html` screen; then record the
-   takes, edit to under 3 minutes, upload publicly to YouTube; replace `<DEMO_VIDEO_URL>` in the Devpost
+2. **Video and submission (owner):** the script update and dry run are done
+   (2026-11-13, `docs/video-script.md`); decide whether the `REPORT.html` frames may be
+   public; then record the takes, edit to under 3 minutes, upload publicly to YouTube; replace `<DEMO_VIDEO_URL>` in the Devpost
    draft and social post; save and submit. Target Nov 25–27, deadline Dec 4, 2026.
 3. **Kiro:** done: specs `kiro-evidence-gate`, `power-path-resolution`,
    `verify-cancellation`, `agent-diagnostics`, `scenario-actions`, `named-steps`,
    `environment-recheck`, `worlds`, `network-faults`, `many-users`, `recorded-apis`,
    `html-evidence-report`, `navigation-guard` and `freeze-prep`.
-   Spec `submission-story`: documents, Kiro write-up, storyboard and submission copy are
-   done (tasks 1–3, 5.2 copy); recording, upload, submission and the final fresh-clone
-   check are left (tasks 4, 5, 6).
+   Spec `submission-story`: documents, Kiro write-up, storyboard, its 2026-11-13 update
+   with a dry run of every take, and the submission copy are done (tasks 1–3, 3.1, 5.2
+   copy); recording, upload, submission and the final fresh-clone check on the day are
+   left (tasks 4, 5, 6).
 4. **Independent-human validation:** a person other than the owner following the
    first-use guide (CI already covers two operating systems).
 5. **Post-submission backlog:** npm publish pipeline, Windows support, deferred

@@ -18,7 +18,7 @@ To move beyond a toy, I ran PRAMAN against Headlamp, an open-source Kubernetes d
 
 ## What was verified
 
-- **276 tests / 35 files** on the recorded host (2026-11-09), with build, lint and test-typecheck passing; CI runs the suite on Ubuntu and macOS.
+- **374 tests / 42 files** on the recorded host (2026-11-13), with build, lint and test-typecheck passing; CI runs the suite on Ubuntu and macOS.
 - The public first-use runner exercises **12 expected CLI and MCP outcomes** — pass, deliberate mismatch and unavailable execution on both routes — and all twelve behave as documented; the negative controls stay red.
 - **14 MCP tools** and **16 CLI commands**.
 - **Six narrated walkthroughs** from earlier development (Headlamp, Kan, Stern and jq campaigns) are preserved in a private external archive, not the repository, because they contain local paths and infrastructure data.
@@ -30,6 +30,8 @@ Kiro did not build PRAMAN's original engine; an AI coding assistant did, under m
 The integration is a custom agent that may call only PRAMAN's tools, an installable Kiro Power, steering, and an opt-in finish gate on Kiro's `Stop` hook. When the agent says "done", the gate runs the declared checks again and sends the agent back if one fails. In a recorded session it refused to let the agent stop on an off-by-one bug and released it after the fix.
 
 Then came five changes to PRAMAN, each shown first on a real failing run: Ctrl-C no longer leaves the tested program running (proven in repair mode against the old build), the Power refuses relative paths, failed steps name their cause (`locator_ambiguous (3 elements)`), scenarios gained double-click, select, typing, scroll and drag plus element-count waits, and checks can point at steps by name. My earlier, narrower Kiro use (one 86-minute IDE session on 1 November that ended at the monthly usage limit) is disclosed too. The full account, with session IDs, is in the [Kiro usage write-up](kiro-usage.md).
+
+From 10 to 13 November, one Kiro session per step gave apps a realistic place to run, and each step was proven on two real open-source apps (Kan and Shiori) and through MCP in a headless Kiro session: saved starting worlds with a fresh copy for every repeat, network faults on a real dependency whose effect must be observed, 2 to 10 users at once with rules that must hold for all of them, outside HTTP calls recorded once and replayed with no internet, and one offline `REPORT.html` page per browser run. Two fixes were found on the way, one of them a false failure that PRAMAN itself caused on a third app.
 
 ## Limits
 
