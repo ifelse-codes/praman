@@ -6,7 +6,7 @@ import { changeSpecSchema } from '../src/case/change.js';
 import { safeFeedbackValue } from '../src/review/feedback.js';
 
 // A declared private value (a fill input) that is also the name of a folder the caller chose for the output.
-const privateName = 'shiori-owner';
+const privateName = 'owner-name';
 let root: string;
 let outDir: string;
 beforeEach(() => {
