@@ -60,7 +60,7 @@ describe('returned output paths', () => {
 
   it('still hides credential fields and a path-named field that is not a path', () => {
     const shown = safeFeedbackValue({ ...record(), password: 'p1', evidence: { ...record().evidence, output: 'http://h/a?token=zzz', report: 'line one\nsecret=abc',
-      headers: [{ name: 'authorization', value: 'Bearer abc' }] } }, spec) as { password: string; evidence: { output: string; report: string; headers: string } };
+      headers: [{ name: 'authorization', value: 'Bearer abc' }] } }, spec) as unknown as { password: string; evidence: { output: string; report: string; headers: string } };
     expect(shown.password).toBe('[REDACTED]');
     expect(shown.evidence.headers).toBe('[REDACTED]');
     expect(shown.evidence.output).toBe('http://h/a?[REDACTED]');
