@@ -1,4 +1,4 @@
-# PRAMAN — current project status (2026-11-12, Hue-style environment plan, step 4c done)
+# PRAMAN — current project status (2026-11-13, Hue-style environment plan, step 4d done)
 
 PRAMAN (प्रमाण, "evidence") is an evidence-driven verification toolkit for AI coding
 agents. An agent supplies an authored browser scenario or command declaration through
@@ -13,13 +13,32 @@ general simulator and not a sandbox.
   (**done 2026-11-10**), 1 Worlds (**done 2026-11-10**), 2 real network faults (**done
   2026-11-10**), 3 many users and invariants (**done
   2026-11-11**), 4 recorded outside APIs (**done 2026-11-11**), 4b the HTML evidence report (**done
-  2026-11-12**), 4c the navigation guard (**done 2026-11-12**), then the video and blog. One step per Kiro
+  2026-11-12**), 4c the navigation guard (**done 2026-11-12**), 4d freeze prep (**done 2026-11-13**), then the video and blog. One step per Kiro
   session; each session ends with a green PR fast-forwarded to `main`. Real-app proof uses
   Kan and Shiori (Shiori replaced Miniflux on 2026-11-10, owner decision; see below); step 4c
   also proves the Miniflux fix.
   Next: step 5, the video and blog (spec `submission-story` tasks 4 to 6); the handoff is
   in ROADMAP.md ("Handoff for the next session") and the private
   `.praman/real-apps/HANDOFF.md`.
+- **Freeze prep (2026-11-13, plan step 4d, spec `freeze-prep`):** three small jobs, no
+  new features. (1) Returned paths: on Shiori the folder `shiori` became `[REDACTED]` in
+  `reportHtml`, `report`, `feedbackPath` and every screenshot path because the scenario's
+  `fill` value for the login user name is `shiori` (every fill value is withheld; the
+  integration's `secrets()` and the database user were not the cause). Gap with the old
+  code: managed `verify` from world `27110d95efc6` returned a `reportHtml` that did not
+  exist. Now fields that hold a path PRAMAN made or was given as its output location keep
+  their value (a URL, multi-line or `key=value` text in such a field is still redacted),
+  everything else is redacted as before, and the result carries a `pathNote` without the
+  value. Proof: the same verify `passed` with 29/29 returned paths openable and no seeded
+  password, secret key or database password in the result; headless Kiro
+  `sess_64dfb259…` got an openable `reportHtml` and no seeded secret in any tool result
+  (it first needed a pause: the workspace MCP server connected about 3 s after the first
+  prompt, so two earlier runs saw no PRAMAN tool), and `sess_693aca20…` read the file.
+  5 new tests, 3 fail on the old code. Limit: a path quoted inside prose (the
+  reproduction text) is still redacted. (2) Flaky test, see CI below. (3) The trust and
+  privacy wording now agrees in the README, first-use guide, TESTING, Devpost draft and
+  blog. Full suite 374 tests / 42 files; first-use 12/12. Private evidence:
+  `.praman/real-apps/shiori/freeze-prep/`.
 - **Navigation guard (2026-11-12, plan step 4c, spec `navigation-guard`):** before the
   fix, on Miniflux v2.3.5 (clean clone `faecfa2f`) a managed `verify` that follows two
   in-app links `failed` with `pageErrors` 2 in both runs (`InvalidStateError ...
@@ -62,12 +81,11 @@ general simulator and not a sandbox.
   middle of a 44 000-character result, fixed; Kan `sess_88dac836…` saw the path, no HTML or seeded credential in the saved result). Follow-up checks: all six pages pass a script check at 1280 px (no horizontal overflow, one h1, alt text on every image, table headers with scope, no duplicate ids, every in-page link resolves, no script, worst text contrast 6.38:1) and print to PDF; WebKit loads every image with only `file:` requests and blocks a remote image; Firefox did not launch in this environment (not tested). 10 new tests, 9 fail on the old code; full
   suite 357 tests / 40 files; first-use 12/12. Limits: no HTML for command runs; the
   world hash is written after the page; invariants are not tied to a step; the page is
-  private; Chromium only. Found in review (2026-11-12): CLI and MCP output hide every
-  known secret value, also inside file paths. Shiori's database user is `shiori`, which is
-  also a folder name in the run path, so on Shiori the `reportHtml` path (and the older
-  `report` and `feedbackPath` paths) shows `[REDACTED]` for that folder and cannot be
-  opened as given. The file itself exists and is correct; Kan was not affected. Not
-  fixed (deferred in ROADMAP.md).
+  private; Chromium only. Found in review (2026-11-12): CLI and MCP output hid every
+  known private value, also inside file paths. Shiori's scenario fills the login user name
+  `shiori`, which is also a folder name in the run path, so on Shiori the `reportHtml` path
+  (and the older `report` and `feedbackPath` paths) showed `[REDACTED]` for that folder.
+  Kan was not affected. Fixed in step 4d.
 - **Recorded outside calls (2026-11-11, plan step 4, spec `recorded-apis`):** before the
   change, Shiori's page download (`http://example.com/`) and Kan's server call to
   `https://formbricks.com/api/oss-friends` reached the internet in every managed `verify`
@@ -288,6 +306,14 @@ general simulator and not a sandbox.
   [browser scenario cheat sheet](schema-cheatsheet.md) plus explicit
   selector/zero-based/private-evidence guidance in the README and browser guide;
   product behavior and test counts are unchanged.
+- **CI (step 4d):** `tests/networkPolicy.test.ts` failed on macOS in run 43219321324
+  (first attempt) and passed on re-run. The log shows check 9 (`late-inside`) observed 0:
+  the fixture page sends `/late` 300 ms after the click and the window closed 600 ms after
+  the click, so on a loaded runner the request event reached the host after the window.
+  Reproduced locally by moving `/late` past the window (same check, observed 0). Test
+  timing, not a product bug: the window is now 2500 ms (the 50 ms "outside" window is
+  unchanged) and each check's assertion prints its index, id, observed value and window
+  rows. 10/10 with all 10 CPUs saturated and 10/10 while the full suite ran.
 - **CI:** PR #26 (plan step 4) was green on Ubuntu and macOS (first on commit `cf5a2d6`,
   runs 43062385840 and 43062395264, then on its final commit) and `main` is fast-forwarded
   to it. Before that, every

@@ -4,6 +4,16 @@
 
 ### Fixed
 
+- Returned output paths (plan step 4d, spec `freeze-prep`): CLI and MCP output no longer
+  rewrite a file path that PRAMAN made or was given as its output location (`report`,
+  `reportHtml`, `feedbackPath`, `proofPath`, `output`, `directory`, `declarationPath`,
+  `operationLog`, screenshots, videos, evidence `references[].path`) when a known private
+  value, such as a fill value, occurs in it. Such a result carries one `pathNote` without
+  the value. Every other string is redacted as before.
+- `tests/networkPolicy.test.ts`: the `late-inside` window had a 300 ms margin and flipped
+  once on a loaded macOS runner; it is now 2500 ms, and a failing check prints its index,
+  observed value and window rows. No product change.
+
 - Navigation guard (spec `navigation-guard`, plan step 4c): PRAMAN no longer uses
   Playwright request routing for its same-origin navigation guard. Routing turns off
   Chromium's HTTP cache, and Chromium then aborted CSS cross-document view transitions

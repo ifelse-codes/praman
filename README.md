@@ -134,8 +134,9 @@ Frankenstein — stitches browser automation (Playwright), trusted command execu
 **Start here:** [First use: setup → CLI/MCP → evidence](docs/first-use.md).
 The public `node examples/first-use/run.mjs` route exercises command and browser
 pass/mismatch/unavailable controls through compiled CLI and real stdio MCP.
-**Trusted execution, no sandbox; caller-owned backend reset; fresh output directories;
-private evidence, not universally sanitized exports.** No managed infrastructure or video.
+**Trusted execution, no sandbox (child processes inherit your environment); caller-owned
+backend reset; fresh output directories; private evidence, not universally sanitized
+exports.** No managed infrastructure or video.
 
 Use the guide in order: [install and build](docs/first-use.md#1-setup-once),
 [run the owned example](docs/first-use.md#2-run-the-public-example),
@@ -323,7 +324,8 @@ default-exports the `ApplicationIntegration` interface from
   database may instead restore its owned data while keeping immutable deployments.
 - Optional `secrets(config)` supplies private values withheld from returned
   feedback. Core stores these privately so teardown does not depend on importing
-  the module again. This supplements, not replaces, known-shape redaction.
+  the module again. This supplements, not replaces, known-shape redaction. Returned
+  output file paths are left unchanged even when they contain one of these values.
 - With `outsideCalls` declared (Docker), `start` should point the application at
   `state.outside.proxyUrl` (an HTTP proxy URL with a password) and make it trust
   `state.outside.caCert` (a PEM file) through the application's **own** settings, for
@@ -1870,7 +1872,12 @@ return the same fields directly. Programmatic `proveChange` returns
   fill values, recognized credential fields and raw error/evidence text.
   Numeric scalars matching known private numeric values are also withheld,
   including leading-zero/exponent equivalents; unrelated numeric/boolean
-  observations and caller-owned local paths remain visible. Matching structural
+  observations and caller-owned local paths remain visible. Known secret values
+  (integration `secrets()`, ownership/proxy tokens, credential-named service `env`) are
+  withheld from returned text but not from returned file paths that PRAMAN made or was
+  given as its output location (`report`, `reportHtml`, `feedbackPath`, `proofPath`,
+  `output`, `directory`, screenshots, evidence `references[].path`), so the paths stay
+  openable; such a result carries `pathNote` (without the value). Matching structural
   numbers can also be withheld conservatively; use private evidence for originals.
   Raw declarations, scenarios, proof/results, network captures and screenshots
   remain **private**, not sanitized exports. Local paths can themselves be
@@ -1926,7 +1933,8 @@ steps (a run that stopped is marked), many users and invariants, the environment
 (faults, outside calls), issues, limits and links to the evidence files. It is a private
 local view: it shows application text, selectors and expected and observed values, but
 never a `fill` value, `type` text or credential-like value, and starts with "Private
-evidence: contains application data. Do not share." It is written with mode 0600 in the
+evidence: contains application data. Do not share." Integration `secrets()` values that are
+not fill or typed text are not redacted on the page. It is written with mode 0600 in the
 private run folder, has inline CSS, no script and a Content-Security-Policy that blocks
 every network source, uses relative links (the folder can be moved) and escapes every
 value. It does not change a verdict, `proof.json`, `feedback.json` or an exit code. Limits:

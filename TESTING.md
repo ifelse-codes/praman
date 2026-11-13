@@ -34,9 +34,10 @@ Expected: exit 0 and the same 12/12 matrix (about 25 seconds after setup).
 
 ## What the judge will see
 
-- Every browser run also writes an offline `REPORT.html` (private evidence; open it from
-  the saved evidence folder in a browser): verdict, expected and observed values and
-  screenshots on one page.  In the first-use output, look for `REPORT.html` inside the browser cases' private evidence folder.
+- Every browser run also writes an offline `REPORT.html` (private evidence, mode 0600;
+  open it from the saved evidence folder in a browser): verdict, expected and observed
+  values and screenshots on one page. It shows application text, so do not share it; fill
+  values, typed text and credential fields are redacted.  In the first-use output, look for `REPORT.html` inside the browser cases' private evidence folder.
 
 - The runner starts a loopback HTTP fixture and a real stdio MCP server.
 - Command checks run real Node subprocesses; browser checks run real headless Chromium.
@@ -57,8 +58,15 @@ not installed; that is environment-guarded, not a pass.
 
 ## Limits (honest scope)
 
-- PRAMAN executes trusted commands and browser actions with the caller's authority; it
-  is **not** a sandbox.
+- PRAMAN executes trusted commands and browser actions with the caller's authority, and
+  child processes inherit the caller's environment; it is **not** a sandbox.
+- Raw evidence (screenshots, `result.json`, `network.json`, `proof.json`) stays private
+  under the output folder and may contain application data or secrets. CLI and MCP output
+  redact known secrets and private declaration text, but they are not a sanitized export;
+  returned file paths are not redacted.
+- A browser navigation to another origin, including a start URL that redirects to another
+  origin (for example a single sign-on page), is stopped and reported as `navigation_failed`.
+- No published npm package; an independent person has not run this guide yet.
 - Checks are authored; it verifies declared requirements, not whole-application
   correctness.
 - No hosted execution endpoint is provided: the test build is the public source above.

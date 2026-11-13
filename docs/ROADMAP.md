@@ -1,7 +1,7 @@
 # PRAMAN — current roadmap (2026-11-10)
 
 **Status: shipped and verified; the Hue-style environment plan below is in progress
-(owner decision 2026-11-10; steps 0 to 4c done, step 5 is the video and blog).** Public repository
+(owner decision 2026-11-10; steps 0 to 4d done, step 5 is the video and blog).** Public repository
 https://github.com/ifelse-codes/praman (MIT), CI green on Ubuntu and macOS, judge
 access via [TESTING.md](../TESTING.md) and Codespaces, project page
 https://ifelse-codes.github.io/praman/. Not submitted: the demo video and the Devpost
@@ -95,7 +95,7 @@ core, schemas, CLI or MCP dispatch.
 | 4 | **Done 2026-11-11.** **Recorded outside APIs.** Record an app's real outside HTTP calls once, then replay them in later runs. A call that is not in the recording fails closed (`insufficient_evidence`), so a test never reaches the real service by accident. The app is pointed at the replay through its own configuration. | Playwright HAR replay (browser side); Hoverfly or WireMock (server side) | Shiori replays a recorded real page download with no network; an unrecorded call is refused. A second real app is required for a cross-app claim; if none of Kan, Lattice or Luma makes outside calls, that limit is written down instead | Nov 21–24 |
 | 4b | **Done 2026-11-12.** **HTML evidence report.** One offline `REPORT.html` next to `REPORT.md` for every browser scenario run: verdict, checks, per-run screenshots inline, expected and observed, diagnosis, steps, many users, issues and limits. No verdict, schema or exit-code change. Added 2026-11-12 after an outside review found no single review screen (spec `html-evidence-report`). | `saveFeedback` data; plain HTML and CSS | Kan and Shiori: passed, failed and `insufficient_evidence` runs each give a report whose verdict equals `proof.json`, opened from `file://` in Chromium with every image loaded and no network request | Nov 12–15 |
 | 4c | **Done 2026-11-12.** **Navigation guard without false failures.** PRAMAN's same-origin navigation guard (Playwright request routing) makes Chromium abort CSS cross-document view transitions, and PRAMAN then reports the app's `InvalidStateError` as an app runtime error: a false `failed` it caused itself (found on Miniflux v2.3.5 in step 0). Find the exact trigger in a local fixture, then the smallest fix that keeps the guard: a main-frame navigation to another origin is stopped before the request leaves the browser and is reported as `navigation_failed`, for every user context. No page error is filtered. Added 2026-11-12 (owner decision, spec `navigation-guard`). | Playwright 1.64.1, Chromium | A view-transition fixture and Miniflux pass with `pageErrors: 0` observed; a cross-origin link is still stopped (the other server receives no request) and gives `navigation_failed`; a real page error still fails; Kan and Shiori keep the same verdicts and network counts | Nov 13–15 |
-| 4d | **Freeze prep** (spec and branch `freeze-prep`, owner decision 2026-11-12). Three small jobs before the Nov 19 freeze, no new features: (1) returned output paths are no longer rewritten by secret redaction; (2) find and fix the cause of the flaky `tests/networkPolicy.test.ts` failure of 2026-11-12; (3) make the trust and privacy wording agree across the README, first-use guide, TESTING, Devpost draft, blog and social post. | Existing code | Shiori managed `verify` returns a `reportHtml` path that exists, also through headless Kiro, with no seeded password in the result; the flaky test's cause is found and recorded; the docs say the same true things | Nov 13–14 |
+| 4d | **Done 2026-11-13.** **Freeze prep** (spec and branch `freeze-prep`, owner decision 2026-11-12). Three small jobs before the Nov 19 freeze, no new features: (1) returned output paths are no longer rewritten by secret redaction; (2) find and fix the cause of the flaky `tests/networkPolicy.test.ts` failure of 2026-11-12; (3) make the trust and privacy wording agree across the README, first-use guide, TESTING, Devpost draft, blog and social post. | Existing code | Shiori managed `verify` returns a `reportHtml` path that exists, also through headless Kiro, with no seeded password in the result; the flaky test's cause is found and recorded; the docs say the same true things | Nov 13–14 |
 | 5 | **Video and blog** (existing `submission-story` tasks 4–6). Record, edit to under 3 minutes and upload; add new footage only from recorded Kiro work in steps 0–4. | — | Video URL in the Devpost draft; owner submits | Nov 25–27 |
 
 **Step 0 result (2026-11-10, spec `environment-recheck`).** Fixed: managed `verify`
@@ -240,8 +240,8 @@ Limits: command-run reports have no HTML page; the world snapshot hash is writte
 page, so the page shows source hashes only; an invariant is read after all users ended, so
 no step is marked for it; the page is private (screenshots and text show application
 content); one machine, Chromium only. Found in review: on Shiori the returned path shows
-`[REDACTED]` for one folder, because the database user `shiori` is a known secret value
-and output redaction also rewrites paths (see Deferred).
+`[REDACTED]` for one folder, because the login user name `shiori` is a scenario `fill`
+value (withheld) and output redaction also rewrote paths (fixed in step 4d).
 
 **Step 4c result (2026-11-12, spec `navigation-guard`).** Trigger found first in a local
 fixture and on Miniflux v2.3.5: any Playwright route (even one that matches nothing)
@@ -270,9 +270,33 @@ files; each run still starts a new browser. A start URL that redirects to anothe
 is now stopped (Kan's `/` goes to `localhost`, so its private integration now starts at
 `/login`). Chromium only.
 
+**Step 4d result (2026-11-13, spec and branch `freeze-prep`).** (1) Report paths. Cause
+checked first: on Shiori the redacted value `shiori` is the scenario's `fill` value for the
+login user name (every fill value is withheld), not the database user and not an
+integration `secrets()` value (those are the password and the HTTP secret key). Gap with
+the old code: managed `verify` from world `27110d95efc6` returned a `reportHtml` with
+`[REDACTED]` for the `shiori` folder, and the path did not exist. Fix: fields that hold a
+file path PRAMAN made or was given as its output location (`report`, `reportHtml`,
+`feedbackPath`, `proofPath`, `output`, `directory`, `declarationPath`, `operationLog`,
+screenshots, videos, evidence `references[].path`) keep their value; every other string is
+redacted as before; a result whose path contains a known private value gets one `pathNote`
+without the value. Proof: the same verify `passed` with all 29 returned paths openable and
+no seeded password, secret key or database password in the result; headless Kiro
+`sess_64dfb259…` got an openable `reportHtml` with no seeded secret in any tool result, and
+`sess_693aca20…` read the file. 5 new tests (3 fail on the old code). Limit: a path inside
+prose (the reproduction text) is still redacted. (2) Flaky test: the CI log of run
+43219321324 shows check 9 (`late-inside`) flipped: the page sends `/late` 300 ms after the
+click and the window closed 600 ms after the click, so a request event that reached the
+host more than 300 ms late fell outside it (reproduced by delaying `/late` past the window:
+the same check fails with `observed 0`). Test-timing cause, not a product bug: the window
+is now 2500 ms and the assertion prints the check index, its observed value and its window
+rows. 10/10 under CPU load (10 CPUs saturated) and 10/10 while the full suite ran. (3) Trust
+and privacy wording now agrees in the README, first-use guide, TESTING, Devpost draft and
+blog (the social post makes no trust claim).
+
 ### Handoff for the next session (step 5, video and blog; rewritten 2026-11-12)
 
-- **State:** steps 0 to 4c are merged (see STATUS.md for the commit and CI run). Colima
+- **State:** steps 0 to 4d are merged (see STATUS.md for the commit and CI run). Colima
   profiles are all stopped; docker context is `default`.
 - **Step 5 is the existing spec `submission-story`, tasks 4 to 6:** record the takes in
   `docs/video-script.md`, edit to under 3 minutes, upload publicly to YouTube, put the URL
@@ -335,7 +359,8 @@ first and review the cut against `docs/video-guidelines.md`.
   `b7f11d0` stays reachable from branch `kiro-evidence-gate`.
 - `docs/kiro-usage.md` has the PR #8 row.
 - `tests/networkPolicy.test.ts` has passed since (local full suite and PR #9 CI on
-  Ubuntu and macOS). Still treated as flaky; if it fails again, investigate and fix it.
+  Ubuntu and macOS). It failed once more on macOS CI on 2026-11-12; the cause (a 300 ms
+  timing margin in the test's `late-inside` window) was found and fixed in step 4d.
 - `tests/scenarioActions.test.ts` (all-actions test, macOS CI failure on 2026-11-09):
   CI on `main` `682f0ed` passed on Ubuntu and macOS (run 42664656908). Still watched; its
   assertion now prints the stopped step if it fails again.
@@ -350,11 +375,6 @@ first and review the cut against `docs/video-guidelines.md`.
   coverage review and campaigns, unless a plan step re-verifies them.
 
 ## Deferred
-
-- Output redaction rewrites file paths: a known secret value that is also part of a path
-  (Shiori's database user `shiori` is also a folder name) turns the returned `reportHtml`,
-  `report` and `feedbackPath` into `[REDACTED]` paths that cannot be opened. Found
-  2026-11-12 when reviewing step 4b; affects every output path, not only the HTML report.
 
 - Stateful dependency simulation beyond the declared service and the recorded APIs of
   step 4; world restore beyond the declared service volumes of step 1.

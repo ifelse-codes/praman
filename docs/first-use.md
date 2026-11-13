@@ -14,9 +14,18 @@ processes. Browser actions can mutate services. Fresh contexts clear browser sta
 **not backend state**; you own provisioning, seed/reset between repeats and teardown.
 
 Use fresh output directories. Keep raw inputs, proof/results, screenshots, stdout/stderr
-and network evidence private under ignored `.praman/`. Feedback/report redaction is
-bounded presentation, **not safe universal sanitization**; even local paths can disclose
-information. Review everything before sharing. Do not supply real credentials here.
+and network evidence private under ignored `.praman/`; they may contain application data
+or secrets. `REPORT.html` is a private local view (mode 0600): it shows application text
+and expected and observed values, so do not share it; fill values, typed text and
+credential fields are redacted. Feedback/report and CLI/MCP output redaction (known secret
+values and private declaration text) is bounded presentation, **not safe universal
+sanitization**. Returned file paths are not redacted (a result whose path contains a known
+private value carries `pathNote`), and even local paths can disclose information. Review
+everything before sharing. Do not supply real credentials here.
+
+A browser navigation to another origin, including a start URL that redirects to another
+origin (for example a single sign-on login page), is stopped before its request is sent and
+the run ends `insufficient_evidence` with `navigation_failed`.
 
 ## 1. Setup once
 

@@ -33,7 +33,7 @@ Then came five changes to PRAMAN, each shown first on a real failing run: Ctrl-C
 
 ## Limits
 
-PRAMAN is **not a sandbox**: trusted commands and browser actions run with your user's authority. Checks are **authored, not discovered automatically** — PRAMAN verifies declared requirements, not whole-application correctness. Validation covers the recorded macOS arm64 host and Ubuntu/macOS CI; an independent person has not yet run the guide. There is **no hosted execution service and no published package** — you run it from source, and raw evidence stays private.
+PRAMAN is **not a sandbox**: trusted commands and browser actions run with your user's authority, and child processes inherit your environment. Checks are **authored, not discovered automatically** — PRAMAN verifies declared requirements, not whole-application correctness. Validation covers the recorded macOS arm64 host and Ubuntu/macOS CI; an independent person has not yet run the guide. There is **no hosted execution service and no published package** — you run it from source, and raw evidence stays private: screenshots, `result.json`, `network.json` and `proof.json` may contain application data or secrets. `REPORT.html` is a private local view (it shows application text and expected and observed values; fill values, typed text and credential fields are redacted), so do not share it. CLI and MCP output redact known secrets but are not a sanitized export, and returned file paths are not redacted. A browser navigation to another origin, even a start URL that redirects to a single sign-on page, is stopped and reported as `navigation_failed`.
 
 ## Try it
 

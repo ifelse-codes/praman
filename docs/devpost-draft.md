@@ -127,11 +127,14 @@ Verified on the recorded host and in Ubuntu/macOS CI:
 
 Explicit limits:
 
-- **Not a sandbox.** Commands and browser actions run with your user’s authority and can mutate external systems.
+- **Not a sandbox.** Commands and browser actions run with your user’s authority, child processes inherit your environment, and both can mutate external systems.
 - **Authored checks, not autonomous testing.** Praman verifies declared requirements; it does not discover requirements, prove whole-application correctness or guarantee security.
 - **Same-host validation plus CI.** The evidenced environment is macOS arm64 with Node 26, and CI runs the full suite on Ubuntu and macOS. An independent person has not yet run the guide.
 - **No published package.** The source is at https://github.com/ifelse-codes/praman; no npm install route is claimed.
-- **Raw evidence is private.** Reports, screenshots, stdout and network observations can contain local paths; they are for local review, not a sanitized public export.
+- **Raw evidence is private.** Screenshots, `result.json`, `network.json`, `proof.json`, stdout and reports stay under the output folder and may contain application data, secrets or local paths; they are for local review, not a sanitized public export.
+- **`REPORT.html` is a private local view** (mode 0600). It shows application text and expected and observed values, so do not share it; fill values, typed text and credential fields are redacted. CLI and MCP output redact known secrets and private declaration text but are not a sanitized export, and returned file paths are not redacted.
+- **No hosted execution.** The project page is static; everything runs on your machine from source.
+- **Same-origin browser runs.** A navigation to another origin, including a start URL that redirects to a single sign-on page, is stopped and reported as `navigation_failed`.
 - **The caller owns state.** Fresh browser contexts do not reset backend data or side effects; seeding, reset and teardown are the caller’s job.
 - **Local hashes are not provenance.** Recorded identities are sampled local hashes, not signed build/deployment attestation.
 - Optional narration needs host media tools and fresh matching proof; the video is never verification.
