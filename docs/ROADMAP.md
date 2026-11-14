@@ -433,6 +433,17 @@ first and review the cut against `docs/video-guidelines.md`.
 
 Optional: run independent-human validation.
 
+### Still open, on purpose (2026-11-14 closeout)
+
+No known product bug is open. These remain by choice:
+
+| Item | Why it is open |
+| --- | --- |
+| Video, blog, submission | Owner's work. Deadline Dec 4, 2026, 2:00 pm PT. |
+| Agent skill on Codex, OpenCode, omp, pi | Codex, OpenCode and omp stopped on account or usage limits before the agent started; the `pi` command was not available on the host. Only Claude Code is tested (see [skills/README.md](../skills/README.md)). |
+| Deferred items (section above) | Future features, not bugs: for example npm publishing, Windows support, autonomous discovery. |
+| `REPORT.html` frames in the video | Owner decision: may frames of the private report page appear publicly? The take holds only sample data. |
+
 ## Guardrails
 
 - No hosted public execution (trusted commands, inherited environment, no sandbox).

@@ -474,7 +474,8 @@ The shipped/frozen/deferred view is in [ROADMAP.md](ROADMAP.md).
 1. **Build plan:** done. Steps 0 to 4d of the Hue-style environment plan in
    [ROADMAP.md](ROADMAP.md) are done (steps 0, 1, 2 on 2026-11-10; steps 3 and 4 on
    2026-11-11; steps 4b and 4c on 2026-11-12; step 4d on 2026-11-13); the 2026-11-14
-   closeout left no known product bug open. Feature freeze from 2026-11-19; no new
+   closeout left no known product bug open (open items by choice: ROADMAP.md, "Still
+  open, on purpose"). Feature freeze from 2026-11-19; no new
    features before the submission.
 2. **Video and submission (owner):** the script update and dry run are done
    (2026-11-13, `docs/video-script.md`); decide whether the `REPORT.html` frames may be
