@@ -105,4 +105,40 @@ describe.skipIf(!hasBuild)('dispatch smoke (requires npm run build: dist/cli.js)
     expect(missing.stdout).toBe('');
     expect(missing.stderr).toContain("missing required argument 'declaration'");
   }, 90000);
+
+  it('reports an error before a verdict as not proven (exit 2), never as failed (exit 1)', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'praman-dispatch-error-'));
+    try {
+      const declaration = {
+        mode: 'acceptance',
+        title: 'Dispatch reused output',
+        requirement: 'Print the declared sum',
+        current: { executable: process.execPath, args: ['-e', 'console.log(2+3)'], cwd: '.', deadlineMs: 5000 },
+        expectedExit: 0,
+        checks: [{ id: 'sum', source: 'stdout', operator: 'equals', value: '5\n' }],
+        repeats: 2,
+      };
+      const specPath = join(directory, 'declaration.json');
+      const outDir = join(directory, 'proof');
+      await writeFile(specPath, JSON.stringify(declaration, null, 2));
+      const first = await runCli(['command-verify', specPath, '-o', outDir, '--summary']);
+      expect(first.code).toBe(0);
+      expect(first.stdout).toContain('Outcome: passed');
+
+      // Same output directory again: PRAMAN refuses it before running anything.
+      const reused = await runCli(['command-verify', specPath, '-o', outDir, '--summary']);
+      expect(reused.code).toBe(2);
+      expect(reused.stdout).toBe('');
+      expect(reused.stderr).toContain('PRAMAN error: Proof output directory already contains a run');
+      expect(reused.stderr).toContain('No verdict was recorded: not proven (exit 2)');
+      expect(reused.stderr).not.toMatch(/^\s+at /m);
+
+      const missingFile = await runCli(['command-verify', join(directory, 'absent.json'), '-o', join(directory, 'proof-2')]);
+      expect(missingFile.code).toBe(2);
+      expect(missingFile.stderr).toContain('PRAMAN error:');
+      expect(missingFile.stderr).not.toMatch(/^\s+at /m);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  }, 90000);
 });

@@ -225,4 +225,11 @@ program.command('case-from-trace').description('Reconstruct an executable workfl
     if (result.verdict !== 'passed') process.exitCode = 2;
   });
 
-program.parse();
+// An error that stops a command before it records a verdict is not a verdict. Exit 1
+// means a declared check failed, so such an error exits 2 (not proven), without a stack.
+// Commander's own usage errors (for example a missing argument) keep commander's exit 1.
+program.parseAsync().catch((error: unknown) => {
+  console.error(`PRAMAN error: ${error instanceof Error ? error.message : String(error)}`);
+  console.error('No verdict was recorded: not proven (exit 2). Fix the cause and run again; verification commands need a fresh output directory.');
+  process.exitCode = 2;
+});
