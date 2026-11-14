@@ -4,6 +4,10 @@
 
 ### Documentation
 
+- Agent skill: `skills/praman/SKILL.md` lets any coding agent with a shell (Claude
+  Code, Codex, OpenCode and others) verify its work through the PRAMAN CLI; install
+  notes and what was tested are in `skills/README.md`. Devpost draft: tagline, a "Why not
+  just Playwright and an agent?" section and the north star. Test counts updated.
 - Submission (plan step 5, spec `submission-story`, agent part): the video storyboard
   `docs/video-script.md` covers plan steps 0 to 4d (a one-page `REPORT.html` scene, the
   old code before the fix, corrected take instructions, measured narration of about
@@ -12,6 +16,12 @@
 
 ### Fixed
 
+- CLI errors are no longer reported with the "failed" exit code. An error that stops a
+  command before it records a verdict (for example a reused output folder, a missing or
+  invalid declaration file) used to print a Node stack trace and exit 1, the code for a
+  failed check. It now prints `PRAMAN error: <message>` and a "No verdict was recorded"
+  line on stderr and exits 2 (not proven). Commander usage errors such as a missing
+  argument keep exit 1. MCP results are unchanged.
 - Returned output paths (plan step 4d, spec `freeze-prep`): CLI and MCP output no longer
   rewrite a file path that PRAMAN made or was given as its output location (`report`,
   `reportHtml`, `feedbackPath`, `proofPath`, `output`, `directory`, `declarationPath`,

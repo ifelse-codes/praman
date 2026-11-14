@@ -13,6 +13,8 @@ src/
 examples/first-use/ public negative-control runner (CLI + MCP, 12 outcomes)
 examples/self-check/ PRAMAN checks its own fixes (PRAMAN is the target; repair mode)
 docs/               product docs (first-use, static acceptance, release, status)
+skills/praman/      agent-neutral Agent Skill (CLI route) for Claude Code, Codex, etc.
+kiro-power/         Kiro Power: MCP tools, praman-verify skill, finish-gate script
 .kiro/              specs, steering, hooks, agent
 praman/.praman/     ignored private runtime evidence (not in Git)
 

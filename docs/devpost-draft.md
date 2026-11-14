@@ -16,6 +16,7 @@ public URL placeholder for anything readers must open.
 | --- | --- |
 | Project name | Praman |
 | Full product name | PRAMAN (प्रमाण) — "evidence" |
+| Tagline | You can't trust a coding agent. You can trust Praman. A green tick from Praman means you can deploy with confidence. |
 | Elevator pitch | AI writes the code. Praman checks that it actually works — testing it in realistic environments, finding what breaks, and showing you the evidence before you ship. |
 | Category | **Frankenstein** — stitches browser automation, trusted command execution, authored HTTP/state checks, a stdio MCP server, a CLI, a static project page and an evidence report into one verification platform. |
 | Built with | TypeScript, Node.js, Playwright, Zod, Model Context Protocol SDK, Commander, Sharp, node:sqlite, Chromium, FFmpeg, Docker, Toxiproxy, Hoverfly, Kiro |
@@ -59,6 +60,14 @@ The coding agent still writes and fixes the code. Praman runs the verification a
 Its core verification routes are authored browser scenarios that drive a real headless Chromium, and authored command checks with explicit exit, stdout and artifact expectations. Each declaration runs in repeated fresh sessions and returns one of three honest verdicts — **passed, failed, or insufficient evidence**. Missing evidence never becomes a green check.
 
 Once enough evidence shows a change works, Praman can generate an optional narrated walkthrough: previous behavior, the code change, and the working result. **The demo comes after verification. It is not a substitute for it, and it is not required to verify anything.**
+
+### Why not just Playwright and an agent?
+
+Playwright clicks buttons. An agent writes and runs tests. Neither one decides whether the evidence is enough, and the agent that wrote the code is grading its own work.
+
+Praman is the part in between. It gives every run a fresh starting world, real network faults whose effect must be observed, many users at once with rules that must hold for all of them, and outside calls replayed with no internet. Then it returns one of three verdicts. A missing screenshot, a refused call or a step that never ran gives **not proven**, never a quiet pass.
+
+Other teams see the same gap. mabl, a commercial testing platform, announced independent checking of coding-agent work on 21 October 2026 ([announcement](https://www.mabl.com/mabl-introduces-agentic-testing-harness)). Praman takes a different route: open source under MIT, runs on your own machine, works with any agent that speaks MCP, and keeps a strict line between passed and not proven.
 
 ### How I built it
 
@@ -158,6 +167,8 @@ The environment layer is now part of the product and proven on two real apps: sa
 The next steps are hardening and independent validation: have someone who did not build it follow the first-use guide, publish a package, and keep widening real-target evidence without letting a demo dictate the product’s architecture.
 
 The goal is simple: **give coding agents somewhere to test their work — and evidence strong enough to know what to fix next.**
+
+The north star is bolder. You can't take a coding agent's word for it. One day you should be able to take Praman's: a green tick, and you press merge without a second look. We are not there yet. Today a green tick means every check you declared passed in every repeat. It says nothing about checks nobody wrote, and it never comes from missing evidence. Each release widens what a green tick covers.
 
 ## Maintainer checklist (do not paste into Devpost)
 

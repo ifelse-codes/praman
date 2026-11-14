@@ -48,7 +48,7 @@ Choose one:
 The workflow runs on push and pull request: Ubuntu + macOS, Node 22, typecheck,
 test-typecheck, build, Chromium, full suite (two Linux workers / one macOS worker). Do not claim a remote CI
 result until the run is green; local evidence is a single-worker full-suite pass
-(190 tests / 28 files).
+(375 tests / 42 files on 2026-11-14).
 
 ## 4. Rebuild and record the release candidate
 

@@ -261,7 +261,7 @@ Keep runtime temp **outside the source package**: extensionless CommonJS test
 helpers otherwise inherit the root `"type":"module"` and fail. The first
 Session 1 test run exposed this harness placement issue; moving only TMPDIR
 outside the package yielded **188 passing tests / 27 files** in that historical
-Session 1 run (the current suite is **198 tests / 29 files** as of 2026-11-08). Full tests also
+Session 1 run (the current suite is **375 tests / 42 files** as of 2026-11-14). Full tests also
 use installed FFmpeg/ffprobe; that does not make them core command prerequisites.
 The core smoke used a separate PATH containing only a Node symlink, a fresh HOME,
 empty browser directory and no inherited provider settings.
@@ -1896,6 +1896,9 @@ The default browser `demonstrate` output includes a separate `Diagnostics:` JSON
 array for delivery failures, not just the verification-only feedback.
 Reports include locally clickable evidence links. Exit codes remain 0 for
 success, 1 for failed requirements and 2 for unavailable/insufficient evidence.
+An error that stops a CLI command before it records a verdict (a reused output
+folder, a missing or invalid declaration) prints `PRAMAN error: <message>` on stderr
+and exits 2, never 1. Commander usage errors (a missing argument) exit 1.
 
 Diagnostics use fixed categories (`check_mismatch`, `execution_unavailable`,
 `evidence_unavailable`, `proof_gate`, `story_preflight`, `recording_unavailable`).
@@ -2329,6 +2332,14 @@ starts the server outside the caller's project should set `PRAMAN_RELATIVE_PATHS
 every relative path argument (including inline-scenario upload, diff and identity paths)
 is then refused with an `insufficient_evidence` result naming the argument, before
 anything runs or is written. Any other non-empty value makes `praman mcp` exit at startup.
+
+## Agent skill (Claude Code, Codex, OpenCode and others)
+
+[`skills/praman/SKILL.md`](skills/praman/SKILL.md) is an Agent Skills folder that
+teaches any coding agent with a shell to verify its work through the PRAMAN CLI and
+report the verdict honestly. Install it by linking the folder into the agent's skill
+folder; see [skills/README.md](skills/README.md) for paths and what was tested
+(headless Claude Code on 2026-11-14; other agents not yet).
 
 ## Kiro integration
 

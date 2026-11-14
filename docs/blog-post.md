@@ -18,7 +18,7 @@ To move beyond a toy, I ran PRAMAN against Headlamp, an open-source Kubernetes d
 
 ## What was verified
 
-- **374 tests / 42 files** on the recorded host (2026-11-13), with build, lint and test-typecheck passing; CI runs the suite on Ubuntu and macOS.
+- **375 tests / 42 files** on the recorded host (2026-11-14), with build, lint and test-typecheck passing; CI runs the suite on Ubuntu and macOS.
 - The public first-use runner exercises **12 expected CLI and MCP outcomes** — pass, deliberate mismatch and unavailable execution on both routes — and all twelve behave as documented; the negative controls stay red.
 - **14 MCP tools** and **16 CLI commands**.
 - **Six narrated walkthroughs** from earlier development (Headlamp, Kan, Stern and jq campaigns) are preserved in a private external archive, not the repository, because they contain local paths and infrastructure data.

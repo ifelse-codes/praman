@@ -1,4 +1,4 @@
-# PRAMAN — current project status (2026-11-13, Hue-style environment plan, step 5 agent part done)
+# PRAMAN — current project status (2026-11-14, Hue-style environment plan, step 5 agent part done; agent skill and CLI error exit added)
 
 PRAMAN (प्रमाण, "evidence") is an evidence-driven verification toolkit for AI coding
 agents. An agent supplies an authored browser scenario or command declaration through
@@ -21,6 +21,30 @@ general simulator and not a sandbox.
   is done (see the next item); recording, upload and submission are the owner's. The
   handoff is in ROADMAP.md ("Handoff for the next session") and the private
   `.praman/real-apps/HANDOFF.md`.
+- **Pitch, agent skill and CLI error exit (2026-11-14, owner request):** an outside
+  review (ChatGPT export) found stale test counts; `TESTING.md`, `README.md`,
+  `docs/PLATFORMS.md` and `docs/PUBLISHING.md` now carry the current count, with CI run
+  43463147294 (`c75fa81`): 358 passed + 16 skipped on Ubuntu and macOS. The Devpost
+  draft gained a tagline ("You can't trust a coding agent. You can trust Praman.", owner
+  wording, with the sub-line "A green tick from Praman means you can deploy with
+  confidence."; the north-star paragraph states today's limit), a "Why not
+  just Playwright and an agent?" section naming mabl's 21 Oct 2026 announcement, and the
+  north star (a green tick you can merge on) stated as a goal with today's limit. New
+  `skills/praman/SKILL.md`, an agent-neutral Agent Skill that drives the CLI
+  (`skills/README.md` has install paths). Proof: headless Claude Code
+  (`4496c0bf…`, `/tmp` project) loaded the skill itself, wrote an acceptance declaration
+  from the requirement and reported `failed` with the report path on a wrong `sum.mjs`;
+  the skill's example passed, failed and gave `insufficient_evidence` (exits 0/1/2) when
+  run by hand. Codex and OpenCode were not tested (account limits); pi, omp and Copilot
+  not tried. Found on the way: `command-verify` into a used output folder exited **1**
+  (the "failed" code) with a stack trace instead of a verdict; a missing or invalid
+  declaration did the same. **Fixed the same day:** an error that stops any CLI command
+  before a verdict now prints `PRAMAN error: <message>` and "No verdict was recorded" on
+  stderr and exits 2 (not proven); commander usage errors keep exit 1; MCP is unchanged.
+  New test in `tests/dispatch.test.ts` (fails on the old build with exit 1). Full suite
+  375 tests / 42 files; first-use 12/12. On the owner's machine the skill is
+  linked from `~/.harnesses-shared/skills/praman` into seven agents' skill folders (not
+  Kiro, which uses the Power).
 - **Step 5, agent part (2026-11-13, spec `submission-story`):** `docs/video-script.md`
   now covers the work since 2026-11-09: a one-page report scene (`REPORT.html` of a
   failed three-user run on Shiori from a saved world; the rule is wrong on purpose and
