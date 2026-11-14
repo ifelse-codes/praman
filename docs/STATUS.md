@@ -54,7 +54,9 @@ general simulator and not a sandbox.
   errors (missing argument, unknown option) now also exit 2, not 1; `--help`/`--version`
   exit 0; the pinned dispatch test is updated. (3) Skill test on more agents: omp stopped
   on a usage limit, the pi command was not available, Codex and OpenCode as above; only
-  Claude Code is tested. Full suite 376 tests / 43 files; first-use 12/12. No known
+  Claude Code is tested. Full suite 376 tests / 43 files; first-use 12/12. CI on PR #35
+  (`c69e998`): push and pull-request runs green on Ubuntu and macOS at the first attempt
+  (360 passed + 16 skipped each). No known
   product bug is open. Left on purpose: the limits and deferred items below and in
   ROADMAP.md, the owner's `REPORT.html` decision, and the video, blog and submission.
 - **Step 5, agent part (2026-11-13, spec `submission-story`):** `docs/video-script.md`
