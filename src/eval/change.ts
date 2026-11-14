@@ -262,7 +262,9 @@ export async function executeScenario(spec: ChangeSpec, url: string, outDir: str
           row.evidence = error instanceof Error ? error.message : String(error);
         }
         const screenshot = join(outDir, `check-${result.checks.length + 1}.png`);
-        await page.screenshot({ path: screenshot, animations: 'disabled' });
+        // Evidence capture, not an app action: the 3 s action limit would turn a slow host
+        // (or a web font still loading) into a false "not proven". Still bounded.
+        await page.screenshot({ path: screenshot, animations: 'disabled', timeout: 15_000 });
         row.screenshot = screenshot;
         const checkpointId = row.afterStep === undefined ? undefined : spec.steps[row.afterStep]?.id;
         if (checkpointId) row.afterStepId = checkpointId;

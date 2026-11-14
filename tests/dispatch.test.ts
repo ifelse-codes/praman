@@ -101,9 +101,17 @@ describe.skipIf(!hasBuild)('dispatch smoke (requires npm run build: dist/cli.js)
     expect(help.stdout).toContain('command-verify');
 
     const missing = await runCli(['command-verify']);
-    expect(missing.code).toBe(1);
+    expect(missing.code).toBe(2);
     expect(missing.stdout).toBe('');
     expect(missing.stderr).toContain("missing required argument 'declaration'");
+
+    const unknown = await runCli(['command-verify', 'x.json', '--no-such-option']);
+    expect(unknown.code).toBe(2);
+    expect(unknown.stderr).toContain("unknown option '--no-such-option'");
+
+    const commandHelp = await runCli(['command-verify', '--help']);
+    expect(commandHelp.code).toBe(0);
+    expect(commandHelp.stdout).toContain('--summary');
   }, 90000);
 
   it('reports an error before a verdict as not proven (exit 2), never as failed (exit 1)', async () => {

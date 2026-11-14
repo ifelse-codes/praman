@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { Command, Option } from 'commander';
+import { Command, CommanderError, Option } from 'commander';
 import { demonstrateChange } from './core/demonstrate.js';
 import { loadChangeSpec } from './case/loadChange.js';
 import path from 'node:path';
@@ -38,6 +38,9 @@ function exitAfter(received: NodeJS.Signals | undefined, verdict: string) {
 
 const program = new Command();
 program.name('praman').description('Evidence-driven verification for AI-generated software').version('0.1.0');
+// Throw instead of exiting, so a usage error gets PRAMAN's "no verdict" exit code below.
+// Set before any subcommand is added: subcommands copy this setting when created.
+program.exitOverride();
 
 const environment = program.command('environment').description('Provision and exercise owned, isolated kind or Docker environments');
 environment.command('create').argument('<declaration>').option('--base <dir>', 'managed environment storage', './.praman/environments')
@@ -227,8 +230,9 @@ program.command('case-from-trace').description('Reconstruct an executable workfl
 
 // An error that stops a command before it records a verdict is not a verdict. Exit 1
 // means a declared check failed, so such an error exits 2 (not proven), without a stack.
-// Commander's own usage errors (for example a missing argument) keep commander's exit 1.
+// Commander has already printed its own usage errors; --help and --version keep exit 0.
 program.parseAsync().catch((error: unknown) => {
+  if (error instanceof CommanderError) { process.exitCode = error.exitCode === 0 ? 0 : 2; return; }
   console.error(`PRAMAN error: ${error instanceof Error ? error.message : String(error)}`);
   console.error('No verdict was recorded: not proven (exit 2). Fix the cause and run again; verification commands need a fresh output directory.');
   process.exitCode = 2;
