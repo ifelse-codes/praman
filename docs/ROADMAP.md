@@ -336,8 +336,9 @@ fresh-clone check on the day.
   first (the `sleep` call itself is refused, but the server is connected by the next turn).
   On 2026-11-13 the `praman-explorer` agent's file reads were refused even with
   `--trust-tools=read`, so show files from a terminal. Do not pass `--require-mcp-startup`.
-- **Known CI flake:** `tests/outsideCalls.test.ts` can hit the 3 s screenshot limit on a
-  loaded macOS runner (see STATUS, CI). Re-run the failed job; fix it after the submission.
+- **CI flake fixed (2026-11-14):** `tests/outsideCalls.test.ts` hit the 3 s limit with
+  PRAMAN's own evidence screenshot on a loaded macOS runner; the screenshot now has a
+  15 s limit. If a CI job still fails, read the log before re-running.
 - **Do not** start infrastructure just to refresh historical state; no new features.
 
 ### Kick-off prompt for the next session

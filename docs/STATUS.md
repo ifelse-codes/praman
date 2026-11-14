@@ -34,19 +34,29 @@ general simulator and not a sandbox.
   (`4496c0bf…`, `/tmp` project) loaded the skill itself, wrote an acceptance declaration
   from the requirement and reported `failed` with the report path on a wrong `sum.mjs`;
   the skill's example passed, failed and gave `insufficient_evidence` (exits 0/1/2) when
-  run by hand. Codex and OpenCode were not tested (account limits); pi, omp and Copilot
-  not tried. Found on the way: `command-verify` into a used output folder exited **1**
+  run by hand. Codex and OpenCode were not tested (account limits). Found on the way: `command-verify` into a used output folder exited **1**
   (the "failed" code) with a stack trace instead of a verdict; a missing or invalid
   declaration did the same. **Fixed the same day:** an error that stops any CLI command
   before a verdict now prints `PRAMAN error: <message>` and "No verdict was recorded" on
-  stderr and exits 2 (not proven); commander usage errors keep exit 1; MCP is unchanged.
-  New test in `tests/dispatch.test.ts` (fails on the old build with exit 1). Full suite
-  375 tests / 42 files; first-use 12/12. CI on PR #34 (`ce65659`): push run 43569525499
-  green on Ubuntu and macOS (359 passed + 16 skipped); the pull-request run 43569530843
-  hit the known `outsideCalls` screenshot flake on macOS (`insufficient_evidence`, not a
-  false pass) and passed on re-run. On the owner's machine the skill is
+  stderr and exits 2 (not proven); MCP is unchanged.
+  New test in `tests/dispatch.test.ts` (fails on the old build with exit 1). CI on PR #34
+  (`ce65659`): push run 43569525499 green on Ubuntu and macOS; the pull-request run
+  43569530843 hit the `outsideCalls` screenshot flake on macOS and passed on re-run
+  (fixed in the closeout below). On the owner's machine the skill is
   linked from `~/.harnesses-shared/skills/praman` into seven agents' skill folders (not
   Kiro, which uses the Power).
+- **Closeout (2026-11-14, owner request: only the video, blog and submission may remain):**
+  (1) The CI flake is fixed: PRAMAN's evidence screenshot after each browser check shared
+  the 3 s app action limit, so a loaded host or a web font still loading ended a run as
+  `insufficient_evidence`. It now has its own 15 s limit; app actions keep 3 s. New
+  `tests/evidenceScreenshot.test.ts` (a font answered after 4.5 s) gave exactly the CI
+  error, `page.screenshot: Timeout 3000ms exceeded`, on the old code. (2) Commander usage
+  errors (missing argument, unknown option) now also exit 2, not 1; `--help`/`--version`
+  exit 0; the pinned dispatch test is updated. (3) Skill test on more agents: omp stopped
+  on a usage limit, the pi command was not available, Codex and OpenCode as above; only
+  Claude Code is tested. Full suite 376 tests / 43 files; first-use 12/12. No known
+  product bug is open. Left on purpose: the limits and deferred items below and in
+  ROADMAP.md, the owner's `REPORT.html` decision, and the video, blog and submission.
 - **Step 5, agent part (2026-11-13, spec `submission-story`):** `docs/video-script.md`
   now covers the work since 2026-11-09: a one-page report scene (`REPORT.html` of a
   failed three-user run on Shiori from a saved world; the rule is wrong on purpose and
@@ -362,12 +372,12 @@ general simulator and not a sandbox.
   timing, not a product bug: the window is now 2500 ms (the 50 ms "outside" window is
   unchanged) and each check's assertion prints its index, id, observed value and window
   rows. 10/10 with all 10 CPUs saturated and 10/10 while the full suite ran.
-- **CI (known flake, left as is until after the submission; owner decision 2026-11-13):**
-  the push run on `main` after step 4d (43397070667) failed on macOS in its first attempt in
+- **CI (flake fixed 2026-11-14):** the push run on `main` after step 4d (43397070667)
+  and the PR #34 run (43569530843) failed once each on macOS in
   `tests/outsideCalls.test.ts` (record test): `page.screenshot: Timeout 3000ms exceeded` on
-  a loaded runner, the product's 3 s action limit. The second attempt passed. This is also
-  the likely cause of the unexplained one-off of 2026-11-11 (run 43069576808). The result
-  was `insufficient_evidence`, never a false pass. If it recurs, re-run the failed job.
+  a loaded runner. The cause was PRAMAN's own evidence screenshot sharing the 3 s app
+  action limit. It now has its own 15 s limit (see the 2026-11-14 entry); the result had
+  always been `insufficient_evidence`, never a false pass.
 - **CI:** PR #26 (plan step 4) was green on Ubuntu and macOS (first on commit `cf5a2d6`,
   runs 43062385840 and 43062395264, then on its final commit) and `main` is fast-forwarded
   to it. Before that, every
@@ -461,8 +471,9 @@ The shipped/frozen/deferred view is in [ROADMAP.md](ROADMAP.md).
 
 1. **Build plan:** done. Steps 0 to 4d of the Hue-style environment plan in
    [ROADMAP.md](ROADMAP.md) are done (steps 0, 1, 2 on 2026-11-10; steps 3 and 4 on
-   2026-11-11; steps 4b and 4c on 2026-11-12; step 4d on 2026-11-13). Feature freeze from
-   2026-11-19; no new features before the submission.
+   2026-11-11; steps 4b and 4c on 2026-11-12; step 4d on 2026-11-13); the 2026-11-14
+   closeout left no known product bug open. Feature freeze from 2026-11-19; no new
+   features before the submission.
 2. **Video and submission (owner):** the script update and dry run are done
    (2026-11-13, `docs/video-script.md`); decide whether the `REPORT.html` frames may be
    public; then record the takes, edit to under 3 minutes, upload publicly to YouTube; replace `<DEMO_VIDEO_URL>` in the Devpost

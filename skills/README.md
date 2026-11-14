@@ -46,8 +46,8 @@ the same rules plus PRAMAN's MCP tools and the finish gate.
 | Agent | Result (2026-11-14, macOS arm64, Node 26) |
 | --- | --- |
 | Claude Code (headless `-p`) | Loaded the skill on its own, wrote an acceptance declaration from the requirement, ran `command-verify`, and reported **failed** with the report path on a deliberately wrong `sum.mjs`. |
-| Codex, OpenCode | Not tested: the runs stopped on account limits before the agent started. |
-| pi, omp, Copilot CLI | Not tested. |
+| Codex, OpenCode, omp | Not tested: each run stopped on an account or usage limit before the agent started. |
+| pi, Copilot CLI | Not tested: the pi command was not available on the host; Copilot CLI was not tried. |
 
 ## Limits
 

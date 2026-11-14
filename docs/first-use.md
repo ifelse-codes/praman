@@ -173,8 +173,9 @@ MCP browser verification accepts a **scenario object**, not `specPath`. Command 
 a declaration path. Results are JSON text content with report/feedback pointers;
 non-pass verdicts set `isError: true`. Tool/validation errors can instead return an error
 content or protocol rejection: inspect the error, never treat absent proof as success.
-CLI malformed declarations likewise fail before execution; exit 1 for such an error
-is not proof of a completed expectation mismatch.
+CLI malformed declarations likewise fail before execution: the CLI prints
+`PRAMAN error: <message>` and exits 2 (not proven), never 1, so such an error cannot be
+mistaken for a completed expectation mismatch.
 
 Use absolute `specPath`/`outDir` in clients: relative values resolve against the MCP
 server process working directory, which the client controls. The compiled entrypoint

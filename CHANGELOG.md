@@ -20,8 +20,14 @@
   command before it records a verdict (for example a reused output folder, a missing or
   invalid declaration file) used to print a Node stack trace and exit 1, the code for a
   failed check. It now prints `PRAMAN error: <message>` and a "No verdict was recorded"
-  line on stderr and exits 2 (not proven). Commander usage errors such as a missing
-  argument keep exit 1. MCP results are unchanged.
+  line on stderr and exits 2 (not proven). Commander usage errors (a missing argument,
+  an unknown option) also exit 2 now instead of 1; `--help` and `--version` keep exit 0.
+  MCP results are unchanged.
+- Evidence screenshots in browser runs now have their own 15 s limit instead of the 3 s
+  action limit. A slow host or a web font still loading made the screenshot time out and
+  the run end as `insufficient_evidence` (the macOS CI flake in
+  `tests/outsideCalls.test.ts`, seen on 2026-11-13 and 2026-11-14). App actions keep the 3 s
+  limit. New test `tests/evidenceScreenshot.test.ts` fails on the old code.
 - Returned output paths (plan step 4d, spec `freeze-prep`): CLI and MCP output no longer
   rewrite a file path that PRAMAN made or was given as its output location (`report`,
   `reportHtml`, `feedbackPath`, `proofPath`, `output`, `directory`, `declarationPath`,

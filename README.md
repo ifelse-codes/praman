@@ -261,7 +261,7 @@ Keep runtime temp **outside the source package**: extensionless CommonJS test
 helpers otherwise inherit the root `"type":"module"` and fail. The first
 Session 1 test run exposed this harness placement issue; moving only TMPDIR
 outside the package yielded **188 passing tests / 27 files** in that historical
-Session 1 run (the current suite is **375 tests / 42 files** as of 2026-11-14). Full tests also
+Session 1 run (the current suite is **376 tests / 43 files** as of 2026-11-14). Full tests also
 use installed FFmpeg/ffprobe; that does not make them core command prerequisites.
 The core smoke used a separate PATH containing only a Node symlink, a fresh HOME,
 empty browser directory and no inherited provider settings.
@@ -1898,7 +1898,8 @@ Reports include locally clickable evidence links. Exit codes remain 0 for
 success, 1 for failed requirements and 2 for unavailable/insufficient evidence.
 An error that stops a CLI command before it records a verdict (a reused output
 folder, a missing or invalid declaration) prints `PRAMAN error: <message>` on stderr
-and exits 2, never 1. Commander usage errors (a missing argument) exit 1.
+and exits 2, never 1. Commander usage errors (a missing argument or an unknown option)
+also exit 2; `--help` and `--version` exit 0.
 
 Diagnostics use fixed categories (`check_mismatch`, `execution_unavailable`,
 `evidence_unavailable`, `proof_gate`, `story_preflight`, `recording_unavailable`).
