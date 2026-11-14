@@ -23,8 +23,7 @@ general simulator and not a sandbox.
   `.praman/real-apps/HANDOFF.md`.
 - **Pitch, agent skill and CLI error exit (2026-11-14, owner request):** an outside
   review (ChatGPT export) found stale test counts; `TESTING.md`, `README.md`,
-  `docs/PLATFORMS.md` and `docs/PUBLISHING.md` now carry the current count, with CI run
-  43463147294 (`c75fa81`): 358 passed + 16 skipped on Ubuntu and macOS. The Devpost
+  `docs/PLATFORMS.md` and `docs/PUBLISHING.md` now carry the current count and CI run. The Devpost
   draft gained a tagline ("You can't trust a coding agent. You can trust Praman.", owner
   wording, with the sub-line "A green tick from Praman means you can deploy with
   confidence."; the north-star paragraph states today's limit), a "Why not
@@ -42,7 +41,10 @@ general simulator and not a sandbox.
   before a verdict now prints `PRAMAN error: <message>` and "No verdict was recorded" on
   stderr and exits 2 (not proven); commander usage errors keep exit 1; MCP is unchanged.
   New test in `tests/dispatch.test.ts` (fails on the old build with exit 1). Full suite
-  375 tests / 42 files; first-use 12/12. On the owner's machine the skill is
+  375 tests / 42 files; first-use 12/12. CI on PR #34 (`ce65659`): push run 43569525499
+  green on Ubuntu and macOS (359 passed + 16 skipped); the pull-request run 43569530843
+  hit the known `outsideCalls` screenshot flake on macOS (`insufficient_evidence`, not a
+  false pass) and passed on re-run. On the owner's machine the skill is
   linked from `~/.harnesses-shared/skills/praman` into seven agents' skill folders (not
   Kiro, which uses the Power).
 - **Step 5, agent part (2026-11-13, spec `submission-story`):** `docs/video-script.md`
