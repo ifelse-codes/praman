@@ -61,8 +61,8 @@ it('names an ambiguous step selector and its match count without changing the ve
   expect(summary).toContain('Next: The selector matched 3 elements; make it match exactly one');
   expect(JSON.parse(feedback).diagnostics[0].diagnosis.kind).toBe('locator_ambiguous');
   expect(report.split('\n').slice(0, 7)).toEqual(['Outcome: insufficient_evidence', 'Requirements: not declared. This verdict covers only the declared checks, not the requirements they were meant to cover.', '', '## Checks', '',
-    '| Check | Kind | After step | Run 1 | Run 2 | Diagnosis |', '| --- | --- | --- | --- | --- | --- |']);
-  expect(report).toContain('| 0 | text | end | not_executed | not_executed | locator_ambiguous (3 elements) at step 0 |');
+    '| Check | Id | Kind | What it checks | After step | Run 1 | Run 2 | Diagnosis |', '| --- | --- | --- | --- | --- | --- | --- | --- |']);
+  expect(report).toContain('| 0 | status | text | element text equals | end | not_executed | not_executed | locator_ambiguous (3 elements) at step 0 |');
   expect(report).toContain('### Check[0]');
   expectPrivate(summary, report, feedback, JSON.stringify(shown));
 }, 60_000);
@@ -78,10 +78,10 @@ it('tables passing, ambiguous and timed-out checks and keeps each verdict', asyn
     ['evidence_unavailable', 1, 1, 'locator_ambiguous'], ['evidence_unavailable', 1, 2, 'locator_timeout'],
     ['evidence_unavailable', 2, 1, 'locator_ambiguous'], ['evidence_unavailable', 2, 2, 'locator_timeout']]);
   expect(result.diagnostics[1].diagnosis).toEqual({ kind: 'locator_timeout', facts: { timeoutMs: 1500 } });
-  expect(summary).toContain('evidence_unavailable: current run 1 check[1]; diagnosis: locator_ambiguous (3 elements)');
-  expect(report).toContain('| 0 | text | 0 | passed | passed |  |');
-  expect(report).toContain('| 1 | text | end | insufficient_evidence | insufficient_evidence | locator_ambiguous (3 elements) |');
-  expect(report).toContain('| 2 | text | end | insufficient_evidence | insufficient_evidence | locator_timeout (1500 ms) |');
+  expect(summary).toContain('evidence_unavailable: current run 1 check[1] (many); diagnosis: locator_ambiguous (3 elements)');
+  expect(report).toContain('| 0 | status | text | element text equals | 0 | passed | passed |  |');
+  expect(report).toContain('| 1 | many | text | element text equals | end | insufficient_evidence | insufficient_evidence | locator_ambiguous (3 elements) |');
+  expect(report).toContain('| 2 | absent | text | element text equals | end | insufficient_evidence | insufficient_evidence | locator_timeout (1500 ms) |');
   expectPrivate(summary, report, feedback);
 }, 60_000);
 
@@ -92,7 +92,7 @@ it('classifies a failed navigation step', async () => {
   expect(result.verdict).toBe('insufficient_evidence');
   expect(result.diagnostics[0]).toMatchObject({ category: 'execution_unavailable', step: 0, diagnosis: { kind: 'navigation_failed', facts: {} } });
   expect(summary).toContain('diagnosis: navigation_failed');
-  expect(report).toContain('| 0 | text | end | not_executed | not_executed | navigation_failed at step 0 |');
+  expect(report).toContain('| 0 | status | text | element text equals | end | not_executed | not_executed | navigation_failed at step 0 |');
   expectPrivate(summary, report);
 }, 60_000);
 
@@ -102,5 +102,5 @@ it('adds no diagnosis to a passing run and keeps its table green', async () => {
   const { result, report } = await verify(spec, 'passing');
   expect(result.verdict).toBe('passed');
   expect(result.diagnostics).toEqual([]);
-  expect(report).toContain('| 0 | text | end | passed | passed |  |');
+  expect(report).toContain('| 0 | status | text | element text equals | end | passed | passed |  |');
 }, 60_000);

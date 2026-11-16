@@ -11,6 +11,8 @@ export interface Diagnostic {
   run?: number;
   /** Declaration check index, zero-based; -1 denotes the command exit check. */
   checkIndex?: number;
+  /** The authored id of that check (`$exit` for the command exit check). */
+  checkId?: string;
   /** Many users: zero-based index of the declared invariant. */
   invariantIndex?: number;
   stage?: 'before' | 'current' | 'code';
@@ -39,7 +41,7 @@ export function formatSummary(result: { verdict: string; diagnostics?: Diagnosti
   for (const diagnostic of shown) {
     const location = [diagnostic.requirementId === undefined ? undefined : `requirement ${diagnostic.requirementId}`,
       diagnostic.version, diagnostic.run === undefined ? undefined : `run ${diagnostic.run}`,
-      diagnostic.checkIndex === undefined ? undefined : diagnostic.checkIndex === -1 ? 'exit check' : `check[${diagnostic.checkIndex}]`,
+      diagnostic.checkIndex === undefined ? undefined : diagnostic.checkIndex === -1 ? 'exit check' : `check[${diagnostic.checkIndex}]${diagnostic.checkId ? ` (${diagnostic.checkId})` : ''}`,
       diagnostic.invariantIndex === undefined ? undefined : `invariant[${diagnostic.invariantIndex}]`,
       diagnostic.stage === undefined ? undefined : `stage ${diagnostic.stage}`,
       diagnostic.beat === undefined ? undefined : `beat[${diagnostic.beat}]`,
@@ -108,7 +110,7 @@ export function checkDiagnostics(outDir: string, proof: { verdict: string; mode?
       // A browser check that could not observe keeps its private error in `evidence`.
       const diagnosis = !command && row.verdict === 'insufficient_evidence' && typeof row.evidence === 'string' && row.evidence ? classifyError(row.evidence) : undefined;
       diagnostics.push({
-        category: unavailable ? 'evidence_unavailable' : 'check_mismatch', version, run, checkIndex, ...(diagnosis ? { diagnosis } : {}),
+        category: unavailable ? 'evidence_unavailable' : 'check_mismatch', version, run, checkIndex, checkId: row.id, ...(diagnosis ? { diagnosis } : {}),
         references: [ref('proof.json', `${proofPointer}/checks/${index}`),
           ...(existsSync(join(outDir, result)) ? [ref(result, `/checks/${index}`)] : []),
           ...(command && row.evidence ? [ref(row.evidence)] : []),

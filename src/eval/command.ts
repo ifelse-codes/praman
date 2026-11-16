@@ -10,6 +10,7 @@ import { inspectMedia, mediaAssertion } from './media.js';
 import { observeResources, resourceConfigSchema, type ResourceConfig, type ResourceObservation } from './resources.js';
 import { captureIdentity, identityComplete, identityDeclarationSchema, identityScope, normalizeIdentity, sameIdentity, type IdentitySnapshot } from './identity.js';
 import { applyCoverage, assessRequirements, checkRequirementRefs, requirementDiagnostics, requirementRows, requirementsSchema } from '../review/requirements.js';
+import { describeCommandCheck } from '../review/describe.js';
 
 export const commandInvocationSchema = z.object({ executable: z.string().min(1), args: z.array(z.string()).default([]), cwd: z.string().min(1), env: z.record(z.string(), z.string().nullable()).default({}), stdin: z.string().optional(), deadlineMs: z.number().int().min(1).max(300000), identity: identityDeclarationSchema.optional() }).strict();
 const textAssertion = z.object({ id: z.string().min(1), source: z.enum(['stdout', 'stderr', 'artifact']), path: z.string().optional(), operator: z.enum(['equals', 'contains', 'notContains', 'matches']), value: z.string() }).strict().superRefine((row, ctx) => {
@@ -203,6 +204,7 @@ export async function proveCommands(specPath: string, outputDirectory: string, s
       return {
         checkId,
         checkIndex: checkId === '$exit' ? -1 : spec.checks.findIndex(check => check.id === checkId),
+        description: describeCommandCheck(checkId === '$exit' ? '$exit' : spec.checks.find(check => check.id === checkId)!),
         status: mismatch ? 'current_failure' : incomplete ? 'incomplete'
           : spec.mode === 'repair' && verdict === 'passed' && checkId === spec.regressionCheck ? 'resolved_regression'
           : historical ? spec.mode === 'repair' ? 'historical_failure' : 'baseline_mismatch' : 'passed',
@@ -227,9 +229,9 @@ export async function proveCommands(specPath: string, outputDirectory: string, s
   privateJson(feedbackPath, feedback);
   // Same overview as browser reports; command checks have no steps, and a run that did not exit names its status.
   const runLabels = [...(before ? ['Before'] : []), ...current.map((_, i) => `Run ${i + 1}`)];
-  const overview = ['## Checks', '', ...formatTable(['Check', 'Kind', ...runLabels, 'Diagnosis'], feedback.findings.map(finding => {
+  const overview = ['## Checks', '', ...formatTable(['Check', 'Id', 'Kind', 'What it checks', ...runLabels, 'Diagnosis'], feedback.findings.map(finding => {
     const statuses = [...new Set(finding.occurrences.map(row => row.status).filter(status => status !== 'exited'))];
-    return [finding.checkIndex === -1 ? 'exit' : String(finding.checkIndex), finding.checkIndex === -1 ? 'exit' : spec.checks[finding.checkIndex]?.source ?? 'unknown',
+    return [finding.checkIndex === -1 ? 'exit' : String(finding.checkIndex), finding.checkId, finding.checkIndex === -1 ? 'exit' : spec.checks[finding.checkIndex]?.source ?? 'unknown', finding.description,
       ...finding.occurrences.map(row => row.verdict ?? 'not_executed'), statuses.map(status => `run ${status}`).join('; ')];
   })), '', '## Requirements', '', ...(feedback.requirements.declared ? formatTable(['Requirement', 'Checks', 'Status'], requirementRows(feedback.requirements)) : ['Not declared: add a `requirements` list to see which requirements these checks cover.'])];
   writeFileSync(report, `# Command verification\n\nMode: ${spec.mode}\n\nBaseline: ${spec.baselineKind ?? 'none (current-only)'}\n\nVerdict: ${verdict}\n\n${feedback.reason}\n\n${feedback.scope}\n\nIdentity: ${proof.identityStatus}. Inspect private proof.json and per-run result.json identityBefore/identityAfter entries for declared coverage and hashes.\n\n${feedback.reproduction}\n\nPrivate evidence: proof.json; per-run result.json, stdout.txt, stderr.txt and captured artifacts.\n`, { mode: 0o600 });

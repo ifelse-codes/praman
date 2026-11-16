@@ -210,9 +210,9 @@ describe('three users in real browsers', () => {
     const feedback = JSON.parse(readFileSync(join(dir, outDir, 'feedback.json'), 'utf8'));
     expect(feedback.concurrency[0]).toMatchObject({ run: 1, users: ['passed', 'passed', 'passed'] });
     expect(feedback.concurrency[0].invariants).toEqual([{ index: 0, kind: 'count', verdict: 'failed' }]);
-    // No invariant id or application text in safe output.
+    // Authored invariant ids are shown since 2026-11-16 (honest coverage); application text is not.
     const shown = JSON.stringify(safeFeedbackValue(result, changeSpecSchema.parse(declaration({ afterUrl: origin }))));
-    expect(shown).not.toContain('one-each');
+    expect(shown).toContain('"id":"one-each"');
     expect(shown).not.toContain('User 1');
   }, 120_000);
 

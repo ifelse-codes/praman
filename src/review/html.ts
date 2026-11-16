@@ -23,6 +23,8 @@ export interface HtmlCheck {
   index: number;
   id: string;
   kind: string;
+  /** Plain line from the kind, for example "element text equals". */
+  description: string;
   target: string;
   status: string;
   summary: string;
@@ -131,16 +133,16 @@ export function renderEvidenceHtml(model: EvidenceHtmlModel): string {
       ...model.requirements.rows.map(row => `<tr><th scope="row">${escapeHtml(row.id)}</th><td>${escapeHtml(row.text)}</td><td>${row.checks.length ? escapeHtml(row.checks.join(', ')) : '<strong>none</strong>'}</td><td>${row.status === 'untested' ? '<strong>untested</strong>' : verdict(row.status as HtmlVerdict)}</td></tr>`), `</tbody></table>`] : []),
     `</section>`);
 
-  out.push(`<section aria-labelledby="checks-h"><h2 id="checks-h">Checks</h2><table><thead><tr><th scope="col">Check</th><th scope="col">Id</th><th scope="col">Kind</th><th scope="col">After step</th>`,
+  out.push(`<section aria-labelledby="checks-h"><h2 id="checks-h">Checks</h2><table><thead><tr><th scope="col">Check</th><th scope="col">Id</th><th scope="col">Kind</th><th scope="col">What it checks</th><th scope="col">After step</th>`,
     ...model.runLabels.map(label => `<th scope="col">${escapeHtml(label)}</th>`), `<th scope="col">Diagnosis</th></tr></thead><tbody>`);
   for (const check of model.checks) {
-    out.push(`<tr><th scope="row"><a href="#check-${check.index}">Check ${check.index}</a></th><td>${escapeHtml(check.id)}</td><td>${escapeHtml(check.kind)}</td><td>${check.runs[0]?.afterStep === undefined ? 'end' : check.runs[0].afterStep}</td>`,
+    out.push(`<tr><th scope="row"><a href="#check-${check.index}">Check ${check.index}</a></th><td>${escapeHtml(check.id)}</td><td>${escapeHtml(check.kind)}</td><td>${escapeHtml(check.description)}</td><td>${check.runs[0]?.afterStep === undefined ? 'end' : check.runs[0].afterStep}</td>`,
       ...check.runs.map(run => `<td><a href="#check-${check.index}">${verdict(run.verdict)}</a></td>`), `<td>${escapeHtml(check.diagnosisLabels.join('; '))}</td></tr>`);
   }
   out.push(`</tbody></table></section><section aria-labelledby="cards-h"><h2 id="cards-h">Check details</h2>`);
   for (const check of model.checks) {
     out.push(`<article class="card" id="check-${check.index}"><h3>Check ${check.index}: ${escapeHtml(check.id)} (${escapeHtml(check.kind)}) &mdash; ${escapeHtml(check.status)}</h3>`,
-      `<p>${escapeHtml(check.summary)}</p><p><strong>Root cause: unknown.</strong></p><p><strong>Next action:</strong> ${escapeHtml(check.nextAction)}</p><p>Target: <code>${escapeHtml(check.target)}</code></p>`);
+      `<p>What it checks: ${escapeHtml(check.description)}.</p><p>${escapeHtml(check.summary)}</p><p><strong>Root cause: unknown.</strong></p><p><strong>Next action:</strong> ${escapeHtml(check.nextAction)}</p><p>Target: <code>${escapeHtml(check.target)}</code></p>`);
     for (const run of check.runs) {
       out.push(`<div class="run"><h4>${escapeHtml(run.label)}, ${escapeHtml(stepOf(run))}: ${verdict(run.verdict)}${run.recorded !== run.verdict ? ` (recorded ${verdict(run.recorded)})` : ''}</h4>`,
         `<p>Expected: <code>${escapeHtml(text(run.expected))}</code><br>Observed: <code>${escapeHtml(text(run.observed))}</code></p>`,

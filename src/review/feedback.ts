@@ -8,6 +8,7 @@ import { describeDiagnosis } from './classify.js';
 import { renderEvidenceHtml, type EvidenceHtmlModel, type HtmlCheck, type HtmlImage, type HtmlRunCell, type HtmlUsersRun } from './html.js';
 import { identityComplete, sameIdentity, type IdentitySnapshot } from '../eval/identity.js';
 import { assessRequirements, requirementDiagnostics, requirementRows, type RequirementCoverage } from './requirements.js';
+import { describeBrowserCheck } from './describe.js';
 
 export interface FeedbackContext {
   environmentId?: string;
@@ -77,7 +78,8 @@ export function safeFeedbackValue<T>(value: T, spec?: ChangeSpec, secrets: strin
         : Array.isArray(child) && outputPathKeys.test(key) ? child.map(entry => typeof entry === 'string' && isPathValue(entry) ? keepPath(entry) : visit(entry))
         : /^(identityBefore|identityAfter)$/.test(key) ? { status: identityComplete(child as IdentitySnapshot) ? 'recorded' : 'unavailable', details: 'Inspect private proof/result identity entries.' }
         : !reveal && /^(expected|observed)$/i.test(key) && child !== null && !['number', 'boolean', 'undefined'].includes(typeof child) ? '[Private value; inspect indexed evidence.]'
-        : !reveal && ((/^(selector|target|title|scenario|requirement|change|note|text|url|checkId|afterStepId|failedStepId)$/i.test(key) && typeof child === 'string') || (key === 'id' && 'expected' in item)) ? '[Private declaration field; inspect indexed evidence.]'
+        // Authored check and invariant ids are shown so a person can see what was checked; a known secret inside one is still redacted by value.
+        : !reveal && (/^(selector|target|title|scenario|requirement|change|note|text|url|afterStepId|failedStepId)$/i.test(key) && typeof child === 'string') ? '[Private declaration field; inspect indexed evidence.]'
         : !reveal && privateText.test(key) && typeof child === 'string' ? '[Private raw detail; inspect the referenced evidence locally.]' : visit(child)]));
   }
   const result = visit(value);
@@ -104,6 +106,8 @@ export interface CheckFeedback {
   checkId: string;
   checkIndex: number;
   kind: ChangeSpec['checks'][number]['kind'];
+  /** One plain line from the kind only, for example "element text equals"; no selector or value. */
+  description: string;
   target: string;
   status: 'current_failure' | 'resolved_regression' | 'historical_failure' | 'baseline_mismatch' | 'incomplete' | 'passed';
   category: 'behavior_mismatch' | 'missing_execution_or_evidence' | 'declared_expectation_satisfied' | 'historical_regression' | 'baseline_comparison';
@@ -210,7 +214,7 @@ function rawFeedback(spec: ChangeSpec, proof: ChangeProof, outDir: string, conte
       : status === 'baseline_mismatch' ? 'Inspect baseline/current evidence as a comparison, not a historical repair request.'
       : spec.mode === 'acceptance' ? 'Preserve this current-requirement evidence; rerun acceptance after relevant changes.'
       : 'No repair requested for this check. Preserve the evidence; rerun after relevant changes.';
-    return { checkId: check.id, checkIndex: spec.checks.indexOf(check), kind: check.kind, target, status,
+    return { checkId: check.id, checkIndex: spec.checks.indexOf(check), kind: check.kind, description: describeBrowserCheck(check), target, status,
       category: status === 'current_failure' ? 'behavior_mismatch' : status === 'incomplete' ? 'missing_execution_or_evidence'
         : historical ? 'historical_regression' : status === 'baseline_mismatch' ? 'baseline_comparison' : 'declared_expectation_satisfied', summary, rootCause: 'unknown', nextAction, occurrences };
   });
@@ -227,7 +231,7 @@ function rawFeedback(spec: ChangeSpec, proof: ChangeProof, outDir: string, conte
     scope: proof.scope, context, provenanceLimit: 'Source/build hashes and a supplied diff are context, not signed source-to-deployment provenance.',
     identityStatus: [...(proof.before ? [proof.before] : []), ...proof.after].every(run => sameIdentity(run.identityBefore, run.identityAfter) && sameIdentity(proof.after[0]?.identityBefore, run.identityBefore)) ? 'stable' : 'unavailable_or_changed',
     identityEvidence: { path: resolve(outDir, 'proof.json'), private: true as const },
-    privacyLimit: 'Application text, identifiers, selectors, string/object expectations and observations, raw errors, known credentials and private fill inputs are withheld. Numeric scalars matching known private numeric values are also withheld, including equivalent leading-zero/exponent forms. Other numeric/boolean observations and caller-owned local evidence paths remain visible. Raw screenshots, scenarios, result/proof/network files remain private; no sanitized-export guarantee.',
+    privacyLimit: 'Authored check and requirement ids and one plain line per check kind are shown. Application text, step ids, selectors, string/object expectations and observations, raw errors, known credentials and private fill inputs are withheld. Numeric scalars matching known private numeric values are also withheld, including equivalent leading-zero/exponent forms. Other numeric/boolean observations and caller-owned local evidence paths remain visible. Raw screenshots, scenarios, result/proof/network files remain private; no sanitized-export guarantee.',
     issues, requirements: proof.requirements ?? assessRequirements(spec.requirements, () => []), ...(concurrency ? { concurrency } : {}), reproduction: { setup: context.environmentId
       ? `If the recorded instance is destroyed or unavailable, run praman environment create \"${context.declarationPath ?? '<original-private-declaration>'}\" --base <owned-base>, then praman environment verify <new-id> --base <owned-base>. Create a fresh managed instance, restore the failing run's state/preconditions from the private operation history (${context.operationLog ?? 'caller-owned history'}) and scenario before verifying; a fresh seed alone may not reproduce a stateful failure. Recorded localhost URLs are historical targets, not a live service guarantee. Workflow step indexes are zero-based.`
       : `Start caller-owned isolated ${spec.mode === 'acceptance' ? 'current application' : 'baseline/current applications'}, restore the declared seed and private inputs, and rerun this ${spec.mode} scenario. Recorded URLs may no longer be live. Verification does not require video.`,
@@ -255,23 +259,23 @@ export function formatFeedback(feedback: ChangeFeedback): string {
     ...feedback.reproduction.steps.map(step => `- ${markdown(step)}`), '', '## Evidence and findings', '',
     ...feedback.issues.map(issue => `- ${markdown(issue)}`)];
   for (const finding of feedback.findings) {
-    lines.push('', `### Check[${finding.checkIndex}] — ${finding.status}`, '', finding.summary, '', 'Root cause: unknown.', '', markdown(finding.nextAction));
+    lines.push('', `### Check[${finding.checkIndex}] ${markdown(finding.checkId)} — ${finding.status}`, '', `What it checks: ${finding.description}.`, '', finding.summary, '', 'Root cause: unknown.', '', markdown(finding.nextAction));
     for (const row of finding.occurrences) lines.push('', `- ${row.version} run ${row.run}; ${row.afterStep === undefined ? 'end of workflow' : `after step ${row.afterStep}`} — **${row.verdict}** (recorded ${row.recordedVerdict}); expected ${markdown(row.expected)}; observed ${markdown(row.observed)}.`,
       ...row.gaps.map(gap => `  - ${gap}`), ...row.references.map(ref => `  - [Private ${ref.kind}](${pathToFileURL(ref.path).href}): ${markdown(ref.path)} (${ref.exists ? 'exists' : 'missing'}).`));
   }
   return lines.join('\n') + '\n';
 }
-/** One row per declared check: index, kind, checkpoint, verdict per run and safe diagnosis labels. */
+/** One row per declared check: index, authored id, kind, a plain line, checkpoint, verdict per run and safe diagnosis labels. */
 export function formatCheckOverview(feedback: Pick<ChangeFeedback, 'findings'>, diagnostics: Diagnostic[]): string[] {
   const runs = feedback.findings[0]?.occurrences ?? [];
-  const header = ['Check', 'Kind', 'After step', ...runs.map(row => row.version === 'before' ? 'Before' : `Run ${row.run}`), 'Diagnosis'];
+  const header = ['Check', 'Id', 'Kind', 'What it checks', 'After step', ...runs.map(row => row.version === 'before' ? 'Before' : `Run ${row.run}`), 'Diagnosis'];
   const rows = feedback.findings.map(finding => {
     const labels = diagnostics.filter(item => item.diagnosis && (item.category === 'evidence_unavailable' && item.checkIndex === finding.checkIndex
       // A stopped run explains the checks it never reached.
       || item.category === 'execution_unavailable' && finding.occurrences.some(row => row.version === item.version && row.run === item.run && row.verdict === 'not_executed')))
       .map(item => `${describeDiagnosis(item.diagnosis!)}${item.category === 'execution_unavailable' && item.step !== undefined ? ` at step ${item.step}` : ''}`);
     const step = finding.occurrences[0]?.afterStep;
-    return [String(finding.checkIndex), finding.kind, step === undefined ? 'end' : String(step), ...finding.occurrences.map(row => row.verdict), [...new Set(labels)].join('; ')];
+    return [String(finding.checkIndex), finding.checkId, finding.kind, finding.description, step === undefined ? 'end' : String(step), ...finding.occurrences.map(row => row.verdict), [...new Set(labels)].join('; ')];
   });
   return ['## Checks', '', ...formatTable(header, rows)];
 }
@@ -305,7 +309,7 @@ function evidenceHtmlModel(spec: ChangeSpec, proof: ChangeProof, outDir: string,
     });
     const tableLabels = finding.occurrences.flatMap(occurrence => diagnosticsFor(finding.checkIndex, occurrence.version, occurrence.run, occurrence.verdict === 'not_executed')
       .filter(item => item.diagnosis).map(diagnosisLabel));
-    return { index: finding.checkIndex, id: finding.checkId, kind: finding.kind, target: finding.target, status: finding.status, summary: finding.summary, nextAction: finding.nextAction, runs, diagnosisLabels: [...new Set(tableLabels)] };
+    return { index: finding.checkIndex, id: finding.checkId, kind: finding.kind, description: finding.description, target: finding.target, status: finding.status, summary: finding.summary, nextAction: finding.nextAction, runs, diagnosisLabels: [...new Set(tableLabels)] };
   });
   const stops = (index: number) => [
     ...(proof.before?.failedStep === index ? ['Before'] : []),

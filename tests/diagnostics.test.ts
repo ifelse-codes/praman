@@ -15,7 +15,7 @@ it('locates a private command mismatch by declaration index, result pointer and 
   const declaration = join(root, 'input.json');
   writeFileSync(declaration, JSON.stringify({ mode: 'acceptance', title: secret, requirement: secret,
     current: { executable: process.execPath, args: ['-e', `console.log(${JSON.stringify(secret)})`], cwd: root, deadlineMs: 2000 },
-    checks: [{ id: secret, source: 'stdout', operator: 'equals', value: 'different-private-value' }], repeats: 2 }));
+    checks: [{ id: 'message', source: 'stdout', operator: 'equals', value: 'different-private-value' }], repeats: 2 }));
   const result = await proveCommands(declaration, join(root, 'proof'));
   expect(result.verdict).toBe('failed');
   expect(result.diagnostics.map(row => [row.category, row.run, row.checkIndex])).toEqual([['check_mismatch', 1, 0], ['check_mismatch', 2, 0]]);
@@ -28,9 +28,9 @@ it('locates a private command mismatch by declaration index, result pointer and 
   expect(diagnostic.references.find(ref => ref.path.endsWith('result.json'))?.pointer).toBe('/checks/1');
   expect(result.diagnostics.every(row => row.diagnosis === undefined)).toBe(true);
   const report = readFileSync(result.report, 'utf8');
-  expect(report).toContain('| Check | Kind | Run 1 | Run 2 | Diagnosis |');
-  expect(report).toContain('| exit | exit | passed | passed |  |');
-  expect(report).toContain('| 0 | stdout | failed | failed |  |');
+  expect(report).toContain('| Check | Id | Kind | What it checks | Run 1 | Run 2 | Diagnosis |');
+  expect(report).toContain('| exit | $exit | exit | exit code equals | passed | passed |  |');
+  expect(report).toContain('| 0 | message | stdout | stdout equals | failed | failed |  |');
   expect(report.indexOf('## Checks')).toBeLessThan(report.indexOf('check_mismatch'));
   for (const text of [JSON.stringify(result), readFileSync(result.feedbackPath, 'utf8'), readFileSync(result.report, 'utf8')]) {
     expect(text).not.toContain(secret); expect(text).not.toContain('different-private-value');
@@ -64,12 +64,14 @@ it('reports only reached preflight positions and does not reuse successful prefl
   expect(recordingDiagnostic(root, join(root, 'failure.json')).beat).toBeUndefined();
 });
 
-it('withholds arbitrary application values and identifiers while preserving numeric observations and owned IDs', () => {
-  const value = safeFeedbackValue({ id: 'owned-environment', checks: [{ id: 'private-check-id', verdict: 'failed', expected: 'private expectation', observed: { arbitrary: 'private DOM' } }],
+it('withholds arbitrary application values while preserving numeric observations, owned IDs and authored check ids', () => {
+  const value = safeFeedbackValue({ id: 'owned-environment', checks: [{ id: 'authored-check-id', verdict: 'failed', expected: 'private expectation', observed: { arbitrary: 'private DOM' } }],
     target: 'private selector', title: 'private title', next: { observed: 0, expected: true } });
   expect(value.id).toBe('owned-environment');
   expect(value.next).toEqual({ observed: 0, expected: true });
-  for (const text of ['private-check-id', 'private expectation', 'private DOM', 'private selector', 'private title']) expect(JSON.stringify(value)).not.toContain(text);
+  // Since 2026-11-16 (honest coverage) authored check ids are shown, so a person can see what was checked.
+  expect(value.checks[0].id).toBe('authored-check-id');
+  for (const text of ['private expectation', 'private DOM', 'private selector', 'private title']) expect(JSON.stringify(value)).not.toContain(text);
 });
 
 it.each(['314159', '00314159', '3.14159e5'])('withholds numeric observations matching private input %s', privateInput => {
