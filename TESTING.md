@@ -52,7 +52,7 @@ npm run lint:tests
 npm test -- --maxWorkers=2
 ```
 
-Full suite: 376 tests / 43 files (2026-11-14). On the public CI runners (no ffmpeg/ffprobe) it reports
+Full suite: 397 tests / 47 files (2026-11-16). On the public CI runners (no ffmpeg/ffprobe) it reports
 360 passed and 16 skipped (42 files passed, 1 skipped; CI run 43580613973 of `c69e998`, 2026-11-14):
 the media/speech tests skip when ffmpeg/ffprobe are not installed; that is
 environment-guarded, not a pass.

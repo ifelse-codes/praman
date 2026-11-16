@@ -261,7 +261,7 @@ Keep runtime temp **outside the source package**: extensionless CommonJS test
 helpers otherwise inherit the root `"type":"module"` and fail. The first
 Session 1 test run exposed this harness placement issue; moving only TMPDIR
 outside the package yielded **188 passing tests / 27 files** in that historical
-Session 1 run (the current suite is **376 tests / 43 files** as of 2026-11-14). Full tests also
+Session 1 run (the current suite is **397 tests / 47 files** as of 2026-11-16). Full tests also
 use installed FFmpeg/ffprobe; that does not make them core command prerequisites.
 The core smoke used a separate PATH containing only a Node symlink, a fresh HOME,
 empty browser directory and no inherited provider settings.
@@ -1841,7 +1841,7 @@ Standalone `scenario-verify`, managed `environment verify`, managed/standalone
 `demonstrate` and their MCP consumers share `src/review/feedback.ts`. Managed CLI/MCP
 results include `evidence.feedback`, `feedbackPath` and `report`; standalone paths
 return the same fields directly. Programmatic `proveChange` returns
-`{ verdict, proof, feedback, feedbackPath, report, diagnostics }`, not a bare `ChangeProof`.
+`{ verdict, requirements, appUnderTest, repeatOf?, repeatNote?, proof, feedback, feedbackPath, report, reportHtml, diagnostics, coverageSummary }`, not a bare `ChangeProof`.
 
 - Findings group a declared check's before/current occurrences without losing
   repeated-run observations, checkpoints, missing evidence or unaffected checks.
@@ -1868,8 +1868,10 @@ return the same fields directly. Programmatic `proveChange` returns
   observed state/preconditions from private operation history; a fresh seed alone
   may not reproduce a stateful failure. Saved localhost URLs are not live targets.
 - Safe feedback/report and CLI/MCP presentation withhold arbitrary application
-  text, check IDs, selectors, string/object expectations/observations, workflow
-  fill values, recognized credential fields and raw error/evidence text.
+  text, step IDs, selectors, string/object expectations/observations, workflow
+  fill values, recognized credential fields and raw error/evidence text. Authored
+  check, invariant and requirement IDs are shown (since 2026-11-16), so a person can
+  see what was checked; a known secret inside an ID is still redacted by value.
   Numeric scalars matching known private numeric values are also withheld,
   including leading-zero/exponent equivalents; unrelated numeric/boolean
   observations and caller-owned local paths remain visible. Known secret values
@@ -1902,10 +1904,12 @@ and exits 2, never 1. Commander usage errors (a missing argument or an unknown o
 also exit 2; `--help` and `--version` exit 0.
 
 Diagnostics use fixed categories (`check_mismatch`, `execution_unavailable`,
-`evidence_unavailable`, `proof_gate`, `story_preflight`, `recording_unavailable`).
+`evidence_unavailable`, `proof_gate`, `story_preflight`, `recording_unavailable`,
+`requirement_untested`, `target_unavailable`).
 `version`/`run` identify execution; runs are one-based. `checkIndex`, `beat` and
 browser `step` are zero-based declaration/story indexes; `checkIndex: -1` denotes
-the implicit command exit check. `references` contain an absolute private local
+the implicit command exit check, and `checkId` names the authored check id
+(`check[0] (total)` in the summary). `references` contain an absolute private local
 `path` and, where applicable, a JSON `pointer`. Browser result/proof check rows
 hold expected/observed values. Command expectations live in `declaration.json`;
 result rows link directly to captured stdout/stderr/artifacts.
@@ -1921,12 +1925,58 @@ next action. Only the kind and these numbers or the state word leave private evi
 selectors, URLs, values and the raw message do not. The diagnosis never changes a verdict
 or exit code. Command runs are not classified.
 
-`REPORT.md` starts with a `## Checks` table right after the `Outcome:` line: one row
-per check with its index, kind, checkpoint step (browser), verdict per run (`Before`
-for paired modes) and the diagnosis. A check that never ran shows the diagnosis of the
-step that stopped its run. The command report uses the same table without the step
-column; kinds are `exit`, `stdout`, `stderr` or `artifact`, and a run that did not exit
-shows its status (`run timeout`, `run interrupted`, `run unavailable`).
+`REPORT.md` starts with the `Outcome:` line, then the `Requirements:`, `App under test:`
+and (when it applies) `Repeat:` lines described below, then a `## Checks` table: one row
+per check with its index, authored id, kind, a plain line from the kind only ("What it
+checks", for example `element text equals` or `stdout contains`), checkpoint step
+(browser), verdict per run (`Before` for paired modes) and the diagnosis. A check that
+never ran shows the diagnosis of the step that stopped its run. The command report uses
+the same table without the step column; kinds are `exit`, `stdout`, `stderr` or
+`artifact`, and a run that did not exit shows its status (`run timeout`, `run
+interrupted`, `run unavailable`).
+
+### Requirement coverage, the app under test and repeated runs (2026-11-16)
+
+These three exist because a pass that checks 2 of 19 requirements, or re-runs an
+unchanged declaration, must not read as "the work is done". Each field is optional;
+a declaration without them keeps its verdict and hash.
+
+- **`requirements`** (command and browser declarations): up to 100 entries
+  `{ "id", "text", "checks": [check ids] }`. Command declarations may name `$exit`;
+  browser scenarios may name `users.invariants` ids. An unknown or ambiguous id, or a
+  duplicate requirement id, is rejected before anything runs. A requirement with an
+  empty `checks` list turns a run that would pass into `insufficient_evidence` (exit 2)
+  with a `requirement_untested` diagnostic; a failed run stays `failed`. Each
+  requirement gets a status (`passed`, `failed`, `insufficient_evidence` when a mapped
+  check did not run or lacks evidence, or `untested`). The summary prints
+  `Requirements: 4 of 5 have a check (4 passed). No check: persist.`; without the list it
+  prints `Requirements: not declared.` Requirement text stays in the private declaration
+  and is shown only in `REPORT.html`.
+- **`target`** (command and browser declarations): a trusted command
+  `{ "executable", "args", "cwd", "env", "deadlineMs" }` (deadline up to 60 s, default
+  10 s; `cwd` relative to the declaration file) that prints the version of the app under
+  test, for example `git rev-parse --short HEAD`. PRAMAN reads it before every current
+  run and once after the last. A failed, empty or over-64-KiB reading, or a value that
+  changes, turns a would-be pass into `insufficient_evidence` with a `target_unavailable`
+  diagnostic. The summary prints `App under test: <value>` (the value itself only when
+  it is short plain text, otherwise `reading sha256:<12 hex>`), or `App under test: not
+  identified` without a target. It reads the current version only; a baseline is not
+  identified. Like every declared command it runs with the caller's environment.
+  Workflow commands reject `requirements` and `target`.
+- **Repeat note**: `proof.json` records `inputsHash`, a SHA-256 over the declaration
+  hash, the first current run's declared identity entries, the target reading and
+  managed source hashes. When the newest of up to 200 sibling folders (same parent
+  folder) has the same `inputsHash`, the result, summary, `feedback.json`, `REPORT.md`
+  and `REPORT.html` carry `repeatNote` ("this run proves nothing new about a change")
+  and `repeatOf` (that folder). The note never changes a verdict. Without a target a
+  changed app that PRAMAN cannot see still counts as a repeat; declare `target` to tell
+  them apart.
+- **`coverageSummary`**: `scenario-verify`, `command-verify`, their MCP tools and managed
+  `environment verify` end their result with one line that joins the three, because
+  some MCP clients show only the first and last 500 characters of a long result.
+
+The identity line in reports now reads "Identity of the runner, the browser (or
+executable) and the declared files", because it never covered the app under test.
 
 `REPORT.html` (every browser run, next to `REPORT.md`; the path is `reportHtml` in the
 result and `HTML report:` in `scenario-verify`) is one offline page for a person: the
@@ -2330,7 +2380,8 @@ were removed on 2026-11-05; they depended on the deleted checkout demo pipeline.
 
 Relative path arguments resolve against the server's working directory. A client that
 starts the server outside the caller's project should set `PRAMAN_RELATIVE_PATHS=reject`:
-every relative path argument (including inline-scenario upload, diff and identity paths)
+every relative path argument (including inline-scenario upload, diff, identity and
+`target` cwd/executable paths)
 is then refused with an `insufficient_evidence` result naming the argument, before
 anything runs or is written. Any other non-empty value makes `praman mcp` exit at startup.
 
@@ -2338,9 +2389,13 @@ anything runs or is written. Any other non-empty value makes `praman mcp` exit a
 
 [`skills/praman/SKILL.md`](skills/praman/SKILL.md) is an Agent Skills folder that
 teaches any coding agent with a shell to verify its work through the PRAMAN CLI and
-report the verdict honestly. Install it by linking the folder into the agent's skill
+report the verdict honestly: map every requirement to a check, load a changed web page
+with `scenario-verify`, treat a re-run of an unchanged declaration as no new proof,
+report "passed N checks covering X of Y requirements" and never call a pass "complete".
+Install it by linking the folder into the agent's skill
 folder; see [skills/README.md](skills/README.md) for paths and what was tested
-(headless Claude Code on 2026-11-14; other agents not yet).
+(headless Claude Code on 2026-11-14; OpenCode with the free `beam-free` model on
+2026-11-16).
 
 ## Kiro integration
 

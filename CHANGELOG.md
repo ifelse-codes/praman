@@ -2,6 +2,39 @@
 
 ## Unreleased
 
+### Added (honest coverage, 2026-11-16)
+
+Found on 2026-11-15: an OpenCode run got 34 `passed` verdicts from one thin, unchanged
+command declaration while the web app it built crashed three times. These changes keep a
+thin or repeated check from reading as "the work is done". Declarations that use none of
+the new fields keep their verdict and hash.
+
+- `requirements` in command and browser declarations: each requirement names the check
+  ids that exercise it. A requirement with no check turns a would-be pass into
+  `insufficient_evidence` (exit 2); results, summaries and reports show "X of Y have a
+  check" and each requirement's status. Without the list the summary says
+  "Requirements: not declared".
+- `target` in command and browser declarations: a command that prints the version of
+  the app under test, read before every run and after the last. A failed or changed
+  reading is not proven; reports print "App under test: <version>" or "not identified".
+- Repeat note: a run whose declaration and declared inputs (and target reading) equal an
+  earlier run in the same parent folder says it proves nothing new. No verdict change.
+- Reports, `feedback.json`, diagnostics and MCP results show authored check ids and one
+  plain line per check kind ("What it checks"). Expected values, selectors and
+  application text stay withheld.
+- Verify results end with a one-line `coverageSummary`, for MCP clients that show only
+  the start and end of a long result.
+- Agent skill and Kiro Power skill: map every requirement to a check, load a changed web
+  page with `scenario-verify`, treat a re-run as no new proof, report "passed N checks
+  covering X of Y requirements", never call a pass "complete", never weaken a project
+  rule to make a flow finish.
+
+### Changed
+
+- The report identity line now says it covers the runner, the browser or executable and
+  the declared files, not the app under test.
+- Workflow commands reject `requirements` and `target`.
+
 ### Documentation
 
 - Agent skill: `skills/praman/SKILL.md` lets any coding agent with a shell (Claude

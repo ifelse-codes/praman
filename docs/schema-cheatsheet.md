@@ -46,7 +46,36 @@ node dist/cli.js scenario-verify scenario.json -o .praman/run --summary
 | `regressionCheck` | repair | `id` of the check that must fail before and pass after |
 | `diffPath` | no | Source diff used by code scenes |
 | `identity` | no | Declared local files/tools to hash (execution identity, not target-app identity) |
+| `requirements` | no | `[{ "id", "text", "checks": [check or invariant ids] }]`; a requirement with `"checks": []` makes a would-be pass not proven |
+| `target` | no | `{ "executable", "args", "cwd", "env", "deadlineMs" }`: prints the version of the app under test (for example `git rev-parse --short HEAD`); read before every run and after the last |
 | `walkthrough` | no | Authored narration plan for `preview`/`demonstrate` |
+
+## Requirements, app under test and repeats
+
+```json
+"requirements": [
+  {"id": "add", "text": "Adding a task keeps its title", "checks": ["title"]},
+  {"id": "clear", "text": "The composer clears after adding", "checks": ["composer-cleared"]},
+  {"id": "persist", "text": "Tasks survive a reload", "checks": []}
+],
+"target": {"executable": "git", "args": ["rev-parse", "--short", "HEAD"], "cwd": "."}
+```
+
+The summary then reads, for example:
+
+```
+Outcome: insufficient_evidence
+Requirements: 2 of 3 have a check (2 passed). No check: persist.
+App under test: 3f2a1c9 (same before every run and after the last).
+```
+
+- Map every requirement you were given; list the ones you cannot check with an empty
+  `checks` list instead of leaving them out. Unknown check ids are rejected.
+- A target that fails, prints nothing or prints a different value between runs makes
+  the run not proven. Without `target` the summary says `App under test: not identified`.
+- A run whose declaration and declared inputs (and target reading) equal an earlier run
+  in the same parent folder gets a `Repeat:` line: it proves nothing new about a change.
+  The verdict does not change.
 
 ## Actions (13)
 
@@ -146,10 +175,11 @@ screenshot each. Checks without `afterStep` run at the end of the workflow.
 
 ## Debug a failed run (private evidence)
 
-`--summary` and `REPORT.md` show category, zero-based step or check index, a
-diagnosis and private evidence paths. `REPORT.md` starts with a `## Checks` table of
-every check and its verdict per run. Both are redacted by design: application text,
-selectors, expected and observed values, URLs and raw errors are withheld.
+`--summary` and `REPORT.md` show category, zero-based step or check index with the
+authored check id, a diagnosis and private evidence paths. `REPORT.md` starts with a
+`## Checks` table of every check (id, kind, a plain "What it checks" line) and its
+verdict per run. Both are redacted by design: application text, step ids, selectors,
+expected and observed values, URLs and raw errors are withheld.
 
 | Diagnosis | Meaning | Usual fix |
 | --- | --- | --- |

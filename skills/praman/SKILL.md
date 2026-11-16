@@ -85,9 +85,22 @@ Command example (acceptance). Save it in the project, for example `checks/total.
   "current": { "executable": "node", "args": ["sum.mjs"], "cwd": "..", "stdin": "{\"values\":[2,3,5]}", "deadlineMs": 5000 },
   "expectedExit": 0,
   "checks": [{ "id": "total", "source": "stdout", "operator": "equals", "value": "10\n" }],
+  "requirements": [
+    { "id": "R1", "text": "Print the sum of the values", "checks": ["total", "$exit"] }
+  ],
   "repeats": 2
 }
 ```
+
+- `requirements` (browser scenarios too) is your step-2 map: each requirement with the
+  check ids that exercise it (`$exit` is the exit-code check). List the requirements you
+  could not check too, with `"checks": []`: such a run is **not proven**, and the summary
+  names them (`No check: R2`). Do not delete a requirement to get a pass.
+- `target` (optional) is a command that prints the version of the app under test, for
+  example `"target": { "executable": "git", "args": ["rev-parse", "--short", "HEAD"], "cwd": ".." }`
+  in a git repository, or a script that prints a build hash. PRAMAN reads it before
+  every run and after the last; if it fails or changes, the run is not proven. Without
+  it the report says "App under test: not identified".
 
 Browser scenario fields (steps, selectors, checks) are in the
 [scenario cheat sheet](https://github.com/ifelse-codes/praman/blob/main/docs/schema-cheatsheet.md).
@@ -102,6 +115,9 @@ praman command-verify checks/total.json -o .praman/verify-total-1 --summary
 - Use a **new, unused** output folder under the project's `.praman/` every run
   (`verify-<name>-1`, `-2`, ...). PRAMAN refuses a folder that already has a run.
 - Read the `Outcome:` line. Exit codes: `0` passed, `1` failed, `2` not proven.
+- Read the lines under it: `Requirements:` (how many requirements have a check),
+  `App under test:` (which version was tested) and, if present, `Repeat:` (this run had
+  the same declaration and inputs as an earlier one, so it proves nothing new).
 - A line starting with `PRAMAN error:` and **no `Outcome:` line** means the run stopped
   before a verdict (exit 2). Fix the cause (for example, a used output folder or a bad
   declaration) and run again into a new folder. Never report that as passed or failed.
@@ -110,9 +126,9 @@ praman command-verify checks/total.json -o .praman/verify-total-1 --summary
 
 | Outcome | Meaning | Say |
 | --- | --- | --- |
-| `passed` | Every declared check passed in every repeat | "Passed N checks covering X of Y requirements." Then list the requirements with no check. |
-| `failed` | A declared check was seen to fail | "Failed." Give the check index, the `Next:` line and the report path. |
-| `insufficient_evidence` | It could not run, or evidence is missing | "**Not proven.**" Never call it passed. |
+| `passed` | Every declared check passed in every repeat | "Passed N checks covering X of Y requirements" (from the `Requirements:` line), and the `App under test:` line. If there is a `Repeat:` line, say the run proves nothing new. |
+| `failed` | A declared check was seen to fail | "Failed." Give the check id, the `Next:` line and the report path. |
+| `insufficient_evidence` | It could not run, evidence is missing, a requirement has no check, or the app under test changed | "**Not proven.**" Say which. Never call it passed. |
 
 Never call the work "complete", "fully working" or "done" because PRAMAN passed. Say
 what was checked and what was not; the user decides when it is done.
@@ -132,7 +148,8 @@ say so and ask the user before you change the check.
 If your agent has PRAMAN's MCP server configured (`node "$PRAMAN_HOME/dist/cli.js" mcp`
 over stdio), use `praman_command_verify` (`specPath`, `outDir`) or
 `praman_scenario_verify` (`scenario`, `outDir`) instead. Pass **absolute** paths. A
-non-pass result has `isError: true`. Do not use the `*_demonstrate` tools unless the
+non-pass result has `isError: true`. The result ends with a `coverageSummary` line
+(requirements, app under test, repeat note); quote it. Do not use the `*_demonstrate` tools unless the
 user asks for a video.
 
 ## Limits to keep in mind

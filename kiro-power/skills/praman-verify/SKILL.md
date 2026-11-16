@@ -74,9 +74,19 @@ Command example (acceptance):
   "current": { "executable": "node", "args": ["sum.mjs"], "cwd": ".", "stdin": "{\"values\":[2,3,5]}", "deadlineMs": 5000 },
   "expectedExit": 0,
   "checks": [{ "id": "total", "source": "stdout", "operator": "equals", "value": "10\n" }],
+  "requirements": [
+    { "id": "R1", "text": "Print the sum of the values", "checks": ["total", "$exit"] }
+  ],
   "repeats": 2
 }
 ```
+
+`requirements` (command and browser) maps each requirement to the check ids that
+exercise it (`$exit` is the exit-code check). List requirements you could not check
+with `"checks": []`: the run is then not proven and the result names them. Optional
+`target` is a command that prints the version of the app under test (for example
+`git rev-parse --short HEAD` in a git repository); PRAMAN reads it before every run and
+after the last, and a failed or changed reading is not proven.
 
 Checks come from the user's requirement, not from what the software currently prints.
 Never copy an observed value into an expectation to make a run pass. Browser scenario
@@ -99,9 +109,14 @@ PRAMAN refuses a directory that already exists.
 
 | Verdict | MCP `isError` | Meaning | What to say |
 | --- | --- | --- | --- |
-| `passed` | false | Every declared check passed in every repeat | "Passed N checks covering X of Y requirements", then the requirements with no check |
+| `passed` | false | Every declared check passed in every repeat | "Passed N checks covering X of Y requirements", the app under test, and any repeat note |
 | `failed` | true | A declared check was observed to fail | Failed; give the failing check indexes and report path |
-| `insufficient_evidence` | true | Execution was unavailable or evidence incomplete | **Not proven**; never call it passed |
+| `insufficient_evidence` | true | Execution was unavailable, evidence incomplete, a requirement has no check, or the app under test changed | **Not proven**; say which; never call it passed |
+
+Every verify result ends with a `coverageSummary` line: the requirement coverage, the
+app under test and, when the run repeats an earlier one with the same declaration and
+inputs, a note that it proves nothing new. Quote it; it stays visible when a long
+result is cut.
 
 Never call the work "complete", "fully working" or "done" because PRAMAN passed. Say
 what was checked and what was not; the user decides when it is done.

@@ -1,4 +1,4 @@
-# PRAMAN — current project status (2026-11-14, Hue-style environment plan, step 5 agent part done; agent skill and CLI error exit added)
+# PRAMAN — current project status (2026-11-16, honest coverage items 1 to 5 done)
 
 PRAMAN (प्रमाण, "evidence") is an evidence-driven verification toolkit for AI coding
 agents. An agent supplies an authored browser scenario or command declaration through
@@ -66,9 +66,35 @@ general simulator and not a sandbox.
   own rules. The cause is partly by design (the agent writes its own checks) and partly
   PRAMAN gaps (no coverage in the verdict, check ids hidden in the report, identity
   covering only the helper, no repeat warning, no Basic Auth for browser runs). Findings
-  and the proposed "honest coverage" plan are in ROADMAP.md ("Found 2026-11-15"). Nothing
-  is fixed yet; the closeout's "no known product bug" no longer holds. Private evidence
-  stays in the target project's ignored `.praman/` and the OpenCode session log.
+  and the proposed "honest coverage" plan are in ROADMAP.md ("Found 2026-11-15"). Items 1
+  to 5 were fixed on 2026-11-16 (next item); item 6 (Basic Auth) and item 7 (finish gate
+  for other agents) remain, so the closeout's "no known product bug" still does not
+  hold. Private evidence stays in the target project's ignored `.praman/` and the
+  OpenCode session log.
+- **Honest coverage, items 1 to 5 (2026-11-16, owner request, spec `honest-coverage`):**
+  command and browser declarations accept an optional `requirements` list (each
+  requirement names its check ids; one with no check turns a would-be pass into
+  `insufficient_evidence`) and an optional `target` (a command that prints the version
+  of the app under test, read before every run and after the last; a failed or changed
+  reading is not proven). Summaries and reports print `Requirements: X of Y have a check`,
+  `App under test: <version>` (or "not declared" / "not identified" without the fields),
+  and a `Repeat:` line when the declaration and declared inputs equal an earlier run in
+  the same parent folder (no verdict change). Reports, `feedback.json`, diagnostics and
+  MCP results show authored check ids and a plain "What it checks" line; selectors,
+  expected values and application text stay withheld. Verify results end with
+  `coverageSummary`. The agent skill and the Power's skill now require a requirement map,
+  a browser check for a changed page and coverage wording ("passed N checks covering X
+  of Y requirements", never "complete"). Proof: old code (`b4dc644`) gave plain `passed`
+  on thin Luma, Lattice and jq declarations and rejected the new fields; new code gave
+  `insufficient_evidence` with the missing requirement named on all three, `passed` with
+  the app version once it was covered, and the repeat line on a second identical run;
+  headless Kiro `sess_421cdf77…` saw the same lines through MCP. The skill gap did not
+  reproduce on a `/tmp` fixture with a crashing page (Claude Code and OpenCode
+  `beam-free` already said "not complete" with the old skill); with the new skill,
+  OpenCode `beam-free` listed the unchecked requirement and got not proven. 21 new
+  tests, 19 fail or cannot load on the old code; full suite 397 tests / 47 files;
+  first-use 12/12. Details and limits: ROADMAP.md ("Result of items 1 to 5"). Private
+  evidence: `.praman/honest-coverage/`.
 - **Step 5, agent part (2026-11-13, spec `submission-story`):** `docs/video-script.md`
   now covers the work since 2026-11-09: a one-page report scene (`REPORT.html` of a
   failed three-user run on Shiori from a saved world; the rule is wrong on purpose and
@@ -274,8 +300,8 @@ general simulator and not a sandbox.
   is a squashed public snapshot under the owner identity (see the repository history),
   with CI green and judge access enabled.
 - **Checks:** `npm run build` and `npm run lint` pass; `npm run lint:tests` passes;
-  the **full suite passes 369 tests / 41 files** on the recorded host (2026-11-12,
-  `--maxWorkers=2`), including the 11 navigation-guard tests, including the 17 outside-call tests, the 21 many-users tests, the 22 network-fault tests, the 8 Kiro finish-gate tests, the 15 cancellation
+  the **full suite passes 397 tests / 47 files** on the recorded host (2026-11-16,
+  `--maxWorkers=2`; it was 369 tests / 41 files on 2026-11-12), including the 21 honest-coverage tests, the 11 navigation-guard tests, including the 17 outside-call tests, the 21 many-users tests, the 22 network-fault tests, the 8 Kiro finish-gate tests, the 15 cancellation
   tests, the 21 diagnosis tests, the 22 browser-action tests, the 11 step-id tests and
   the managed-verify test. Parallel local runs
   are resource-sensitive while macOS Spotlight/MediaAnalysis indexing saturates the
