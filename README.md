@@ -1942,7 +1942,8 @@ unchanged declaration, must not read as "the work is done". Each field is option
 a declaration without them keeps its verdict and hash.
 
 - **`requirements`** (command and browser declarations): up to 100 entries
-  `{ "id", "text", "checks": [check ids] }`. Command declarations may name `$exit`;
+  `{ "id", "text", "checks": [check ids] }` (`checks` may be omitted; it then counts as
+  empty). Command declarations may name `$exit`;
   browser scenarios may name `users.invariants` ids. An unknown or ambiguous id, or a
   duplicate requirement id, is rejected before anything runs. A requirement with an
   empty `checks` list turns a run that would pass into `insufficient_evidence` (exit 2)

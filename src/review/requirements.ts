@@ -9,7 +9,8 @@ import type { Diagnostic } from './diagnostics.js';
 export const requirementsSchema = z.array(z.object({
   id: z.string().regex(/^[A-Za-z0-9._-]{1,64}$/, 'Requirement ids use letters, digits, ".", "-" and "_" (at most 64)'),
   text: z.string().trim().min(1),
-  checks: z.array(z.string().min(1)).max(100),
+  // Defaults to empty (untested): some MCP clients drop an empty array from tool arguments.
+  checks: z.array(z.string().min(1)).max(100).default([]),
 }).strict()).min(1).max(100);
 export type Requirements = z.infer<typeof requirementsSchema>;
 

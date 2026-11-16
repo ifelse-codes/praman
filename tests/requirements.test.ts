@@ -73,6 +73,8 @@ describe('requirements in command declarations', () => {
     expect(issues({ requirements: [{ id: 'R1', text: 'x', checks: ['totl'] }] })).toContain('requirements.0.checks.0: requirements[0] refers to unknown check id "totl"');
     expect(issues({ requirements: [{ id: 'R1', text: 'x', checks: [] }, { id: 'R1', text: 'y', checks: [] }] })).toContain('requirements.1.id: Duplicate requirement id "R1"');
     expect(issues({ requirements: [] })).not.toEqual([]);
+    // A requirement without `checks` (some MCP clients drop empty arrays) is untested.
+    expect(issues({ requirements: [{ id: 'R1', text: 'x' }] })).toEqual([]);
   });
 
   it('keeps a declaration without the list unchanged: same verdict, same hash, coverage "not declared"', async () => {
@@ -96,6 +98,9 @@ describe('requirements in browser scenarios', () => {
   const issues = (value: object) => { const parsed = changeSpecSchema.safeParse({ ...base, ...value }); return parsed.success ? [] : parsed.error.issues.map(issue => `${issue.path.join('.')}: ${issue.message}`); };
 
   it('accepts check and invariant ids, rejects unknown and ambiguous ids, and keeps the old hash without the list', () => {
+    // Some MCP clients drop an empty array from tool arguments; a requirement without `checks` is untested, not invalid.
+    const omitted = changeSpecSchema.parse({ ...base, requirements: [{ id: 'R9', text: 'Undo reverts the last edit' }] });
+    expect(omitted.requirements).toEqual([{ id: 'R9', text: 'Undo reverts the last edit', checks: [] }]);
     expect(issues({ requirements: [{ id: 'R1', text: 'Title', checks: ['title', 'runtime'] }] })).toEqual([]);
     expect(issues({ requirements: [{ id: 'R1', text: 'Title', checks: ['titel'] }] })).toContain('requirements.0.checks.0: requirements[0] refers to unknown check id "titel"');
     const users = { count: 2, after: [{ action: 'waitFor', selector: '#title', note: 'Look' }] };

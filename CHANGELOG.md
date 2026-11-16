@@ -31,6 +31,9 @@ the new fields keep their verdict and hash.
 
 ### Changed
 
+- A requirement without `checks` counts as untested (the field defaults to `[]`). Found
+  through MCP in headless Kiro: an empty `checks` array did not reach the tool, so the
+  scenario was rejected.
 - The report identity line now says it covers the runner, the browser or executable and
   the declared files, not the app under test.
 - Workflow commands reject `requirements` and `target`.

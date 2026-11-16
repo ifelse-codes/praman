@@ -467,6 +467,22 @@ that project, not in PRAMAN.
   found only among sibling folders of the same parent; without `target` a changed app
   that PRAMAN cannot see still counts as a repeat; `target` reads the current version
   only; check ids are now shown, so an id must not hold a secret PRAMAN does not know.
+- *Re-verification (2026-11-16, owner request "do everything test").* A fresh clone of
+  public `main` `ceaa907`: `npm ci`, build, lint, lint:tests, full suite 397/397 and
+  first-use 12/12. The old-versus-new runs on Luma, Lattice and jq gave the same results
+  as above. Headless Kiro (`sess_a28eaa14…`) found a bug: an MCP call with a requirement
+  whose `checks` was `[]` was rejected (`expected array, received undefined`), because
+  the empty array did not reach the tool. Fixed: `checks` now defaults to `[]` (untested).
+  After the fix the same Lattice call gave `insufficient_evidence` with "No check:
+  undo". Claude Code (headless, new skill) verified the fixture with a requirement list
+  and a git `target` and said "not complete". **OpenCode `beam-free`, asked to build R5
+  and verify (not only verify), did not follow the new skill:** it wrote two
+  declarations without `requirements` or `target`, got `passed` with "Requirements: not
+  declared" and "App under test: not identified", and reported "R5 is implemented and
+  verified". It did fix the page crash, added no auto-approver, and restarted the board
+  server although the prompt said not to. So the skill and the summary lines help a
+  careful agent but do not stop a weak one in a build loop; locked, owner-approved checks
+  (item 7) are the remaining guard.
 
 ## Done: fixes every agent hit (planned 2026-11-08, done 2026-11-09)
 

@@ -95,7 +95,12 @@ general simulator and not a sandbox.
   tests, 19 fail or cannot load on the old code; full suite 397 tests / 47 files;
   first-use 12/12. CI on PR #37 (`f25d889`): push run 43887458541 and pull-request run
   43887472545 green on Ubuntu and macOS at the first attempt (381 passed + 16 skipped
-  each); public `main` fast-forwarded to `f25d889`. Details and limits: ROADMAP.md ("Result of items 1 to 5"). Private
+  each); public `main` fast-forwarded to `f25d889`. Re-verified the same day from a fresh
+  clone (397/397, first-use 12/12, real apps and Kiro MCP); Kiro found that an empty
+  `checks` list was dropped on the way through MCP (fixed: `checks` defaults to `[]`), and
+  OpenCode `beam-free` in a build-and-verify task skipped the requirement list and said
+  "implemented and verified" (the skill alone does not stop a weak agent; see ROADMAP).
+  Details and limits: ROADMAP.md ("Result of items 1 to 5"). Private
   evidence: `.praman/honest-coverage/`.
 - **Step 5, agent part (2026-11-13, spec `submission-story`):** `docs/video-script.md`
   now covers the work since 2026-11-09: a one-page report scene (`REPORT.html` of a

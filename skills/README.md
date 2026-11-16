@@ -48,6 +48,8 @@ the same rules plus PRAMAN's MCP tools and the finish gate.
 | Claude Code (headless `-p`) | Loaded the skill on its own, wrote an acceptance declaration from the requirement, ran `command-verify`, and reported **failed** with the report path on a deliberately wrong `sum.mjs`. |
 | Claude Code and OpenCode `beam-free` (2026-11-16, before the honest-coverage rules) | On a fixture board whose page crashes on load and whose only earlier check was a thin API count, both wrote a browser scenario, got `failed` from the page error and said the work was **not complete**. The thin check alone still said `passed`. |
 | OpenCode `beam-free` (2026-11-16, current skill) | Same fixture: wrote a scenario with a `requirements` list (R5, two-person sign-off, listed with no check), got **not proven** with `Requirements: 4 of 5 have a check ... No check: R5.`, and said the work was not complete. |
+| Claude Code (headless `-p`, 2026-11-16, current skill) | Same fixture: wrote a scenario with a `requirements` list and a git `target`, got `failed` from the page error with R5 unchecked, and said the work was not complete. |
+| OpenCode `beam-free` (2026-11-16, current skill, build task) | Asked to build R5 and verify: **did not follow the skill.** It wrote declarations without `requirements` or `target`, got `passed` with "Requirements: not declared", and reported "implemented and verified". The skill does not stop a weak agent in a build loop. |
 | Codex, omp | Not tested: each run stopped on an account or usage limit before the agent started. |
 | pi, Copilot CLI | Not tested: the pi command was not available on the host; Copilot CLI was not tried. |
 
