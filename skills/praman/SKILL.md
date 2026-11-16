@@ -39,7 +39,28 @@ In the steps below, `praman` means `node "$PRAMAN_HOME/dist/cli.js"`.
 Browser checks need Chromium (see step 0) and a running app. PRAMAN does not start
 the app or reset its data; that is the user's job.
 
-## 2. Write the declaration
+**A change to a web page needs `scenario-verify`, even when a command check exists.**
+A command or API check never opens the page, so it cannot see a page that crashes.
+A scenario that only opens the page already fails on any page error you did not
+assert. Use both routes when the change touches both.
+
+## 2. Decide what to check
+
+A pass means only "the checks you wrote held". So the checks must cover the work.
+
+1. List the requirements: the user's request plus the project's own requirement,
+   spec or contract files. Give each one a short id (`R1`, `R2`, ...).
+2. Map every requirement to at least one check. Write down each requirement that has
+   **no** check and why (for example "needs a second user account").
+3. Each new change needs a check that **exercises that change**. A check that cannot
+   fail on the work you just did proves nothing about it.
+4. Re-running a declaration you did not change is **not proof of a new fix**. If the
+   last session's declaration still passes, add checks for this session's change.
+5. Never weaken a stated rule of the project to make a flow finish or a check pass
+   (for example an "auto-approver" where the project says a person must approve).
+   Stop and ask the user.
+
+## 3. Write the declaration
 
 Write it from **the user's requirement**, not from what the software prints today.
 Never copy an observed value into an expectation to make a run pass.
@@ -72,7 +93,7 @@ Browser scenario fields (steps, selectors, checks) are in the
 [scenario cheat sheet](https://github.com/ifelse-codes/praman/blob/main/docs/schema-cheatsheet.md).
 Text checks compare the rendered text exactly, including CSS upper-casing.
 
-## 3. Run it
+## 4. Run it
 
 ```sh
 praman command-verify checks/total.json -o .praman/verify-total-1 --summary
@@ -85,19 +106,22 @@ praman command-verify checks/total.json -o .praman/verify-total-1 --summary
   before a verdict (exit 2). Fix the cause (for example, a used output folder or a bad
   declaration) and run again into a new folder. Never report that as passed or failed.
 
-## 4. Report the verdict
+## 5. Report the verdict
 
 | Outcome | Meaning | Say |
 | --- | --- | --- |
-| `passed` | Every declared check passed in every repeat | "Passed, for the declared checks only." |
+| `passed` | Every declared check passed in every repeat | "Passed N checks covering X of Y requirements." Then list the requirements with no check. |
 | `failed` | A declared check was seen to fail | "Failed." Give the check index, the `Next:` line and the report path. |
 | `insufficient_evidence` | It could not run, or evidence is missing | "**Not proven.**" Never call it passed. |
+
+Never call the work "complete", "fully working" or "done" because PRAMAN passed. Say
+what was checked and what was not; the user decides when it is done.
 
 Point the user to `REPORT.md` (browser runs also write `REPORT.html`), `feedback.json`
 and `proof.json` in the output folder. These are private: they can hold app data,
 secrets and local paths. Do not paste raw contents or secrets from them into chat.
 
-## 5. After a fix
+## 6. After a fix
 
 A failure is resolved only when a **fresh** run, in a new output folder, passes. Do not
 weaken, delete or edit checks to make a run pass. If the requirement itself was wrong,

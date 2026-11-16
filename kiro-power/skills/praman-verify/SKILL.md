@@ -34,7 +34,27 @@ and browser actions run with the user's authority.
 - Command-line program or script: `praman_command_verify` with a declaration file.
 - Web UI that is already running: `praman_scenario_verify` with a scenario object.
 
-## Step 2: Write the declaration
+A change to a web page needs `praman_scenario_verify`, even when a command check
+exists: a command or API check never opens the page, so it cannot see a page that
+crashes. A scenario that only opens the page already fails on any page error you did
+not assert.
+
+## Step 2: Decide what to check
+
+A pass means only "the declared checks held", so the checks must cover the work.
+
+1. List the requirements: the user's request plus the project's own requirement, spec
+   or contract files. Give each a short id (`R1`, `R2`, ...).
+2. Map every requirement to at least one check, and name each requirement that has no
+   check and why.
+3. Each new change needs a check that exercises that change. A check that cannot fail
+   on the work just done proves nothing about it.
+4. Re-running an unchanged declaration is not proof of a new fix; add checks for the
+   new change.
+5. Never weaken a stated rule of the project to make a flow finish or a check pass
+   (for example an auto-approver where a person must approve). Stop and ask the user.
+
+## Step 3: Write the declaration
 
 Every declaration needs an explicit `mode`:
 
@@ -63,7 +83,7 @@ Never copy an observed value into an expectation to make a run pass. Browser sce
 fields are listed in the
 [scenario cheat sheet](https://github.com/ifelse-codes/praman/blob/main/docs/schema-cheatsheet.md).
 
-## Step 3: Run it
+## Step 4: Run it
 
 Pass **absolute paths** for `specPath` and `outDir` (and for any upload, diff or
 identity file in an inline scenario). The power's MCP server runs from the installed
@@ -75,19 +95,22 @@ through this power: their speech cache would land in the installed power's folde
 `.praman/` for every run, for example `<project>/.praman/verify-<short-name>-<n>`.
 PRAMAN refuses a directory that already exists.
 
-## Step 4: Report the verdict
+## Step 5: Report the verdict
 
 | Verdict | MCP `isError` | Meaning | What to say |
 | --- | --- | --- | --- |
-| `passed` | false | Every declared check passed in every repeat | Passed, for the declared checks only |
+| `passed` | false | Every declared check passed in every repeat | "Passed N checks covering X of Y requirements", then the requirements with no check |
 | `failed` | true | A declared check was observed to fail | Failed; give the failing check indexes and report path |
 | `insufficient_evidence` | true | Execution was unavailable or evidence incomplete | **Not proven**; never call it passed |
+
+Never call the work "complete", "fully working" or "done" because PRAMAN passed. Say
+what was checked and what was not; the user decides when it is done.
 
 Point the user to `REPORT.md`, `feedback.json` and `proof.json` in the output
 directory. Raw output and expectations stay in private evidence files; do not paste
 secrets from them.
 
-## Step 5: After a fix
+## Step 6: After a fix
 
 A finding is resolved only after a fresh run with a new output directory passes. Do
 not weaken, delete or edit checks to make a run pass.
