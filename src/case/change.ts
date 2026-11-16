@@ -302,6 +302,11 @@ export interface ChangeProof {
   reason: string;
   /** Declared requirements and their checks; `declared: false` when the scenario has no list. */
   requirements?: RequirementCoverage;
+  /** SHA-256 over the declaration hash, declared identity, target reading and managed source hashes (see review/repeat.ts). */
+  inputsHash?: string;
+  /** An earlier sibling run with the same inputsHash: its folder, and a note that this run proves nothing new. */
+  repeatOf?: string;
+  repeatNote?: string;
   before?: ScenarioRun;
   after: ScenarioRun[];
 }

@@ -45,6 +45,8 @@ export interface EvidenceHtmlModel {
   requirement: string;
   verdict: HtmlVerdict;
   facts: Array<[string, string]>;
+  /** Plain notes shown right under the verdict, for example that this run repeats an earlier one. */
+  notes: string[];
   /** Declared requirements: the summary line, and per requirement its text, check ids and status. */
   requirements: { summary: string; rows: Array<{ id: string; text: string; checks: string[]; status: string }> };
   runLabels: string[];
@@ -125,7 +127,7 @@ export function renderEvidenceHtml(model: EvidenceHtmlModel): string {
     `<title>${escapeHtml(`PRAMAN evidence report: ${model.verdict}`)}</title><style>${css}</style></head><body><main>`,
     `<p class="private" role="note">Private evidence: contains application data. Do not share.</p>`,
     `<h1>PRAMAN evidence report</h1><p>${escapeHtml(model.title)}</p><p>Requirement: ${escapeHtml(model.requirement)}</p>`,
-    `<section aria-labelledby="verdict-h"><h2 id="verdict-h">Verdict</h2><div class="banner v-${model.verdict in labels ? model.verdict : 'not_executed'}" role="status">${verdict(model.verdict)}<p>${escapeHtml(meanings[model.verdict] ?? meanings.not_executed)}</p></div></section>`,
+    `<section aria-labelledby="verdict-h"><h2 id="verdict-h">Verdict</h2><div class="banner v-${model.verdict in labels ? model.verdict : 'not_executed'}" role="status">${verdict(model.verdict)}<p>${escapeHtml(meanings[model.verdict] ?? meanings.not_executed)}</p></div>${model.notes.map(note => `<p class="private" role="note">${escapeHtml(note)}</p>`).join('')}</section>`,
     ...(model.attention.length ? [`<section aria-labelledby="attention-h"><h2 id="attention-h">Look here first</h2><ul>${model.attention.map(item => `<li><a href="#${escapeHtml(item.anchor)}">${escapeHtml(item.text)}</a>: ${verdict(item.verdict)}</li>`).join('')}</ul></section>`] : []),
     `<section aria-labelledby="facts-h"><h2 id="facts-h">Run facts</h2><table><tbody>${model.facts.map(([key, value]) => `<tr><th scope="row">${escapeHtml(key)}</th><td class="mono">${escapeHtml(value)}</td></tr>`).join('')}</tbody></table></section>`,
     `<section aria-labelledby="requirements-h"><h2 id="requirements-h">Requirements</h2><p>${escapeHtml(model.requirements.summary)}</p>`,

@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { classifyError, describeDiagnosis, diagnosisNextAction, type Diagnosis } from './classify.js';
+import { repeatLine } from './repeat.js';
 
 export interface Diagnostic {
   category: 'check_mismatch' | 'invariant_violation' | 'execution_unavailable' | 'evidence_unavailable' | 'proof_gate' | 'story_preflight' | 'recording_unavailable' | 'requirement_untested';
@@ -31,11 +32,13 @@ export function formatTable(header: string[], rows: string[][]): string[] {
 }
 
 /** `overview` lines (for example a check table) are placed right after the outcome in Markdown reports. */
-export function formatSummary(result: { verdict: string; diagnostics?: Diagnostic[]; report?: string; reportHtml?: string; proofVerdict?: string; proof?: { verdict: string }; requirements?: { summary: string } }, markdown = false, overview: string[] = []): string {
+export function formatSummary(result: { verdict: string; diagnostics?: Diagnostic[]; report?: string; reportHtml?: string; proofVerdict?: string; proof?: { verdict: string }; requirements?: { summary: string }; repeatOf?: string; repeatNote?: string }, markdown = false, overview: string[] = []): string {
   const lines = [`Outcome: ${result.verdict}`];
   const proofVerdict = result.proofVerdict ?? result.proof?.verdict;
   if (proofVerdict && proofVerdict !== result.verdict) lines.push(`Proof: ${proofVerdict} (separate from delivery)`);
   if (result.requirements?.summary) lines.push(result.requirements.summary);
+  const repeat = repeatLine(result);
+  if (repeat) lines.push(repeat);
   if (markdown && overview.length) lines.push('', ...overview, '');
   const shown = markdown ? result.diagnostics ?? [] : (result.diagnostics ?? []).slice(0, 1);
   for (const diagnostic of shown) {

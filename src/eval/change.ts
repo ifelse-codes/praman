@@ -11,6 +11,7 @@ import { executeUsers } from './users.js';
 import { guardNavigation, leftOriginMessage } from './navigationGuard.js';
 import { captureIdentity, identityComplete, identityScope, sameIdentity } from './identity.js';
 import { applyCoverage, assessRequirements } from '../review/requirements.js';
+import { inputsHash, repeatFields } from '../review/repeat.js';
 
 const imageObservation = z.object({ src: z.string().nullable(), currentSrc: z.string(), complete: z.boolean(), width: z.number(), height: z.number() });
 
@@ -443,10 +444,13 @@ export async function proveChange(input: ChangeSpec, outDir: string, context?: F
   const assessed = assessProof(spec, before, after);
   // Declared requirements: one with no check turns a would-be pass into not proven.
   const requirements = assessRequirements(spec.requirements, id => after.map(run => run.checks.find(row => row.id === id)?.verdict ?? run.invariants?.find(row => row.id === id)?.verdict));
-  const proof: ChangeProof = { mode: spec.mode, baselineKind: spec.baselineKind, specHash: hashSpec(spec), verifiedAt: new Date().toISOString(),
+  const specHash = hashSpec(spec);
+  // Same declaration and declared inputs as an earlier sibling run: noted, never a verdict change.
+  const hash = inputsHash({ specHash, identity: after[0]?.identityBefore, sourceHashes: context?.sourceHashes });
+  const proof: ChangeProof = { mode: spec.mode, baselineKind: spec.baselineKind, specHash, verifiedAt: new Date().toISOString(),
     scope: `Only the declared scenario and requirements; not whole-application correctness. URLs identify targets, not source/build provenance. Baseline kind is caller-declared, not independently authenticated history. ${identityScope}`,
-    ...applyCoverage(assessed.verdict, assessed.reason, requirements), requirements, ...(before ? { before } : {}), after };
+    ...applyCoverage(assessed.verdict, assessed.reason, requirements), requirements, inputsHash: hash, ...repeatFields(outDir, hash), ...(before ? { before } : {}), after };
   writeFileSync(join(outDir, 'proof.json'), JSON.stringify(proof, null, 2), { mode: 0o600 });
   const saved = saveFeedback(spec, proof, outDir, context, assessed.verdict);
-  return { verdict: proof.verdict, requirements: saved.feedback.requirements, proof, ...saved };
+  return { verdict: proof.verdict, requirements: saved.feedback.requirements, ...(proof.repeatOf ? { repeatOf: proof.repeatOf, repeatNote: proof.repeatNote } : {}), proof, ...saved };
 }

@@ -20,7 +20,7 @@ export interface FeedbackContext {
 const sensitive = /password|passwd|secret|token|cookie|authorization|credential|api[-_]?key|session|signature|headers|postData|formData/i;
 const privateText = /^(evidence|error|recordingError|body)$/i;
 // Fields that hold a file path PRAMAN made, or was given as its output location. A caller-chosen folder name may equal a private value.
-const outputPathKeys = /^(report|reportHtml|feedbackPath|proofPath|output|directory|declarationPath|operationLog|screenshot|screenshots|demoVideo|video)$/;
+const outputPathKeys = /^(report|reportHtml|feedbackPath|proofPath|output|directory|declarationPath|operationLog|screenshot|screenshots|demoVideo|video|repeatOf)$/;
 export const pathNote = 'A known private value occurs in a returned path; the folder name was chosen by the caller.';
 
 /** Safe presentation only. Raw browser/network artifacts remain private, not sanitized exports. */
@@ -133,6 +133,9 @@ export interface ChangeFeedback {
   issues: string[];
   /** Declared requirements and their checks (ids and statuses only); `declared: false` without a list. */
   requirements: RequirementCoverage;
+  /** Set when an earlier sibling run had the same declaration and declared inputs. */
+  repeatOf?: string;
+  repeatNote?: string;
   /** Many users: per repeat, the user verdicts, invariant kinds and verdicts and the peak concurrency (no application text). */
   concurrency?: Array<{ run: number; users: Verdict[]; peakConcurrency: number; invariants: Array<{ index: number; kind: string; verdict: Verdict }> }>;
   reproduction: { setup: string; steps: unknown[] };
@@ -232,7 +235,7 @@ function rawFeedback(spec: ChangeSpec, proof: ChangeProof, outDir: string, conte
     identityStatus: [...(proof.before ? [proof.before] : []), ...proof.after].every(run => sameIdentity(run.identityBefore, run.identityAfter) && sameIdentity(proof.after[0]?.identityBefore, run.identityBefore)) ? 'stable' : 'unavailable_or_changed',
     identityEvidence: { path: resolve(outDir, 'proof.json'), private: true as const },
     privacyLimit: 'Authored check and requirement ids and one plain line per check kind are shown. Application text, step ids, selectors, string/object expectations and observations, raw errors, known credentials and private fill inputs are withheld. Numeric scalars matching known private numeric values are also withheld, including equivalent leading-zero/exponent forms. Other numeric/boolean observations and caller-owned local evidence paths remain visible. Raw screenshots, scenarios, result/proof/network files remain private; no sanitized-export guarantee.',
-    issues, requirements: proof.requirements ?? assessRequirements(spec.requirements, () => []), ...(concurrency ? { concurrency } : {}), reproduction: { setup: context.environmentId
+    issues, requirements: proof.requirements ?? assessRequirements(spec.requirements, () => []), ...(proof.repeatOf ? { repeatOf: proof.repeatOf, repeatNote: proof.repeatNote } : {}), ...(concurrency ? { concurrency } : {}), reproduction: { setup: context.environmentId
       ? `If the recorded instance is destroyed or unavailable, run praman environment create \"${context.declarationPath ?? '<original-private-declaration>'}\" --base <owned-base>, then praman environment verify <new-id> --base <owned-base>. Create a fresh managed instance, restore the failing run's state/preconditions from the private operation history (${context.operationLog ?? 'caller-owned history'}) and scenario before verifying; a fresh seed alone may not reproduce a stateful failure. Recorded localhost URLs are historical targets, not a live service guarantee. Workflow step indexes are zero-based.`
       : `Start caller-owned isolated ${spec.mode === 'acceptance' ? 'current application' : 'baseline/current applications'}, restore the declared seed and private inputs, and rerun this ${spec.mode} scenario. Recorded URLs may no longer be live. Verification does not require video.`,
       steps: spec.steps.map((step, index) => ({ step: index, action: step.action })) }, findings });
@@ -252,6 +255,7 @@ export function formatFeedback(feedback: ChangeFeedback): string {
     `Context: ${markdown(feedback.context)}`, '', feedback.provenanceLimit, '', feedback.privacyLimit, '',
     `Identity: ${feedback.identityStatus}. [Private identity coverage and hashes](${pathToFileURL(feedback.identityEvidence.path).href}) are in per-run identityBefore/identityAfter entries.`, '',
     '## Requirements', '', markdown(feedback.requirements.summary), '',
+    ...(feedback.repeatNote ? [`Repeat: ${markdown(feedback.repeatNote)} Earlier run: ${markdown(feedback.repeatOf)}`, ''] : []),
     ...(feedback.requirements.declared ? [...formatTable(['Requirement', 'Checks', 'Status'], requirementRows(feedback.requirements)), ''] : []),
     ...(feedback.concurrency ? ['## Users and invariants', '', ...formatTable(['Run', 'Users', 'Peak concurrency', 'Invariants'], feedback.concurrency.map(row =>
       [String(row.run), row.users.map((verdict, user) => `${user + 1}: ${verdict}`).join(', '), String(row.peakConcurrency), row.invariants.map(item => `[${item.index}] ${item.kind}: ${item.verdict}`).join(', ') || 'none'])), ''] : []),
@@ -349,6 +353,7 @@ function evidenceHtmlModel(spec: ChangeSpec, proof: ChangeProof, outDir: string,
       ...raw.requirements.requirements.filter(row => row.status === 'untested').map(row => ({ text: `Requirement ${row.id} has no check`, verdict: 'not_executed' as const, anchor: 'requirements-h' }))],
     ...(users ? { users } : {}), gates, issues: raw.issues,
     requirements: { summary: raw.requirements.summary, rows: raw.requirements.requirements.map(row => ({ ...row, text: spec.requirements?.find(item => item.id === row.id)?.text ?? '' })) },
+    notes: [...(raw.repeatNote ? [`${raw.repeatNote} Earlier run: ${raw.repeatOf}`] : [])],
     limits: [raw.scope, raw.provenanceLimit, 'This page is a private local view: it shows application text, selectors and expected and observed values. Fill values, typed text, credentials and known secrets are redacted. Do not share it; the linked screenshots and result files show application content too.', `Privacy rule of feedback.json and REPORT.md: ${raw.privacyLimit}`, 'This page shows only what was declared and observed. It is not proof that the whole app is correct.'], files: fileLinks };
   // Redact every text value; links are paths made by PRAMAN and must not be changed by a private value that happens to occur in them.
   const safe = <T,>(value: T): T => safeFeedbackValue(value, spec, [], { reveal: true });
@@ -368,7 +373,7 @@ export function saveFeedback(spec: ChangeSpec, proof: ChangeProof, outDir: strin
   const feedback = { ...buildFeedback(spec, proof, outDir, context), diagnostics };
   const feedbackPath = join(outDir, 'feedback.json'), report = join(outDir, 'REPORT.md');
   writeFileSync(feedbackPath, JSON.stringify(feedback, null, 2), { mode: 0o600 });
-  writeFileSync(report, formatSummary({ verdict: proof.verdict, diagnostics, requirements: feedback.requirements }, true, formatCheckOverview(feedback, diagnostics)) + '\n\n' + formatFeedback(feedback), { mode: 0o600 });
+  writeFileSync(report, formatSummary({ verdict: proof.verdict, diagnostics, requirements: feedback.requirements, repeatOf: feedback.repeatOf, repeatNote: feedback.repeatNote }, true, formatCheckOverview(feedback, diagnostics)) + '\n\n' + formatFeedback(feedback), { mode: 0o600 });
   // Written last so its links to the files above exist; rewritten whenever the folder is saved again.
   const reportHtml = join(outDir, 'REPORT.html');
   writeFileSync(reportHtml, renderEvidenceHtml(evidenceHtmlModel(spec, proof, outDir, context ?? {}, diagnostics)), { mode: 0o600 });
