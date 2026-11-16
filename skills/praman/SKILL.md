@@ -157,5 +157,8 @@ user asks for a video.
 - PRAMAN checks only what you declared. A pass is not proof the whole app is correct.
 - Browser runs stay on the app's own origin; a jump to another site is stopped and
   reported as `navigation_failed`.
+- Browser runs cannot get past an HTTP Basic Auth login prompt (known limit). If the
+  app needs one, tell the user the page could not be checked; a command or API check
+  does not verify the page.
 - Managed Docker environments (saved worlds, network faults, many users, recorded
   outside calls) need an integration in the target project; see PRAMAN's README.

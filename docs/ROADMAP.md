@@ -9,8 +9,9 @@ form are the remaining release blockers. New on 2026-11-15: an OpenCode run show
 PRAMAN saying `passed` on a broken app; findings and the fix plan are in
 ["Found 2026-11-15"](#found-2026-11-15-praman-said-passed-on-a-broken-app-opencode-run).
 Items 1 to 5 of that plan were done on 2026-11-16 (requirement coverage in the verdict,
-check ids in reports, the repeat note, the app-under-test line and the skill rules);
-items 6 and 7 are open.
+check ids in reports, the repeat note, the app-under-test line and the skill rules).
+Owner decision 2026-11-16: item 6 (Basic Auth) is parked as a known limit and item 7
+(locked checks and the finish gate for other agents) is a future feature, not built now.
 
 ## Shipped (verified)
 
@@ -409,7 +410,8 @@ the OpenCode session and the project's private `.praman/` folder found:
   not asserted. One step that only opens the page would have failed all three crashes.
 
 **Plan: "honest coverage" (proposed 2026-11-15; items 1 to 5 done 2026-11-16 on the
-owner's request, spec and branch `honest-coverage`; items 6 and 7 open).** Every item is
+owner's request, spec and branch `honest-coverage`; owner decision the same day: item 6
+parked as a known limit, item 7 a future feature, neither built now).** Every item is
 application-independent. Old declarations keep their meaning and hash unless an item says
 otherwise.
 
@@ -420,8 +422,8 @@ otherwise.
 | 3 | **Done 2026-11-16.** The report hides what was checked | `REPORT.md`/`REPORT.html` show authored check ids and one plain line per check (kind, source, operator); expected values stay private | Report test shows ids; no value or secret appears | S |
 | 4 | **Done 2026-11-16.** A repeat of the last run looks like new proof | When the declaration hash and every declared input hash match the previous run under the same `.praman/` parent, add a visible note "same declaration and inputs as `<run>`: this run proves nothing new" to the summary, report and MCP result (no verdict change) | Test with two identical runs and one changed run | S |
 | 5 | **Done 2026-11-16.** Identity follows the helper, not the app | Optional declared target identity (for example a git commit or a build hash read by a declared command) is recorded per run and printed next to "Identity"; without it, the report says "app under test: not identified" | Test for both cases; wording reviewed against the README contract | M |
-| 6 | Browser checks cannot pass HTTP Basic Auth | `httpCredentials` from named environment variables for scenario runs; never written to evidence | Fixture server behind Basic Auth passes; the secret is absent from every artifact | S–M |
-| 7 | The finish gate is documented only for Kiro | Document wiring the agent-neutral `kiro-power/scripts/praman-gate.mjs` into OpenCode and Claude Code; checks are written or approved by the owner before the build and are locked (the builder may add checks, not edit them) | Docs plus one real OpenCode or Claude Code run where the gate blocks "done" | S |
+| 6 | **Parked 2026-11-16 (owner decision: known limit; HTTP Basic Auth is rare today; fix only if needed).** Browser checks cannot pass HTTP Basic Auth | `httpCredentials` from named environment variables for scenario runs; never written to evidence | Fixture server behind Basic Auth passes; the secret is absent from every artifact | S–M |
+| 7 | **Deferred 2026-11-16 (owner decision: a future feature, not built now).** The finish gate is documented only for Kiro | Document wiring the agent-neutral `kiro-power/scripts/praman-gate.mjs` into OpenCode and Claude Code; checks are written or approved by the owner before the build and are locked (the builder may add checks, not edit them) | Docs plus one real OpenCode or Claude Code run where the gate blocks "done" | S |
 
 Real proof for items 1, 2 and 6 needs two different real apps (AGENTS.md). The target
 project's own defects (the page crashes and the auto-approver) are the owner's to fix in
@@ -482,7 +484,7 @@ that project, not in PRAMAN.
   verified". It did fix the page crash, added no auto-approver, and restarted the board
   server although the prompt said not to. So the skill and the summary lines help a
   careful agent but do not stop a weak one in a build loop; locked, owner-approved checks
-  (item 7) are the remaining guard.
+  (item 7, deferred by the owner on 2026-11-16) would be the remaining guard.
 
 ## Done: fixes every agent hit (planned 2026-11-08, done 2026-11-09)
 
@@ -526,6 +528,11 @@ first and review the cut against `docs/video-guidelines.md`.
 
 ## Deferred
 
+- Honest coverage item 7 (owner decision 2026-11-16): checks the owner writes or approves
+  before a build and locks (the builder may add checks, not edit them), and the finish
+  gate wired into OpenCode and Claude Code.
+- HTTP Basic Auth for browser runs (honest coverage item 6, parked as a known limit by the
+  owner on 2026-11-16).
 - Stateful dependency simulation beyond the declared service and the recorded APIs of
   step 4; world restore beyond the declared service volumes of step 1.
 - Recorded outside calls: browser-side recording (Playwright HAR), header matching,
@@ -560,11 +567,13 @@ Optional: run independent-human validation.
 
 Update 2026-11-15: the OpenCode run above found product gaps (the verdict, report,
 identity and repeat gaps, and the skill wording). Update 2026-11-16: items 1 to 5 of the
-"honest coverage" plan are done; items 6 and 7 remain. These remain by choice:
+"honest coverage" plan are done; owner decision the same day: item 6 parked, item 7
+deferred. These remain by choice:
 
 | Item | Why it is open |
 | --- | --- |
-| "Honest coverage" items 6 (Basic Auth for browser runs) and 7 (finish gate for other agents) | Not started; the owner decides when, given the Nov 19 freeze and the Dec 4 deadline. |
+| "Honest coverage" item 6: browser runs cannot pass HTTP Basic Auth | **Known limit, parked** (owner decision 2026-11-16): this login type is rare today; fix only if a real need appears. Workaround: reach the app without Basic Auth (for example a local tunnel or a test instance). |
+| "Honest coverage" item 7: locked, owner-approved checks and the finish gate for other agents | **Future feature, not built now** (owner decision 2026-11-16). Until then a weak agent can still skip the requirement list (seen 2026-11-16 with OpenCode `beam-free`). |
 | Video, blog, submission | Owner's work. Deadline Dec 4, 2026, 2:00 pm PT. The video script predates the honest-coverage lines in the summary. |
 | Agent skill on Codex, omp, pi | Codex and omp stopped on account or usage limits before the agent started; the `pi` command was not available on the host. Claude Code (2026-11-14 and 2026-11-16) and OpenCode `beam-free` (2026-11-16, one fixture) are tested (see [skills/README.md](../skills/README.md)). |
 | Deferred items (section above) | Future features, not bugs: for example npm publishing, Windows support, autonomous discovery. |

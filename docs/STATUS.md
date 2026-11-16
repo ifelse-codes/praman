@@ -67,8 +67,10 @@ general simulator and not a sandbox.
   PRAMAN gaps (no coverage in the verdict, check ids hidden in the report, identity
   covering only the helper, no repeat warning, no Basic Auth for browser runs). Findings
   and the proposed "honest coverage" plan are in ROADMAP.md ("Found 2026-11-15"). Items 1
-  to 5 were fixed on 2026-11-16 (next item); item 6 (Basic Auth) and item 7 (finish gate
-  for other agents) remain, so the closeout's "no known product bug" still does not
+  to 5 were fixed on 2026-11-16 (next item). Owner decision 2026-11-16: item 6 (HTTP Basic
+  Auth for browser runs) is parked as a known limit, fixed only if needed; item 7 (locked
+  checks and the finish gate for other agents) is a future feature, not built now. Item 6
+  stays a known limit, so the closeout's "no known product bug" still does not
   hold. Private evidence stays in the target project's ignored `.praman/` and the
   OpenCode session log.
 - **Honest coverage, items 1 to 5 (2026-11-16, owner request, spec `honest-coverage`):**
