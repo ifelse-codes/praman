@@ -49,10 +49,12 @@ export function findRepeat(outDir: string, hash: string): { directory: string; v
 }
 
 /** `repeatOf` is the earlier run's folder (an output path); the note never contains it. */
-export function repeatFields(outDir: string, hash: string): { repeatOf?: string; repeatNote?: string } {
+export function repeatFields(outDir: string, hash: string, options: { appIdentified?: boolean } = {}): { repeatOf?: string; repeatNote?: string } {
   const earlier = findRepeat(outDir, hash);
   if (!earlier) return {};
-  return { repeatOf: earlier.directory, repeatNote: `Same declaration and declared inputs as an earlier run (${earlier.verdict}, ${earlier.verifiedAt}): this run proves nothing new about a change. Add a check that exercises the change, or declare a target so a changed app is told apart.` };
+  return { repeatOf: earlier.directory, repeatNote: options.appIdentified
+    ? `Same declaration, declared inputs and app version as an earlier run (${earlier.verdict}, ${earlier.verifiedAt}): this run proves nothing new about a change. Add a check that exercises the change.`
+    : `Same declaration and declared inputs as an earlier run (${earlier.verdict}, ${earlier.verifiedAt}): this run proves nothing new about a change. Add a check that exercises the change, or declare a target so a changed app is told apart.` };
 }
 
 export function repeatLine(result: { repeatOf?: string; repeatNote?: string }): string | undefined {

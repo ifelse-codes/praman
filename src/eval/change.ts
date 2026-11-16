@@ -456,7 +456,7 @@ export async function proveChange(input: ChangeSpec, outDir: string, context?: F
   const hash = inputsHash({ specHash, identity: after[0]?.identityBefore, target: appUnderTest.sha256, sourceHashes: context?.sourceHashes });
   const proof: ChangeProof = { mode: spec.mode, baselineKind: spec.baselineKind, specHash, verifiedAt: new Date().toISOString(),
     scope: `Only the declared scenario and requirements; not whole-application correctness. URLs identify targets, not source/build provenance. Baseline kind is caller-declared, not independently authenticated history. ${identityScope}`,
-    ...applyCoverage(targeted.verdict, targeted.reason, requirements), requirements, appUnderTest, inputsHash: hash, ...repeatFields(outDir, hash), ...(before ? { before } : {}), after };
+    ...applyCoverage(targeted.verdict, targeted.reason, requirements), requirements, appUnderTest, inputsHash: hash, ...repeatFields(outDir, hash, { appIdentified: appUnderTest.status === 'identified' }), ...(before ? { before } : {}), after };
   writeFileSync(join(outDir, 'proof.json'), JSON.stringify(proof, null, 2), { mode: 0o600 });
   const saved = saveFeedback(spec, proof, outDir, context, assessed.verdict);
   return { verdict: proof.verdict, requirements: saved.feedback.requirements, appUnderTest: saved.feedback.appUnderTest, ...(proof.repeatOf ? { repeatOf: proof.repeatOf, repeatNote: proof.repeatNote } : {}), proof, ...saved };

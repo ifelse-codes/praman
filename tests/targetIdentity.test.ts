@@ -85,6 +85,7 @@ describe('app under test (declared target)', () => {
     expect(changedApp).not.toHaveProperty('repeatOf');
     const sameApp = await verify(file, 'verify-3');
     expect(sameApp.repeatOf).toBe(path.join(root, '.praman', 'verify-2'));
+    expect(sameApp.repeatNote).toContain('Same declaration, declared inputs and app version as an earlier run');
   });
 
   it('resolves cwd from the declaration file, is refused relative by a rejecting MCP server, and is not accepted in workflow commands', () => {
