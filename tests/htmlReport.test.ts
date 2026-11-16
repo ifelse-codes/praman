@@ -135,7 +135,7 @@ describe('REPORT.html', () => {
     expect(html()).not.toContain('class="banner v-passed"');
   });
 
-  it('keeps feedback.json and REPORT.md bytes the same as the code before the HTML report', () => {
+  it('keeps feedback.json and REPORT.md bytes pinned; they change only on purpose', () => {
     const fixed = join(dir, 'pin'); mkdirSync(fixed);
     const base = spec();
     const after = [run('pin/after-1', ['failed', 'passed', 'passed'], { observed: ['other'] }), run('pin/after-2', ['passed', 'passed', 'passed'])];
@@ -226,5 +226,7 @@ describe.skipIf(!existsSync(chromium.executablePath()))('REPORT.html in Chromium
   });
 });
 
-// Hashes of feedback.json and REPORT.md for the fixture above, made with the code before REPORT.html existed.
-const pinnedHashes = { feedback: 'db95a4b7d8833d49f9d75182f07f24270e292b1c745ab6683b50699674a72dae', report: 'a847193ebb03534e7c5eb4a4429b51749a00287f56358beb351e0798ca2472b8' };
+// Hashes of feedback.json and REPORT.md for the fixture above. First made with the code before REPORT.html
+// existed (the HTML report changed neither file). Changed on purpose since: 2026-11-16 honest coverage
+// (requirement coverage line and section).
+const pinnedHashes = { feedback: 'be0f741aec3cb0fdef0ac560e19d8303dbfa3cd6d16b7fabaffd8bc5a0c12953', report: 'f277d2296d7da37a6deca8ccfd0d59bfc3b3ff083e5ecfd0cf2ec914d79ef5bc' };

@@ -43,6 +43,8 @@ export interface EvidenceHtmlModel {
   requirement: string;
   verdict: HtmlVerdict;
   facts: Array<[string, string]>;
+  /** Declared requirements: the summary line, and per requirement its text, check ids and status. */
+  requirements: { summary: string; rows: Array<{ id: string; text: string; checks: string[]; status: string }> };
   runLabels: string[];
   checks: HtmlCheck[];
   steps: HtmlStep[];
@@ -68,7 +70,7 @@ const labels: Record<HtmlVerdict, { text: string; mark: string }> = {
 const meanings: Record<HtmlVerdict, string> = {
   passed: 'Passed: every declared check held in every run. This covers only what was declared.',
   failed: 'Failed: at least one declared check or invariant was observed not to hold. A mismatch alone does not establish an application defect; read the cards below.',
-  insufficient_evidence: 'Not proven: some evidence is missing or a step could not run (for example a screenshot or an action). This is not a pass and not an application defect.',
+  insufficient_evidence: 'Not proven: some evidence is missing, a step could not run (for example a screenshot or an action), or a declared requirement has no check. This is not a pass and not an application defect.',
   not_executed: 'Not executed: nothing was run, so nothing is proven.',
 };
 
@@ -123,7 +125,11 @@ export function renderEvidenceHtml(model: EvidenceHtmlModel): string {
     `<h1>PRAMAN evidence report</h1><p>${escapeHtml(model.title)}</p><p>Requirement: ${escapeHtml(model.requirement)}</p>`,
     `<section aria-labelledby="verdict-h"><h2 id="verdict-h">Verdict</h2><div class="banner v-${model.verdict in labels ? model.verdict : 'not_executed'}" role="status">${verdict(model.verdict)}<p>${escapeHtml(meanings[model.verdict] ?? meanings.not_executed)}</p></div></section>`,
     ...(model.attention.length ? [`<section aria-labelledby="attention-h"><h2 id="attention-h">Look here first</h2><ul>${model.attention.map(item => `<li><a href="#${escapeHtml(item.anchor)}">${escapeHtml(item.text)}</a>: ${verdict(item.verdict)}</li>`).join('')}</ul></section>`] : []),
-    `<section aria-labelledby="facts-h"><h2 id="facts-h">Run facts</h2><table><tbody>${model.facts.map(([key, value]) => `<tr><th scope="row">${escapeHtml(key)}</th><td class="mono">${escapeHtml(value)}</td></tr>`).join('')}</tbody></table></section>`);
+    `<section aria-labelledby="facts-h"><h2 id="facts-h">Run facts</h2><table><tbody>${model.facts.map(([key, value]) => `<tr><th scope="row">${escapeHtml(key)}</th><td class="mono">${escapeHtml(value)}</td></tr>`).join('')}</tbody></table></section>`,
+    `<section aria-labelledby="requirements-h"><h2 id="requirements-h">Requirements</h2><p>${escapeHtml(model.requirements.summary)}</p>`,
+    ...(model.requirements.rows.length ? [`<table><thead><tr><th scope="col">Requirement</th><th scope="col">Text</th><th scope="col">Checks</th><th scope="col">Status</th></tr></thead><tbody>`,
+      ...model.requirements.rows.map(row => `<tr><th scope="row">${escapeHtml(row.id)}</th><td>${escapeHtml(row.text)}</td><td>${row.checks.length ? escapeHtml(row.checks.join(', ')) : '<strong>none</strong>'}</td><td>${row.status === 'untested' ? '<strong>untested</strong>' : verdict(row.status as HtmlVerdict)}</td></tr>`), `</tbody></table>`] : []),
+    `</section>`);
 
   out.push(`<section aria-labelledby="checks-h"><h2 id="checks-h">Checks</h2><table><thead><tr><th scope="col">Check</th><th scope="col">Id</th><th scope="col">Kind</th><th scope="col">After step</th>`,
     ...model.runLabels.map(label => `<th scope="col">${escapeHtml(label)}</th>`), `<th scope="col">Diagnosis</th></tr></thead><tbody>`);

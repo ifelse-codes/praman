@@ -4,6 +4,7 @@ import type { Verdict } from '../eval/eval.js';
 import { identityDeclarationSchema, type IdentitySnapshot } from '../eval/identity.js';
 import { sceneFramingSchema } from './framing.js';
 import { shortCompositionSchema, validateShortComposition } from './composition.js';
+import { checkRequirementRefs, requirementsSchema, type RequirementCoverage } from '../review/requirements.js';
 
 const selector = z.string().min(1);
 const note = z.string().min(1);
@@ -112,6 +113,7 @@ const rawSpecSchema = z.object({
   // Named faults of a managed environment, active from before `fromStep` until after the checks of `throughStep`.
   users: usersSchema.optional(),
   faults: z.array(z.object({ name: z.string().regex(/^[a-z][a-z0-9-]*$/), fromStep: stepRef, throughStep: stepRef }).strict()).min(1).optional(),
+  requirements: requirementsSchema.optional(),
 }).strict();
 
 type RawSpec = z.output<typeof rawSpecSchema>;
@@ -157,6 +159,7 @@ function resolveStepRefs(spec: RawSpec, ctx: z.RefinementCtx): ResolvedSpec {
 
 export const changeSpecSchema = rawSpecSchema.transform(resolveStepRefs).superRefine((spec, ctx) => {
   const ids = spec.checks.map(check => check.id);
+  checkRequirementRefs(spec.requirements, { checks: ids, invariants: (spec.users?.invariants ?? []).map(invariant => invariant.id) }, ctx);
   if (new Set(ids).size !== ids.length) ctx.addIssue({ code: 'custom', message: 'Check ids must be unique', path: ['checks'] });
   if (spec.mode === 'acceptance') {
     if (spec.beforeUrl || spec.regressionCheck || spec.baselineKind || spec.checks.some(check => check.kind === 'visible' && check.beforeEquals !== undefined)) ctx.addIssue({ code: 'custom', message: 'Acceptance is current-only; omit baseline, regression and beforeEquals fields.' });
@@ -297,6 +300,8 @@ export interface ChangeProof {
   scope: string;
   verdict: Verdict;
   reason: string;
+  /** Declared requirements and their checks; `declared: false` when the scenario has no list. */
+  requirements?: RequirementCoverage;
   before?: ScenarioRun;
   after: ScenarioRun[];
 }

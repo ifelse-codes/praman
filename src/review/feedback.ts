@@ -7,6 +7,7 @@ import { checkDiagnostics, formatSummary, formatTable, type Diagnostic } from '.
 import { describeDiagnosis } from './classify.js';
 import { renderEvidenceHtml, type EvidenceHtmlModel, type HtmlCheck, type HtmlImage, type HtmlRunCell, type HtmlUsersRun } from './html.js';
 import { identityComplete, sameIdentity, type IdentitySnapshot } from '../eval/identity.js';
+import { assessRequirements, requirementDiagnostics, requirementRows, type RequirementCoverage } from './requirements.js';
 
 export interface FeedbackContext {
   environmentId?: string;
@@ -126,6 +127,8 @@ export interface ChangeFeedback {
   identityStatus: 'stable' | 'unavailable_or_changed';
   identityEvidence: { path: string; private: true };
   issues: string[];
+  /** Declared requirements and their checks (ids and statuses only); `declared: false` without a list. */
+  requirements: RequirementCoverage;
   /** Many users: per repeat, the user verdicts, invariant kinds and verdicts and the peak concurrency (no application text). */
   concurrency?: Array<{ run: number; users: Verdict[]; peakConcurrency: number; invariants: Array<{ index: number; kind: string; verdict: Verdict }> }>;
   reproduction: { setup: string; steps: unknown[] };
@@ -225,7 +228,7 @@ function rawFeedback(spec: ChangeSpec, proof: ChangeProof, outDir: string, conte
     identityStatus: [...(proof.before ? [proof.before] : []), ...proof.after].every(run => sameIdentity(run.identityBefore, run.identityAfter) && sameIdentity(proof.after[0]?.identityBefore, run.identityBefore)) ? 'stable' : 'unavailable_or_changed',
     identityEvidence: { path: resolve(outDir, 'proof.json'), private: true as const },
     privacyLimit: 'Application text, identifiers, selectors, string/object expectations and observations, raw errors, known credentials and private fill inputs are withheld. Numeric scalars matching known private numeric values are also withheld, including equivalent leading-zero/exponent forms. Other numeric/boolean observations and caller-owned local evidence paths remain visible. Raw screenshots, scenarios, result/proof/network files remain private; no sanitized-export guarantee.',
-    issues, ...(concurrency ? { concurrency } : {}), reproduction: { setup: context.environmentId
+    issues, requirements: proof.requirements ?? assessRequirements(spec.requirements, () => []), ...(concurrency ? { concurrency } : {}), reproduction: { setup: context.environmentId
       ? `If the recorded instance is destroyed or unavailable, run praman environment create \"${context.declarationPath ?? '<original-private-declaration>'}\" --base <owned-base>, then praman environment verify <new-id> --base <owned-base>. Create a fresh managed instance, restore the failing run's state/preconditions from the private operation history (${context.operationLog ?? 'caller-owned history'}) and scenario before verifying; a fresh seed alone may not reproduce a stateful failure. Recorded localhost URLs are historical targets, not a live service guarantee. Workflow step indexes are zero-based.`
       : `Start caller-owned isolated ${spec.mode === 'acceptance' ? 'current application' : 'baseline/current applications'}, restore the declared seed and private inputs, and rerun this ${spec.mode} scenario. Recorded URLs may no longer be live. Verification does not require video.`,
       steps: spec.steps.map((step, index) => ({ step: index, action: step.action })) }, findings });
@@ -244,6 +247,8 @@ export function formatFeedback(feedback: ChangeFeedback): string {
     `Requirement: ${markdown(feedback.requirement)}`, '', `Scope: ${markdown(feedback.scope)}`, '',
     `Context: ${markdown(feedback.context)}`, '', feedback.provenanceLimit, '', feedback.privacyLimit, '',
     `Identity: ${feedback.identityStatus}. [Private identity coverage and hashes](${pathToFileURL(feedback.identityEvidence.path).href}) are in per-run identityBefore/identityAfter entries.`, '',
+    '## Requirements', '', markdown(feedback.requirements.summary), '',
+    ...(feedback.requirements.declared ? [...formatTable(['Requirement', 'Checks', 'Status'], requirementRows(feedback.requirements)), ''] : []),
     ...(feedback.concurrency ? ['## Users and invariants', '', ...formatTable(['Run', 'Users', 'Peak concurrency', 'Invariants'], feedback.concurrency.map(row =>
       [String(row.run), row.users.map((verdict, user) => `${user + 1}: ${verdict}`).join(', '), String(row.peakConcurrency), row.invariants.map(item => `[${item.index}] ${item.kind}: ${item.verdict}`).join(', ') || 'none'])), ''] : []),
     '## Reproduction', '', markdown(feedback.reproduction.setup), '',
@@ -336,8 +341,10 @@ function evidenceHtmlModel(spec: ChangeSpec, proof: ChangeProof, outDir: string,
     steps: spec.steps.map((step, index) => ({ index, action: step.action, ...(step.id ? { id: step.id } : {}), ...(step.note ? { note: step.note } : {}), stoppedRuns: stops(index) })),
     attention: [
       ...checks.flatMap(check => check.runs.filter(cell => cell.verdict !== 'passed').map(cell => ({ text: `Check ${check.index} (${check.id}), ${cell.label}`, verdict: cell.verdict, anchor: `check-${check.index}` }))),
-      ...(users ?? []).flatMap(run => run.invariants.filter(item => item.verdict !== 'passed').map(item => ({ text: `Invariant ${item.index} (${item.id}), ${run.label}`, verdict: item.verdict, anchor: `invariant-${run.label.replace(/\W+/g, '-')}-${item.index}` })))],
+      ...(users ?? []).flatMap(run => run.invariants.filter(item => item.verdict !== 'passed').map(item => ({ text: `Invariant ${item.index} (${item.id}), ${run.label}`, verdict: item.verdict, anchor: `invariant-${run.label.replace(/\W+/g, '-')}-${item.index}` }))),
+      ...raw.requirements.requirements.filter(row => row.status === 'untested').map(row => ({ text: `Requirement ${row.id} has no check`, verdict: 'not_executed' as const, anchor: 'requirements-h' }))],
     ...(users ? { users } : {}), gates, issues: raw.issues,
+    requirements: { summary: raw.requirements.summary, rows: raw.requirements.requirements.map(row => ({ ...row, text: spec.requirements?.find(item => item.id === row.id)?.text ?? '' })) },
     limits: [raw.scope, raw.provenanceLimit, 'This page is a private local view: it shows application text, selectors and expected and observed values. Fill values, typed text, credentials and known secrets are redacted. Do not share it; the linked screenshots and result files show application content too.', `Privacy rule of feedback.json and REPORT.md: ${raw.privacyLimit}`, 'This page shows only what was declared and observed. It is not proof that the whole app is correct.'], files: fileLinks };
   // Redact every text value; links are paths made by PRAMAN and must not be changed by a private value that happens to occur in them.
   const safe = <T,>(value: T): T => safeFeedbackValue(value, spec, [], { reveal: true });
@@ -348,13 +355,16 @@ function evidenceHtmlModel(spec: ChangeSpec, proof: ChangeProof, outDir: string,
   return walk(model) as EvidenceHtmlModel;
 }
 
-export function saveFeedback(spec: ChangeSpec, proof: ChangeProof, outDir: string, context?: FeedbackContext) {
+/** `checkVerdict` is the verdict before requirement coverage, so a coverage-only gap gets its own diagnostic, not a generic proof-gate one. */
+export function saveFeedback(spec: ChangeSpec, proof: ChangeProof, outDir: string, context?: FeedbackContext, checkVerdict: ChangeProof['verdict'] = proof.verdict) {
   mkdirSync(outDir, { recursive: true });
-  const diagnostics = checkDiagnostics(outDir, { ...proof, regressionCheck: spec.regressionCheck }, spec.checks.map(check => check.id));
+  const coverage = proof.requirements ?? assessRequirements(spec.requirements, () => []);
+  const diagnostics = [...checkDiagnostics(outDir, { ...proof, verdict: checkVerdict, regressionCheck: spec.regressionCheck }, spec.checks.map(check => check.id)),
+    ...requirementDiagnostics(coverage, join(outDir, 'scenario.json'))];
   const feedback = { ...buildFeedback(spec, proof, outDir, context), diagnostics };
   const feedbackPath = join(outDir, 'feedback.json'), report = join(outDir, 'REPORT.md');
   writeFileSync(feedbackPath, JSON.stringify(feedback, null, 2), { mode: 0o600 });
-  writeFileSync(report, formatSummary({ verdict: proof.verdict, diagnostics }, true, formatCheckOverview(feedback, diagnostics)) + '\n\n' + formatFeedback(feedback), { mode: 0o600 });
+  writeFileSync(report, formatSummary({ verdict: proof.verdict, diagnostics, requirements: feedback.requirements }, true, formatCheckOverview(feedback, diagnostics)) + '\n\n' + formatFeedback(feedback), { mode: 0o600 });
   // Written last so its links to the files above exist; rewritten whenever the folder is saved again.
   const reportHtml = join(outDir, 'REPORT.html');
   writeFileSync(reportHtml, renderEvidenceHtml(evidenceHtmlModel(spec, proof, outDir, context ?? {}, diagnostics)), { mode: 0o600 });

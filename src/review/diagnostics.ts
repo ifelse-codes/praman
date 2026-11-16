@@ -4,7 +4,9 @@ import { pathToFileURL } from 'node:url';
 import { classifyError, describeDiagnosis, diagnosisNextAction, type Diagnosis } from './classify.js';
 
 export interface Diagnostic {
-  category: 'check_mismatch' | 'invariant_violation' | 'execution_unavailable' | 'evidence_unavailable' | 'proof_gate' | 'story_preflight' | 'recording_unavailable';
+  category: 'check_mismatch' | 'invariant_violation' | 'execution_unavailable' | 'evidence_unavailable' | 'proof_gate' | 'story_preflight' | 'recording_unavailable' | 'requirement_untested';
+  /** A declared requirement id (requirement_untested only). */
+  requirementId?: string;
   version?: 'before' | 'current';
   run?: number;
   /** Declaration check index, zero-based; -1 denotes the command exit check. */
@@ -27,14 +29,16 @@ export function formatTable(header: string[], rows: string[][]): string[] {
 }
 
 /** `overview` lines (for example a check table) are placed right after the outcome in Markdown reports. */
-export function formatSummary(result: { verdict: string; diagnostics?: Diagnostic[]; report?: string; reportHtml?: string; proofVerdict?: string; proof?: { verdict: string } }, markdown = false, overview: string[] = []): string {
+export function formatSummary(result: { verdict: string; diagnostics?: Diagnostic[]; report?: string; reportHtml?: string; proofVerdict?: string; proof?: { verdict: string }; requirements?: { summary: string } }, markdown = false, overview: string[] = []): string {
   const lines = [`Outcome: ${result.verdict}`];
   const proofVerdict = result.proofVerdict ?? result.proof?.verdict;
   if (proofVerdict && proofVerdict !== result.verdict) lines.push(`Proof: ${proofVerdict} (separate from delivery)`);
+  if (result.requirements?.summary) lines.push(result.requirements.summary);
   if (markdown && overview.length) lines.push('', ...overview, '');
   const shown = markdown ? result.diagnostics ?? [] : (result.diagnostics ?? []).slice(0, 1);
   for (const diagnostic of shown) {
-    const location = [diagnostic.version, diagnostic.run === undefined ? undefined : `run ${diagnostic.run}`,
+    const location = [diagnostic.requirementId === undefined ? undefined : `requirement ${diagnostic.requirementId}`,
+      diagnostic.version, diagnostic.run === undefined ? undefined : `run ${diagnostic.run}`,
       diagnostic.checkIndex === undefined ? undefined : diagnostic.checkIndex === -1 ? 'exit check' : `check[${diagnostic.checkIndex}]`,
       diagnostic.invariantIndex === undefined ? undefined : `invariant[${diagnostic.invariantIndex}]`,
       diagnostic.stage === undefined ? undefined : `stage ${diagnostic.stage}`,
