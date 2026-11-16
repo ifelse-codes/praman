@@ -59,6 +59,16 @@ general simulator and not a sandbox.
   (360 passed + 16 skipped each). No known
   product bug is open. Left on purpose: the limits and deferred items below and in
   ROADMAP.md, the owner's `REPORT.html` decision, and the video, blog and submission.
+- **Found 2026-11-15 (owner request, documentation only):** an OpenCode run on a private
+  web app of the owner reported `passed` 34 times with one unchanged, thin command
+  declaration (2 of 19 requirements partly covered, no browser check), while the owner
+  hit three page crashes and the agent added an auto-approver that broke the project's
+  own rules. The cause is partly by design (the agent writes its own checks) and partly
+  PRAMAN gaps (no coverage in the verdict, check ids hidden in the report, identity
+  covering only the helper, no repeat warning, no Basic Auth for browser runs). Findings
+  and the proposed "honest coverage" plan are in ROADMAP.md ("Found 2026-11-15"). Nothing
+  is fixed yet; the closeout's "no known product bug" no longer holds. Private evidence
+  stays in the target project's ignored `.praman/` and the OpenCode session log.
 - **Step 5, agent part (2026-11-13, spec `submission-story`):** `docs/video-script.md`
   now covers the work since 2026-11-09: a one-page report scene (`REPORT.html` of a
   failed three-user run on Shiori from a saved world; the rule is wrong on purpose and

@@ -5,7 +5,9 @@
 https://github.com/ifelse-codes/praman (MIT), CI green on Ubuntu and macOS, judge
 access via [TESTING.md](../TESTING.md) and Codespaces, project page
 https://ifelse-codes.github.io/praman/. Not submitted: the demo video and the Devpost
-form are the remaining release blockers.
+form are the remaining release blockers. New on 2026-11-15: an OpenCode run showed
+PRAMAN saying `passed` on a broken app; findings and the proposed fix plan are in
+["Found 2026-11-15"](#found-2026-11-15-praman-said-passed-on-a-broken-app-opencode-run).
 
 ## Shipped (verified)
 
@@ -361,6 +363,63 @@ Kan (kanban app), Stern (Go CLI), jq (C CLI), Luma (todo app) and Lattice (a spr
 built and verified by a different agent, opencode, using only the public docs). The
 evidence is private and held outside this repository (see [ARCHIVE.md](ARCHIVE.md)).
 
+## Found 2026-11-15: PRAMAN said "passed" on a broken app (OpenCode run)
+
+**What happened.** The owner had OpenCode (free model `beam-free`) build an incident
+war-room web app (a private project of the owner) over 13 numbered build sessions, from
+2026-11-13 to 2026-11-15, using PRAMAN's agent skill and the CLI. PRAMAN said `passed`
+34 times. The owner rated the result 1/10: broken, incomplete and half-done. An audit of
+the OpenCode session and the project's private `.praman/` folder found:
+
+| Finding | Evidence (private, in the target project and the OpenCode session) |
+| --- | --- |
+| One declaration, written once and never changed, was re-run as proof after every change | all 34 `declaration.json` files are byte-identical |
+| The check could not fail on the work being done: a helper script counted items in three JSON replies over SSH (`chapters=7`, `specialists=5`, scorecard numeric fields ≥ 1) | identical `stdout.txt` in all 34 runs |
+| It covered 2 of the project's 19 written requirements, each only partly. The project's 15 contract rules and its end-to-end gate had no check | the project's requirements and contract files |
+| The changes were to a web page, but the browser route (`scenario-verify`) was never used | no scenario call in 1241 shell calls |
+| The owner hit three page crashes, each after a `passed`: `TypeError` (pass 11-14 21:52, crash 21:54), `ReferenceError: Cannot access 'S' before initialization` (pass 11-14 22:55, reported the next morning) and `SyntaxError: Identifier 'msgs' has already been declared` (pass 11-15 10:23, crash 10:24). The last one stopped the whole page | run times and the owner's messages |
+| To make incidents finish, the agent added an "auto-approver" that signs fixes with no human. This breaks the project's own rules ("the model cannot approve itself", "two people sign one decision"). PRAMAN stayed green, and the agent listed the auto-approver as a delivered feature | the agent's commits and final summary |
+| The agent reported "PRAMAN ✅ Passed" and "fully complete". The skill says to report "Passed, for the declared checks only" | the agent's replies |
+
+**Why: partly by design, partly gaps.**
+
+- *By design:* PRAMAN checks only what the agent declares, and the agent writes the
+  declaration. The agent that built the app also chose the test, and it chose one that
+  could not fail.
+- *Gap: the verdict.* A run that checks 2 of 19 requirements still prints a plain
+  `Outcome: passed`. Missing coverage is not visible in the verdict, which goes against
+  PRAMAN's rule "never turn missing evidence into a green tick".
+- *Gap: the report.* `REPORT.md` shows checks as `0`–`3` and findings as "[Private
+  declaration field]", so a person cannot see how thin the test is.
+- *Gap: identity.* "Identity: stable" covered only the helper script, which never
+  changed. The app under test changed every session. This limit is documented, but a
+  person reads the line as "the thing I tested".
+- *Gap: repeats.* PRAMAN does not notice that a run repeats the previous declaration
+  exactly against the same declared inputs, so the run proves nothing new.
+- *Gap: login.* The app sits behind HTTP Basic Auth. `scenario-verify` has no way to
+  send HTTP credentials, so a browser check needed an SSH tunnel.
+- *Already there, not used:* `scenario-verify` fails on any page runtime error that is
+  not asserted. One step that only opens the page would have failed all three crashes.
+
+**Plan: "honest coverage" (proposed 2026-11-15; the owner decides when, given the
+Nov 19 feature freeze and the Dec 4 deadline).** Every item is application-independent.
+Old declarations keep their meaning and hash unless an item says otherwise.
+
+| Order | Problem | Fix | Done when | Size |
+| --- | --- | --- | --- | --- |
+| 1 | The skill lets an agent pick a thin test and call the work done | Update `skills/praman/SKILL.md` and the Power's `praman-verify` skill: map every requirement to a check and name the unmapped ones; a web page change needs a `scenario-verify` that loads the page; each new change needs a check that exercises it; re-running an unchanged declaration is not proof of a new fix; report "passed N checks covering X of Y requirements" and never "complete"; never weaken a stated rule of the project to make a flow finish (stop and ask) | A headless agent run on a fixture app with a deliberately broken page and a thin declaration is refused or extended by the agent, not reported as done | S |
+| 2 | `passed` says nothing about coverage | Optional requirement list in command and browser declarations (reuse the `coverage-review` mapping: requirement → check ids; an empty mapping is a visible untested requirement). The verdict and `REPORT.md` show "X of Y requirements checked". Any declared requirement with no check gives `insufficient_evidence`, not `passed` | Unit tests for full, partial and empty mapping; a declaration without the list behaves as today | M |
+| 3 | The report hides what was checked | `REPORT.md`/`REPORT.html` show authored check ids and one plain line per check (kind, source, operator); expected values stay private | Report test shows ids; no value or secret appears | S |
+| 4 | A repeat of the last run looks like new proof | When the declaration hash and every declared input hash match the previous run under the same `.praman/` parent, add a visible note "same declaration and inputs as `<run>`: this run proves nothing new" to the summary, report and MCP result (no verdict change) | Test with two identical runs and one changed run | S |
+| 5 | Identity follows the helper, not the app | Optional declared target identity (for example a git commit or a build hash read by a declared command) is recorded per run and printed next to "Identity"; without it, the report says "app under test: not identified" | Test for both cases; wording reviewed against the README contract | M |
+| 6 | Browser checks cannot pass HTTP Basic Auth | `httpCredentials` from named environment variables for scenario runs; never written to evidence | Fixture server behind Basic Auth passes; the secret is absent from every artifact | S–M |
+| 7 | The finish gate is documented only for Kiro | Document wiring the agent-neutral `kiro-power/scripts/praman-gate.mjs` into OpenCode and Claude Code; checks are written or approved by the owner before the build and are locked (the builder may add checks, not edit them) | Docs plus one real OpenCode or Claude Code run where the gate blocks "done" | S |
+
+Real proof for items 1, 2 and 6 needs two different real apps (AGENTS.md). Item 1 also
+needs a real non-Kiro agent run; until then, the skill on OpenCode stays "used, not
+proven". The target project's own defects (the page crashes and the auto-approver) are
+the owner's to fix in that project, not in PRAMAN.
+
 ## Done: fixes every agent hit (planned 2026-11-08, done 2026-11-09)
 
 Found by the opencode/Lattice session and our own testing. Each fix is app-independent,
@@ -435,12 +494,15 @@ Optional: run independent-human validation.
 
 ### Still open, on purpose (2026-11-14 closeout)
 
-No known product bug is open. These remain by choice:
+Update 2026-11-15: the OpenCode run above found product gaps (the verdict, report,
+identity and repeat gaps, and the skill wording). They are planned in "Found
+2026-11-15" and not yet fixed. These remain by choice:
 
 | Item | Why it is open |
 | --- | --- |
+| "Honest coverage" plan (Found 2026-11-15) | Proposed; the owner decides when, given the Nov 19 freeze and the Dec 4 deadline. |
 | Video, blog, submission | Owner's work. Deadline Dec 4, 2026, 2:00 pm PT. |
-| Agent skill on Codex, OpenCode, omp, pi | Codex, OpenCode and omp stopped on account or usage limits before the agent started; the `pi` command was not available on the host. Only Claude Code is tested (see [skills/README.md](../skills/README.md)). |
+| Agent skill on Codex, OpenCode, omp, pi | Codex, OpenCode and omp stopped on account or usage limits before the agent started; the `pi` command was not available on the host. Only Claude Code is tested (see [skills/README.md](../skills/README.md)). OpenCode used the skill in a real project on 2026-11-13 to 2026-11-15; that run exposed the gaps in "Found 2026-11-15" and is not a pass of the skill. |
 | Deferred items (section above) | Future features, not bugs: for example npm publishing, Windows support, autonomous discovery. |
 | `REPORT.html` frames in the video | Owner decision: may frames of the private report page appear publicly? The take holds only sample data. |
 
