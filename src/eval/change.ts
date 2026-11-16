@@ -7,6 +7,7 @@ import { changeSpecSchema, type ChangeSpec, type ChangeProof, type ScenarioRun, 
 import type { Verdict } from './eval.js';
 import { z } from 'zod';
 import { saveFeedback, type FeedbackContext } from '../review/feedback.js';
+import { coverageSummary } from '../review/diagnostics.js';
 import { executeUsers } from './users.js';
 import { guardNavigation, leftOriginMessage } from './navigationGuard.js';
 import { captureIdentity, identityComplete, identityScope, sameIdentity } from './identity.js';
@@ -459,5 +460,7 @@ export async function proveChange(input: ChangeSpec, outDir: string, context?: F
     ...applyCoverage(targeted.verdict, targeted.reason, requirements), requirements, appUnderTest, inputsHash: hash, ...repeatFields(outDir, hash, { appIdentified: appUnderTest.status === 'identified' }), ...(before ? { before } : {}), after };
   writeFileSync(join(outDir, 'proof.json'), JSON.stringify(proof, null, 2), { mode: 0o600 });
   const saved = saveFeedback(spec, proof, outDir, context, assessed.verdict);
-  return { verdict: proof.verdict, requirements: saved.feedback.requirements, appUnderTest: saved.feedback.appUnderTest, ...(proof.repeatOf ? { repeatOf: proof.repeatOf, repeatNote: proof.repeatNote } : {}), proof, ...saved };
+  const shown = { requirements: saved.feedback.requirements, appUnderTest: saved.feedback.appUnderTest, ...(proof.repeatOf ? { repeatOf: proof.repeatOf, repeatNote: proof.repeatNote } : {}) };
+  // The one-line coverage summary goes last: some MCP clients show only the first and last 500 characters.
+  return { verdict: proof.verdict, ...shown, proof, ...saved, coverageSummary: coverageSummary(shown)! };
 }

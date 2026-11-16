@@ -5,7 +5,7 @@ import { chmodSync, closeSync, copyFileSync, existsSync, mkdirSync, openSync, re
 import path from 'node:path';
 import { z } from 'zod';
 import { safeFeedbackValue } from '../review/feedback.js';
-import { checkDiagnostics, formatSummary, formatTable } from '../review/diagnostics.js';
+import { checkDiagnostics, coverageSummary, formatSummary, formatTable } from '../review/diagnostics.js';
 import { inspectMedia, mediaAssertion } from './media.js';
 import { observeResources, resourceConfigSchema, type ResourceConfig, type ResourceObservation } from './resources.js';
 import { captureIdentity, identityComplete, identityDeclarationSchema, identityScope, normalizeIdentity, sameIdentity, type IdentitySnapshot } from './identity.js';
@@ -252,5 +252,7 @@ export async function proveCommands(specPath: string, outputDirectory: string, s
   })), '', '## Requirements', '', ...(feedback.requirements.declared ? formatTable(['Requirement', 'Checks', 'Status'], requirementRows(feedback.requirements)) : ['Not declared: add a `requirements` list to see which requirements these checks cover.'])];
   writeFileSync(report, `# Command verification\n\nMode: ${spec.mode}\n\nBaseline: ${spec.baselineKind ?? 'none (current-only)'}\n\nVerdict: ${verdict}\n\n${feedback.reason}\n\n${feedback.scope}\n\nIdentity of the runner, the executable and the declared files: ${proof.identityStatus}. Inspect private proof.json and per-run result.json identityBefore/identityAfter entries for declared coverage and hashes.\n\n${feedback.appUnderTest.summary}\n\n${feedback.reproduction}\n\nPrivate evidence: proof.json; per-run result.json, stdout.txt, stderr.txt and captured artifacts.\n`, { mode: 0o600 });
   writeFileSync(report, '\n' + formatSummary({ verdict, diagnostics, requirements: feedback.requirements, appUnderTest: feedback.appUnderTest, repeatOf: feedback.repeatOf, repeatNote: feedback.repeatNote }, true, overview) + '\n', { flag: 'a', mode: 0o600 });
-  return { verdict, requirements: feedback.requirements, appUnderTest: feedback.appUnderTest, ...(feedback.repeatOf ? { repeatOf: feedback.repeatOf, repeatNote: feedback.repeatNote } : {}), feedback, feedbackPath, report, proofPath, diagnostics };
+  const shown = { requirements: feedback.requirements, appUnderTest: feedback.appUnderTest, ...(feedback.repeatOf ? { repeatOf: feedback.repeatOf, repeatNote: feedback.repeatNote } : {}) };
+  // The one-line coverage summary goes last: some MCP clients show only the first and last 500 characters.
+  return { verdict, ...shown, feedback, feedbackPath, report, proofPath, diagnostics, coverageSummary: coverageSummary(shown)! };
 }

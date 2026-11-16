@@ -31,6 +31,14 @@ export function formatTable(header: string[], rows: string[][]): string[] {
   return [`| ${header.map(cell).join(' | ')} |`, `| ${header.map(() => '---').join(' | ')} |`, ...rows.map(row => `| ${row.map(cell).join(' | ')} |`)];
 }
 
+/** What a verdict covers, in one line: requirement coverage, the app under test and any repeat. Placed last in
+ * results because some MCP clients show only the first and last 500 characters of a long result. */
+export function coverageSummary(result: { requirements?: { summary?: unknown }; appUnderTest?: { summary?: unknown }; repeatOf?: string; repeatNote?: string }): string | undefined {
+  const parts = [typeof result.requirements?.summary === 'string' ? result.requirements.summary : undefined,
+    typeof result.appUnderTest?.summary === 'string' ? result.appUnderTest.summary : undefined, repeatLine(result)].filter(Boolean);
+  return parts.length ? parts.join(' ') : undefined;
+}
+
 /** `overview` lines (for example a check table) are placed right after the outcome in Markdown reports. */
 export function formatSummary(result: { verdict: string; diagnostics?: Diagnostic[]; report?: string; reportHtml?: string; proofVerdict?: string; proof?: { verdict: string }; requirements?: { summary: string }; appUnderTest?: { summary: string }; repeatOf?: string; repeatNote?: string }, markdown = false, overview: string[] = []): string {
   const lines = [`Outcome: ${result.verdict}`];

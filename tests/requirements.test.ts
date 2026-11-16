@@ -33,6 +33,9 @@ describe('requirements in command declarations', () => {
     expect(result.requirements).toMatchObject({ declared: true, total: 2, checked: 2, untested: [],
       requirements: [{ id: 'R1', checks: ['total'], status: 'passed' }, { id: 'R2', checks: ['$exit', 'no-warning'], status: 'passed' }] });
     expect(formatSummary(result)).toContain('Requirements: 2 of 2 have a check (2 passed).');
+    // Last key, so an MCP client that shows only the end of a long result still sees it.
+    expect(Object.keys(result).at(-1)).toBe('coverageSummary');
+    expect(result.coverageSummary).toBe('Requirements: 2 of 2 have a check (2 passed). App under test: not identified. Declare "target" (for example a command that prints the git commit) to record which version was tested.');
     const proof = JSON.parse(readFileSync(result.proofPath, 'utf8'));
     expect(proof.requirements.summary).toBe('Requirements: 2 of 2 have a check (2 passed).');
     // The requirement text stays in the private declaration; results carry ids and statuses only.
@@ -120,6 +123,7 @@ describe('requirements in browser scenarios', () => {
       const ok = await proveChange(covered, path.join(root, 'covered'));
       expect(ok.verdict).toBe('passed');
       expect(formatSummary(safeFeedbackValue(ok, covered))).toContain('Requirements: 2 of 2 have a check (2 passed).');
+      expect(Object.keys(safeFeedbackValue(ok, covered)).at(-1)).toBe('coverageSummary');
       const gap = changeSpecSchema.parse({ ...base, afterUrl: origin, requirements: [{ id: 'R1', text: 'Shows the board title', checks: ['title'] }, { id: 'R4', text: 'Timeline lists events newest first', checks: [] }] });
       const out = path.join(root, 'gap');
       const result = await proveChange(gap, out);
