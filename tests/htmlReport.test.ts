@@ -228,5 +228,5 @@ describe.skipIf(!existsSync(chromium.executablePath()))('REPORT.html in Chromium
 
 // Hashes of feedback.json and REPORT.md for the fixture above. First made with the code before REPORT.html
 // existed (the HTML report changed neither file). Changed on purpose since: 2026-11-16 honest coverage
-// (requirement coverage line and section; authored check ids and a plain line per check).
-const pinnedHashes = { feedback: '7c969b5f549bd121de0edbbddf74ee09e0a3c955cd51dca6fac2753a5f340e68', report: 'b4f41e9cdf1f6c5fce9a5155743a76fe804a61ed30bee4000eb54fbd63dddce2' };
+// (requirement coverage line and section; authored check ids and a plain line per check; the app-under-test line).
+const pinnedHashes = { feedback: 'c9739576667b7705796e4a2fe9c8f404a842230b30ac85925e196dc30f2a8204', report: '0ee3e7ad92314ed5e96ec982c6fc7ac2fa1c02a62362dcd1832592da894c89d7' };

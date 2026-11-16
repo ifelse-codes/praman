@@ -5,6 +5,7 @@ import { identityDeclarationSchema, type IdentitySnapshot } from '../eval/identi
 import { sceneFramingSchema } from './framing.js';
 import { shortCompositionSchema, validateShortComposition } from './composition.js';
 import { checkRequirementRefs, requirementsSchema, type RequirementCoverage } from '../review/requirements.js';
+import { targetSchema, type AppUnderTest } from '../eval/target.js';
 
 const selector = z.string().min(1);
 const note = z.string().min(1);
@@ -114,6 +115,8 @@ const rawSpecSchema = z.object({
   users: usersSchema.optional(),
   faults: z.array(z.object({ name: z.string().regex(/^[a-z][a-z0-9-]*$/), fromStep: stepRef, throughStep: stepRef }).strict()).min(1).optional(),
   requirements: requirementsSchema.optional(),
+  /** A trusted command that prints the version of the app under test (for example its git commit). */
+  target: targetSchema.optional(),
 }).strict();
 
 type RawSpec = z.output<typeof rawSpecSchema>;
@@ -302,6 +305,8 @@ export interface ChangeProof {
   reason: string;
   /** Declared requirements and their checks; `declared: false` when the scenario has no list. */
   requirements?: RequirementCoverage;
+  /** The declared app under test, read before every current run and after the last; `not_declared` without `target`. */
+  appUnderTest?: AppUnderTest;
   /** SHA-256 over the declaration hash, declared identity, target reading and managed source hashes (see review/repeat.ts). */
   inputsHash?: string;
   /** An earlier sibling run with the same inputsHash: its folder, and a note that this run proves nothing new. */

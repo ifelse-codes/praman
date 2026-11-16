@@ -18,6 +18,7 @@ import { repeatLine } from '../review/repeat.js';
 import type { ChangeProof } from '../case/change.js';
 import { changeSpecSchema } from '../case/change.js';
 import { normalizeIdentity } from '../eval/identity.js';
+import { normalizeTarget } from '../eval/target.js';
 
 export type EnvironmentAction = 'create' | 'observe' | 'workload' | 'fault' | 'recover' | 'reset' | 'world-save' | 'recording-save' | 'verify' | 'demonstrate' | 'destroy';
 export interface EnvironmentRequest { baseDir?: string; id?: string; specPath?: string; workload?: string; world?: string; recording?: string; fault?: string; }
@@ -119,6 +120,7 @@ export async function manageEnvironment(action: EnvironmentAction, request: Envi
         normalizeIdentity(scenario.identity, scenarioDirectory);
         if (scenario.diffPath) scenario.diffPath = resolve(scenarioDirectory, scenario.diffPath);
         for (const step of scenario.steps) if (step.action === 'upload') step.path = resolve(scenarioDirectory, step.path);
+        normalizeTarget(scenario.target, scenarioDirectory);
         for (const window of scenario.faults ?? []) {
           if (!state.spec.faults?.[window.name]) throw new Error(`The scenario names fault "${window.name}", which this environment does not declare`);
         }
@@ -271,8 +273,9 @@ export async function manageEnvironment(action: EnvironmentAction, request: Envi
   // Path only, never page content. Placed before the three summaries so it stays inside the last 500 characters an MCP client may show.
   const reportHtml = typeof (result.evidence as { reportHtml?: unknown } | undefined)?.reportHtml === 'string' ? (result.evidence as { reportHtml: string }).reportHtml : undefined;
   // What the verdict covers, in one line next to the report path: requirement coverage and any repeat of an earlier run.
-  const evidence = result.evidence as { requirements?: { summary?: unknown }; repeatOf?: string; repeatNote?: string } | undefined;
-  const coverageParts = [typeof evidence?.requirements?.summary === 'string' ? evidence.requirements.summary : undefined, evidence ? repeatLine(evidence) : undefined].filter(Boolean);
+  const evidence = result.evidence as { requirements?: { summary?: unknown }; appUnderTest?: { summary?: unknown }; repeatOf?: string; repeatNote?: string } | undefined;
+  const coverageParts = [typeof evidence?.requirements?.summary === 'string' ? evidence.requirements.summary : undefined,
+    typeof evidence?.appUnderTest?.summary === 'string' ? evidence.appUnderTest.summary : undefined, evidence ? repeatLine(evidence) : undefined].filter(Boolean);
   const coverageSummary = coverageParts.length ? coverageParts.join(' ') : undefined;
   const record = { action, started, finished: new Date().toISOString(), id: state.id, directory: state.directory, phase: state.phase, generation: state.generation, ...result, ...(error ? { error } : {}), ...(reportHtml ? { reportHtml } : {}), ...(coverageSummary ? { coverageSummary } : {}), ...(faultSummary ? { faultSummary } : {}), ...(usersSummary ? { usersSummary } : {}), ...(outsideSummary ? { outsideSummary } : {}) };
   appendFileSync(join(state.directory, 'operations.jsonl'), JSON.stringify(record) + '\n', { mode: 0o600 });

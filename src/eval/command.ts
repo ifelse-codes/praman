@@ -12,6 +12,7 @@ import { captureIdentity, identityComplete, identityDeclarationSchema, identityS
 import { applyCoverage, assessRequirements, checkRequirementRefs, requirementDiagnostics, requirementRows, requirementsSchema } from '../review/requirements.js';
 import { describeCommandCheck } from '../review/describe.js';
 import { inputsHash, repeatFields } from '../review/repeat.js';
+import { applyTarget, normalizeTarget, TargetTracker, targetDiagnostics, targetSchema } from './target.js';
 
 export const commandInvocationSchema = z.object({ executable: z.string().min(1), args: z.array(z.string()).default([]), cwd: z.string().min(1), env: z.record(z.string(), z.string().nullable()).default({}), stdin: z.string().optional(), deadlineMs: z.number().int().min(1).max(300000), identity: identityDeclarationSchema.optional() }).strict();
 const textAssertion = z.object({ id: z.string().min(1), source: z.enum(['stdout', 'stderr', 'artifact']), path: z.string().optional(), operator: z.enum(['equals', 'contains', 'notContains', 'matches']), value: z.string() }).strict().superRefine((row, ctx) => {
@@ -25,6 +26,7 @@ export const commandProofSchema = z.object({
   expectedExit: z.number().int().min(0).max(255).default(0), checks: z.array(assertion).min(1),
   regressionCheck: z.string().min(1).optional(), repeats: z.number().int().min(2).max(10).default(2),
   requirements: requirementsSchema.optional(),
+  target: targetSchema.optional(),
 }).strict().superRefine((spec, ctx) => {
   checkRequirementRefs(spec.requirements, { checks: ['$exit', ...spec.checks.map(row => row.id)] }, ctx);
   if (spec.checks.some(row => row.id === '$exit') || new Set(spec.checks.map(row => row.id)).size !== spec.checks.length) ctx.addIssue({ code: 'custom', message: 'Checks require unique IDs and must not use reserved $exit.' });
@@ -152,6 +154,7 @@ export function loadCommandSpec(specPath: string): CommandSpec {
     if (command.executable.includes(path.sep)) command.executable = path.resolve(path.dirname(specPath), command.executable);
     normalizeIdentity(command.identity, path.dirname(specPath));
   }
+  normalizeTarget(spec.target, path.dirname(specPath));
   return spec;
 }
 
@@ -168,7 +171,14 @@ export async function proveCommands(specPath: string, outputDirectory: string, s
   // An interruption stops the active run and starts no further run.
   const before = spec.mode === 'acceptance' || signal?.aborted ? undefined : await executeCommand(spec, spec.before!, path.join(outDir, 'before'), undefined, signal);
   const current: CommandRun[] = [];
-  for (let i = 0; i < spec.repeats && !signal?.aborted; i++) current.push(await executeCommand(spec, spec.current, path.join(outDir, `current-${i + 1}`), undefined, signal));
+  // The declared app under test is read before every current run and once after the last.
+  const tracker = new TargetTracker(spec.target);
+  for (let i = 0; i < spec.repeats && !signal?.aborted; i++) {
+    await tracker.read(`before run ${i + 1}`);
+    current.push(await executeCommand(spec, spec.current, path.join(outDir, `current-${i + 1}`), undefined, signal));
+  }
+  if (!signal?.aborted) await tracker.read('after the last run');
+  const appUnderTest = tracker.result();
   const interrupted = Boolean(signal?.aborted) || [before, ...current].some(run => run?.status === 'interrupted');
   const stable = (runs: CommandRun[]) => runs.every(run => sameIdentity(runs[0]?.identityBefore, run.identityBefore) && sameIdentity(run.identityBefore, run.identityAfter));
   const identitiesStable = stable(current) && (!before || stable([before]));
@@ -188,19 +198,20 @@ export async function proveCommands(specPath: string, outputDirectory: string, s
     : 'Named historical regression reproduced, other baseline checks passed, and all repeated current checks passed.';
   // Declared requirements: one with no check turns a would-be pass into not proven.
   const requirements = assessRequirements(spec.requirements, id => current.map(run => run.checks.find(row => row.id === id)?.verdict));
-  const { verdict, reason } = applyCoverage(baseVerdict, baseReason, requirements);
+  const targeted = applyTarget(baseVerdict, baseReason, appUnderTest);
+  const { verdict, reason } = applyCoverage(targeted.verdict, targeted.reason, requirements);
   const specHash = createHash('sha256').update(JSON.stringify(spec)).digest('hex');
   // Same declaration and declared inputs as an earlier sibling run: noted, never a verdict change.
-  const hash = inputsHash({ specHash, identity: current[0]?.identityBefore });
+  const hash = inputsHash({ specHash, identity: current[0]?.identityBefore, target: appUnderTest.sha256 });
   const repeat = repeatFields(outDir, hash);
-  const proof = { mode: spec.mode, baselineKind: spec.baselineKind, verdict, reason, ...(interrupted ? { interrupted: true } : {}), scope: `Only declared command checks; not whole-program correctness or sandboxing. Baseline attribution is caller-declared, not authenticated history. ${identityScope}`, identityStatus: identitiesStable ? 'stable' : 'unavailable_or_changed', verifiedAt: new Date().toISOString(), specHash, requirements, inputsHash: hash, ...repeat, ...(before ? { before } : {}), current };
+  const proof = { mode: spec.mode, baselineKind: spec.baselineKind, verdict, reason, ...(interrupted ? { interrupted: true } : {}), scope: `Only declared command checks; not whole-program correctness or sandboxing. Baseline attribution is caller-declared, not authenticated history. ${identityScope}`, identityStatus: identitiesStable ? 'stable' : 'unavailable_or_changed', verifiedAt: new Date().toISOString(), specHash, requirements, appUnderTest, inputsHash: hash, ...repeat, ...(before ? { before } : {}), current };
   privateJson(proofPath, proof);
   const diagnostics = [...checkDiagnostics(outDir, { ...proof, verdict: baseVerdict, regressionCheck: spec.regressionCheck }, spec.checks.map(check => check.id)),
-    ...requirementDiagnostics(requirements, path.join(outDir, 'declaration.json'))];
+    ...targetDiagnostics(appUnderTest, proofPath), ...requirementDiagnostics(requirements, path.join(outDir, 'declaration.json'))];
   // Deliberately do not present command arguments, environment, assertions, raw output or raw errors.
   const feedback = safeFeedbackValue({
     mode: spec.mode, baselineKind: spec.baselineKind, verdict, ...(interrupted ? { interrupted: true } : {}), scope: proof.scope, identityStatus: proof.identityStatus, identityEvidence: { path: proofPath, private: true }, verifiedAt: proof.verifiedAt, proofPath, reason,
-    requirements, ...repeat, diagnostics,
+    requirements, appUnderTest, ...repeat, diagnostics,
     findings: ['$exit', ...spec.checks.map(check => check.id)].map(checkId => {
       const mismatch = current.some(run => run.checks.find(row => row.id === checkId)?.verdict === 'failed');
       const incomplete = interrupted || current.some(run => run.checks.find(row => row.id === checkId)?.verdict !== 'passed')
@@ -239,7 +250,7 @@ export async function proveCommands(specPath: string, outputDirectory: string, s
     return [finding.checkIndex === -1 ? 'exit' : String(finding.checkIndex), finding.checkId, finding.checkIndex === -1 ? 'exit' : spec.checks[finding.checkIndex]?.source ?? 'unknown', finding.description,
       ...finding.occurrences.map(row => row.verdict ?? 'not_executed'), statuses.map(status => `run ${status}`).join('; ')];
   })), '', '## Requirements', '', ...(feedback.requirements.declared ? formatTable(['Requirement', 'Checks', 'Status'], requirementRows(feedback.requirements)) : ['Not declared: add a `requirements` list to see which requirements these checks cover.'])];
-  writeFileSync(report, `# Command verification\n\nMode: ${spec.mode}\n\nBaseline: ${spec.baselineKind ?? 'none (current-only)'}\n\nVerdict: ${verdict}\n\n${feedback.reason}\n\n${feedback.scope}\n\nIdentity: ${proof.identityStatus}. Inspect private proof.json and per-run result.json identityBefore/identityAfter entries for declared coverage and hashes.\n\n${feedback.reproduction}\n\nPrivate evidence: proof.json; per-run result.json, stdout.txt, stderr.txt and captured artifacts.\n`, { mode: 0o600 });
-  writeFileSync(report, '\n' + formatSummary({ verdict, diagnostics, requirements: feedback.requirements, repeatOf: feedback.repeatOf, repeatNote: feedback.repeatNote }, true, overview) + '\n', { flag: 'a', mode: 0o600 });
-  return { verdict, requirements: feedback.requirements, ...(feedback.repeatOf ? { repeatOf: feedback.repeatOf, repeatNote: feedback.repeatNote } : {}), feedback, feedbackPath, report, proofPath, diagnostics };
+  writeFileSync(report, `# Command verification\n\nMode: ${spec.mode}\n\nBaseline: ${spec.baselineKind ?? 'none (current-only)'}\n\nVerdict: ${verdict}\n\n${feedback.reason}\n\n${feedback.scope}\n\nIdentity of the runner, the executable and the declared files: ${proof.identityStatus}. Inspect private proof.json and per-run result.json identityBefore/identityAfter entries for declared coverage and hashes.\n\n${feedback.appUnderTest.summary}\n\n${feedback.reproduction}\n\nPrivate evidence: proof.json; per-run result.json, stdout.txt, stderr.txt and captured artifacts.\n`, { mode: 0o600 });
+  writeFileSync(report, '\n' + formatSummary({ verdict, diagnostics, requirements: feedback.requirements, appUnderTest: feedback.appUnderTest, repeatOf: feedback.repeatOf, repeatNote: feedback.repeatNote }, true, overview) + '\n', { flag: 'a', mode: 0o600 });
+  return { verdict, requirements: feedback.requirements, appUnderTest: feedback.appUnderTest, ...(feedback.repeatOf ? { repeatOf: feedback.repeatOf, repeatNote: feedback.repeatNote } : {}), feedback, feedbackPath, report, proofPath, diagnostics };
 }

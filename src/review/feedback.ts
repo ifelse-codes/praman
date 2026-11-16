@@ -9,6 +9,7 @@ import { renderEvidenceHtml, type EvidenceHtmlModel, type HtmlCheck, type HtmlIm
 import { identityComplete, sameIdentity, type IdentitySnapshot } from '../eval/identity.js';
 import { assessRequirements, requirementDiagnostics, requirementRows, type RequirementCoverage } from './requirements.js';
 import { describeBrowserCheck } from './describe.js';
+import { TargetTracker, targetDiagnostics, type AppUnderTest } from '../eval/target.js';
 
 export interface FeedbackContext {
   environmentId?: string;
@@ -133,6 +134,8 @@ export interface ChangeFeedback {
   issues: string[];
   /** Declared requirements and their checks (ids and statuses only); `declared: false` without a list. */
   requirements: RequirementCoverage;
+  /** The declared app under test; `not_declared` when the scenario has no `target`. */
+  appUnderTest: AppUnderTest;
   /** Set when an earlier sibling run had the same declaration and declared inputs. */
   repeatOf?: string;
   repeatNote?: string;
@@ -235,7 +238,9 @@ function rawFeedback(spec: ChangeSpec, proof: ChangeProof, outDir: string, conte
     identityStatus: [...(proof.before ? [proof.before] : []), ...proof.after].every(run => sameIdentity(run.identityBefore, run.identityAfter) && sameIdentity(proof.after[0]?.identityBefore, run.identityBefore)) ? 'stable' : 'unavailable_or_changed',
     identityEvidence: { path: resolve(outDir, 'proof.json'), private: true as const },
     privacyLimit: 'Authored check and requirement ids and one plain line per check kind are shown. Application text, step ids, selectors, string/object expectations and observations, raw errors, known credentials and private fill inputs are withheld. Numeric scalars matching known private numeric values are also withheld, including equivalent leading-zero/exponent forms. Other numeric/boolean observations and caller-owned local evidence paths remain visible. Raw screenshots, scenarios, result/proof/network files remain private; no sanitized-export guarantee.',
-    issues, requirements: proof.requirements ?? assessRequirements(spec.requirements, () => []), ...(proof.repeatOf ? { repeatOf: proof.repeatOf, repeatNote: proof.repeatNote } : {}), ...(concurrency ? { concurrency } : {}), reproduction: { setup: context.environmentId
+    issues, requirements: proof.requirements ?? assessRequirements(spec.requirements, () => []),
+    appUnderTest: proof.appUnderTest ?? new TargetTracker(spec.target).result(),
+    ...(proof.repeatOf ? { repeatOf: proof.repeatOf, repeatNote: proof.repeatNote } : {}), ...(concurrency ? { concurrency } : {}), reproduction: { setup: context.environmentId
       ? `If the recorded instance is destroyed or unavailable, run praman environment create \"${context.declarationPath ?? '<original-private-declaration>'}\" --base <owned-base>, then praman environment verify <new-id> --base <owned-base>. Create a fresh managed instance, restore the failing run's state/preconditions from the private operation history (${context.operationLog ?? 'caller-owned history'}) and scenario before verifying; a fresh seed alone may not reproduce a stateful failure. Recorded localhost URLs are historical targets, not a live service guarantee. Workflow step indexes are zero-based.`
       : `Start caller-owned isolated ${spec.mode === 'acceptance' ? 'current application' : 'baseline/current applications'}, restore the declared seed and private inputs, and rerun this ${spec.mode} scenario. Recorded URLs may no longer be live. Verification does not require video.`,
       steps: spec.steps.map((step, index) => ({ step: index, action: step.action })) }, findings });
@@ -253,7 +258,8 @@ export function formatFeedback(feedback: ChangeFeedback): string {
       : `Baseline: ${feedback.baselineKind}. Attribution is caller-declared, not independently authenticated history.`, '',
     `Requirement: ${markdown(feedback.requirement)}`, '', `Scope: ${markdown(feedback.scope)}`, '',
     `Context: ${markdown(feedback.context)}`, '', feedback.provenanceLimit, '', feedback.privacyLimit, '',
-    `Identity: ${feedback.identityStatus}. [Private identity coverage and hashes](${pathToFileURL(feedback.identityEvidence.path).href}) are in per-run identityBefore/identityAfter entries.`, '',
+    `Identity of the runner, the browser and the declared files: ${feedback.identityStatus}. [Private identity coverage and hashes](${pathToFileURL(feedback.identityEvidence.path).href}) are in per-run identityBefore/identityAfter entries.`, '',
+    markdown(feedback.appUnderTest.summary), '',
     '## Requirements', '', markdown(feedback.requirements.summary), '',
     ...(feedback.repeatNote ? [`Repeat: ${markdown(feedback.repeatNote)} Earlier run: ${markdown(feedback.repeatOf)}`, ''] : []),
     ...(feedback.requirements.declared ? [...formatTable(['Requirement', 'Checks', 'Status'], requirementRows(feedback.requirements)), ''] : []),
@@ -342,7 +348,7 @@ function evidenceHtmlModel(spec: ChangeSpec, proof: ChangeProof, outDir: string,
   const model: EvidenceHtmlModel = {
     title: spec.title, requirement: spec.change, verdict: proof.verdict,
     facts: [['Mode', spec.mode], ['Baseline kind', spec.baselineKind ?? 'none (current-only)'], ['Repeats', String(spec.repeats)], ...(spec.users ? [['Users', String(spec.users.count)] as [string, string]] : []),
-      ['Verified at', proof.verifiedAt], ['Spec hash', proof.specHash], ['Identity status', raw.identityStatus], ['Proof reason', proof.reason],
+      ['Verified at', proof.verifiedAt], ['Spec hash', proof.specHash], ['Identity of the runner, browser and declared files', raw.identityStatus], ['App under test', raw.appUnderTest.summary], ['Proof reason', proof.reason],
       ...(context.environmentId ? [['Environment id', context.environmentId] as [string, string], ['Generation', String(context.generation ?? 0)] as [string, string]] : []),
       ...Object.entries(context.sourceHashes ?? {}).map(([key, value]): [string, string] => [`Source: ${key}`, value])],
     runLabels: checks[0]?.runs.map(run => run.label) ?? [], checks,
@@ -369,11 +375,11 @@ export function saveFeedback(spec: ChangeSpec, proof: ChangeProof, outDir: strin
   mkdirSync(outDir, { recursive: true });
   const coverage = proof.requirements ?? assessRequirements(spec.requirements, () => []);
   const diagnostics = [...checkDiagnostics(outDir, { ...proof, verdict: checkVerdict, regressionCheck: spec.regressionCheck }, spec.checks.map(check => check.id)),
-    ...requirementDiagnostics(coverage, join(outDir, 'scenario.json'))];
+    ...(proof.appUnderTest ? targetDiagnostics(proof.appUnderTest, join(outDir, 'proof.json')) : []), ...requirementDiagnostics(coverage, join(outDir, 'scenario.json'))];
   const feedback = { ...buildFeedback(spec, proof, outDir, context), diagnostics };
   const feedbackPath = join(outDir, 'feedback.json'), report = join(outDir, 'REPORT.md');
   writeFileSync(feedbackPath, JSON.stringify(feedback, null, 2), { mode: 0o600 });
-  writeFileSync(report, formatSummary({ verdict: proof.verdict, diagnostics, requirements: feedback.requirements, repeatOf: feedback.repeatOf, repeatNote: feedback.repeatNote }, true, formatCheckOverview(feedback, diagnostics)) + '\n\n' + formatFeedback(feedback), { mode: 0o600 });
+  writeFileSync(report, formatSummary({ verdict: proof.verdict, diagnostics, requirements: feedback.requirements, appUnderTest: feedback.appUnderTest, repeatOf: feedback.repeatOf, repeatNote: feedback.repeatNote }, true, formatCheckOverview(feedback, diagnostics)) + '\n\n' + formatFeedback(feedback), { mode: 0o600 });
   // Written last so its links to the files above exist; rewritten whenever the folder is saved again.
   const reportHtml = join(outDir, 'REPORT.html');
   writeFileSync(reportHtml, renderEvidenceHtml(evidenceHtmlModel(spec, proof, outDir, context ?? {}, diagnostics)), { mode: 0o600 });

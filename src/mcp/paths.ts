@@ -33,6 +33,9 @@ export function relativePathArguments(input: Record_): string[] {
       if (record?.action === 'upload' && isRelative(record.path)) names.push(`scenario.steps[${index}].path`);
     });
     if (isRelative(scenario.diffPath)) names.push('scenario.diffPath');
+    const target = asRecord(scenario.target);
+    if (target && isRelative(target.cwd)) names.push('scenario.target.cwd');
+    if (target && isRelative(target.executable) && hasSeparator(target.executable)) names.push('scenario.target.executable');
     const identity = asRecord(scenario.identity);
     asArray(identity?.files).forEach((file, index) => {
       if (isRelative(asRecord(file)?.path)) names.push(`scenario.identity.files[${index}].path`);

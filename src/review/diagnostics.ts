@@ -5,7 +5,7 @@ import { classifyError, describeDiagnosis, diagnosisNextAction, type Diagnosis }
 import { repeatLine } from './repeat.js';
 
 export interface Diagnostic {
-  category: 'check_mismatch' | 'invariant_violation' | 'execution_unavailable' | 'evidence_unavailable' | 'proof_gate' | 'story_preflight' | 'recording_unavailable' | 'requirement_untested';
+  category: 'check_mismatch' | 'invariant_violation' | 'execution_unavailable' | 'evidence_unavailable' | 'proof_gate' | 'story_preflight' | 'recording_unavailable' | 'requirement_untested' | 'target_unavailable';
   /** A declared requirement id (requirement_untested only). */
   requirementId?: string;
   version?: 'before' | 'current';
@@ -32,11 +32,12 @@ export function formatTable(header: string[], rows: string[][]): string[] {
 }
 
 /** `overview` lines (for example a check table) are placed right after the outcome in Markdown reports. */
-export function formatSummary(result: { verdict: string; diagnostics?: Diagnostic[]; report?: string; reportHtml?: string; proofVerdict?: string; proof?: { verdict: string }; requirements?: { summary: string }; repeatOf?: string; repeatNote?: string }, markdown = false, overview: string[] = []): string {
+export function formatSummary(result: { verdict: string; diagnostics?: Diagnostic[]; report?: string; reportHtml?: string; proofVerdict?: string; proof?: { verdict: string }; requirements?: { summary: string }; appUnderTest?: { summary: string }; repeatOf?: string; repeatNote?: string }, markdown = false, overview: string[] = []): string {
   const lines = [`Outcome: ${result.verdict}`];
   const proofVerdict = result.proofVerdict ?? result.proof?.verdict;
   if (proofVerdict && proofVerdict !== result.verdict) lines.push(`Proof: ${proofVerdict} (separate from delivery)`);
   if (result.requirements?.summary) lines.push(result.requirements.summary);
+  if (result.appUnderTest?.summary) lines.push(result.appUnderTest.summary);
   const repeat = repeatLine(result);
   if (repeat) lines.push(repeat);
   if (markdown && overview.length) lines.push('', ...overview, '');

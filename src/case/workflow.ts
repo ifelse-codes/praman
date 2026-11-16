@@ -2,7 +2,9 @@ import { z } from 'zod';
 import { commandProofSchema } from '../eval/command.js';
 import { serviceReplaySchema } from '../gateway/replay.js';
 
-const acceptance = commandProofSchema.refine(spec => spec.mode === 'acceptance', 'Workflow commands must use current-only acceptance');
+const acceptance = commandProofSchema.refine(spec => spec.mode === 'acceptance', 'Workflow commands must use current-only acceptance')
+  // Requirement coverage and the app-under-test reading belong to command-verify; a workflow would silently ignore them.
+  .refine(spec => !spec.requirements && !spec.target, 'Workflow commands do not take requirements or target; declare them in a command-verify declaration');
 export const workflowSchema = z.object({
   version: z.literal(1),
   dependency: serviceReplaySchema,

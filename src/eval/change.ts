@@ -12,6 +12,7 @@ import { guardNavigation, leftOriginMessage } from './navigationGuard.js';
 import { captureIdentity, identityComplete, identityScope, sameIdentity } from './identity.js';
 import { applyCoverage, assessRequirements } from '../review/requirements.js';
 import { inputsHash, repeatFields } from '../review/repeat.js';
+import { applyTarget, TargetTracker } from './target.js';
 
 const imageObservation = z.object({ src: z.string().nullable(), currentSrc: z.string(), complete: z.boolean(), width: z.number(), height: z.number() });
 
@@ -432,6 +433,8 @@ export async function proveChange(input: ChangeSpec, outDir: string, context?: F
   }
   const before = spec.mode === 'acceptance' ? undefined : await run(spec.beforeUrl!, join(outDir, 'before'), 'before');
   const after: ScenarioRun[] = [];
+  // The declared app under test is read before every current run and once after the last.
+  const tracker = new TargetTracker(spec.target);
   for (let i = 0; i < spec.repeats; i++) {
     try { await hooks.beforeRepeat?.(i); }
     catch (error) {
@@ -439,18 +442,22 @@ export async function proveChange(input: ChangeSpec, outDir: string, context?: F
       after.push({ url: spec.afterUrl, verdict: 'insufficient_evidence', checks: [], screenshots: [], error: `Fresh starting state unavailable: ${error instanceof Error ? error.message : String(error)}` });
       continue;
     }
+    await tracker.read(`before run ${i + 1}`);
     after.push(await run(spec.afterUrl, join(outDir, `after-${i + 1}`), 'current'));
   }
+  await tracker.read('after the last run');
+  const appUnderTest = tracker.result();
   const assessed = assessProof(spec, before, after);
+  const targeted = applyTarget(assessed.verdict, assessed.reason, appUnderTest);
   // Declared requirements: one with no check turns a would-be pass into not proven.
   const requirements = assessRequirements(spec.requirements, id => after.map(run => run.checks.find(row => row.id === id)?.verdict ?? run.invariants?.find(row => row.id === id)?.verdict));
   const specHash = hashSpec(spec);
   // Same declaration and declared inputs as an earlier sibling run: noted, never a verdict change.
-  const hash = inputsHash({ specHash, identity: after[0]?.identityBefore, sourceHashes: context?.sourceHashes });
+  const hash = inputsHash({ specHash, identity: after[0]?.identityBefore, target: appUnderTest.sha256, sourceHashes: context?.sourceHashes });
   const proof: ChangeProof = { mode: spec.mode, baselineKind: spec.baselineKind, specHash, verifiedAt: new Date().toISOString(),
     scope: `Only the declared scenario and requirements; not whole-application correctness. URLs identify targets, not source/build provenance. Baseline kind is caller-declared, not independently authenticated history. ${identityScope}`,
-    ...applyCoverage(assessed.verdict, assessed.reason, requirements), requirements, inputsHash: hash, ...repeatFields(outDir, hash), ...(before ? { before } : {}), after };
+    ...applyCoverage(targeted.verdict, targeted.reason, requirements), requirements, appUnderTest, inputsHash: hash, ...repeatFields(outDir, hash), ...(before ? { before } : {}), after };
   writeFileSync(join(outDir, 'proof.json'), JSON.stringify(proof, null, 2), { mode: 0o600 });
   const saved = saveFeedback(spec, proof, outDir, context, assessed.verdict);
-  return { verdict: proof.verdict, requirements: saved.feedback.requirements, ...(proof.repeatOf ? { repeatOf: proof.repeatOf, repeatNote: proof.repeatNote } : {}), proof, ...saved };
+  return { verdict: proof.verdict, requirements: saved.feedback.requirements, appUnderTest: saved.feedback.appUnderTest, ...(proof.repeatOf ? { repeatOf: proof.repeatOf, repeatNote: proof.repeatNote } : {}), proof, ...saved };
 }

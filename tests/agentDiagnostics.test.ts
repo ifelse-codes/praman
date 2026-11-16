@@ -60,7 +60,8 @@ it('names an ambiguous step selector and its match count without changing the ve
   expect(summary).toContain('execution_unavailable: current run 1 step[0]; diagnosis: locator_ambiguous (3 elements)');
   expect(summary).toContain('Next: The selector matched 3 elements; make it match exactly one');
   expect(JSON.parse(feedback).diagnostics[0].diagnosis.kind).toBe('locator_ambiguous');
-  expect(report.split('\n').slice(0, 7)).toEqual(['Outcome: insufficient_evidence', 'Requirements: not declared. This verdict covers only the declared checks, not the requirements they were meant to cover.', '', '## Checks', '',
+  expect(report.split('\n').slice(0, 8)).toEqual(['Outcome: insufficient_evidence', 'Requirements: not declared. This verdict covers only the declared checks, not the requirements they were meant to cover.',
+    'App under test: not identified. Declare "target" (for example a command that prints the git commit) to record which version was tested.', '', '## Checks', '',
     '| Check | Id | Kind | What it checks | After step | Run 1 | Run 2 | Diagnosis |', '| --- | --- | --- | --- | --- | --- | --- | --- |']);
   expect(report).toContain('| 0 | status | text | element text equals | end | not_executed | not_executed | locator_ambiguous (3 elements) at step 0 |');
   expect(report).toContain('### Check[0]');
