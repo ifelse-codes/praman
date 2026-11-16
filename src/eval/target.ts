@@ -19,12 +19,13 @@ export const targetSchema = z.object({
 }).strict();
 export type TargetDeclaration = z.infer<typeof targetSchema>;
 
-export interface TargetReading { label: string; sha256?: string; error?: string }
+/** `readingSha256` is the SHA-256 of the printed version text, not of any file or binary. */
+export interface TargetReading { label: string; readingSha256?: string; error?: string }
 export interface AppUnderTest {
   status: 'identified' | 'unavailable' | 'changed' | 'not_declared';
   /** The reading itself, only when it is short plain text (a commit, tag or build hash). */
   value?: string;
-  sha256?: string;
+  readingSha256?: string;
   readings: TargetReading[];
   /** One plain line for summaries and reports. */
   summary: string;
@@ -58,7 +59,7 @@ export async function readTarget(target: TargetDeclaration, label: string): Prom
       if (code !== 0) return done({ label, error: `Target command exited ${code}.` });
       const text = output.toString('utf8').trim();
       if (!text) return done({ label, error: 'Target command printed nothing.' });
-      done({ label, sha256: createHash('sha256').update(text).digest('hex'), value: text });
+      done({ label, readingSha256: createHash('sha256').update(text).digest('hex'), value: text });
     });
   });
 }
@@ -70,13 +71,13 @@ export class TargetTracker {
   async read(label: string): Promise<void> { if (this.target) this.readings.push(await readTarget(this.target, label)); }
   result(): AppUnderTest {
     if (!this.target) return { status: 'not_declared', readings: [], summary: 'App under test: not identified. Declare "target" (for example a command that prints the git commit) to record which version was tested.' };
-    const readings = this.readings.map(({ label, sha256, error }) => ({ label, ...(sha256 ? { sha256 } : {}), ...(error ? { error } : {}) }));
+    const readings = this.readings.map(({ label, readingSha256, error }) => ({ label, ...(readingSha256 ? { readingSha256 } : {}), ...(error ? { error } : {}) }));
     const first = this.readings[0];
-    if (!this.readings.length || this.readings.some(row => !row.sha256)) return { status: 'unavailable', readings, summary: 'App under test: identity unavailable (the declared target command failed or printed nothing); not proven.' };
-    if (this.readings.some(row => row.sha256 !== first.sha256)) return { status: 'changed', sha256: first.sha256, readings, summary: 'App under test: changed during verification (the declared target printed different values); not proven.' };
+    if (!this.readings.length || this.readings.some(row => !row.readingSha256)) return { status: 'unavailable', readings, summary: 'App under test: identity unavailable (the declared target command failed or printed nothing); not proven.' };
+    if (this.readings.some(row => row.readingSha256 !== first.readingSha256)) return { status: 'changed', readingSha256: first.readingSha256, readings, summary: 'App under test: changed during verification (the declared target printed different values); not proven.' };
     const value = first.value && plainValue.test(first.value) ? first.value : undefined;
-    return { status: 'identified', ...(value ? { value } : {}), sha256: first.sha256, readings,
-      summary: `App under test: ${value ?? `sha256:${first.sha256!.slice(0, 12)}`} (same before every run and after the last).` };
+    return { status: 'identified', ...(value ? { value } : {}), readingSha256: first.readingSha256, readings,
+      summary: `App under test: ${value ?? `reading sha256:${first.readingSha256!.slice(0, 12)}`} (same before every run and after the last).` };
   }
 }
 

@@ -202,7 +202,7 @@ export async function proveCommands(specPath: string, outputDirectory: string, s
   const { verdict, reason } = applyCoverage(targeted.verdict, targeted.reason, requirements);
   const specHash = createHash('sha256').update(JSON.stringify(spec)).digest('hex');
   // Same declaration and declared inputs as an earlier sibling run: noted, never a verdict change.
-  const hash = inputsHash({ specHash, identity: current[0]?.identityBefore, target: appUnderTest.sha256 });
+  const hash = inputsHash({ specHash, identity: current[0]?.identityBefore, target: appUnderTest.readingSha256 });
   const repeat = repeatFields(outDir, hash, { appIdentified: appUnderTest.status === 'identified' });
   const proof = { mode: spec.mode, baselineKind: spec.baselineKind, verdict, reason, ...(interrupted ? { interrupted: true } : {}), scope: `Only declared command checks; not whole-program correctness or sandboxing. Baseline attribution is caller-declared, not authenticated history. ${identityScope}`, identityStatus: identitiesStable ? 'stable' : 'unavailable_or_changed', verifiedAt: new Date().toISOString(), specHash, requirements, appUnderTest, inputsHash: hash, ...repeat, ...(before ? { before } : {}), current };
   privateJson(proofPath, proof);

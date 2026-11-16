@@ -73,7 +73,7 @@ describe('app under test (declared target)', () => {
     writeFileSync(path.join(root, 'version.txt'), 'build 42 from branch main\n');
     const result = await verify(declaration(readVersion), 'verify-1');
     expect(result.appUnderTest.value).toBeUndefined();
-    expect(result.appUnderTest.summary).toMatch(/^App under test: sha256:[a-f0-9]{12} /);
+    expect(result.appUnderTest.summary).toMatch(/^App under test: reading sha256:[a-f0-9]{12} /);
   });
 
   it('tells a changed app apart from a repeat of the same declaration', async () => {
