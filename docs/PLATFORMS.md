@@ -5,8 +5,8 @@
 | Platform | Node | Status | Evidence |
 | --- | --- | --- | --- |
 | macOS 27.0.1 arm64 | 26.0.0 | **Tested** | Full suite (397 tests / 47 files, 2026-11-16), first-use 12/12, real Chromium and ffmpeg runs |
-| Ubuntu (GitHub Actions) | 22 | **Tested in CI** | Run 43580613973 (`c69e998`): 360 passed + 16 environment-guarded skips; also runs the first-use judge route |
-| macOS (GitHub Actions) | 22 | **Tested in CI** | Run 43580613973 (`c69e998`): 360 passed + 16 environment-guarded skips |
+| Ubuntu (GitHub Actions) | 22 | **Tested in CI** | Run 43887458541 (`f25d889`): 381 passed + 16 environment-guarded skips; also runs the first-use judge route |
+| macOS (GitHub Actions) | 22 | **Tested in CI** | Run 43887458541 (`f25d889`): 381 passed + 16 environment-guarded skips |
 | Windows | any | **Untested / unsupported** | experimental manual workflow only |
 
 ## Runtime requirements

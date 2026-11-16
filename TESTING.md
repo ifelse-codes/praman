@@ -53,7 +53,7 @@ npm test -- --maxWorkers=2
 ```
 
 Full suite: 397 tests / 47 files (2026-11-16). On the public CI runners (no ffmpeg/ffprobe) it reports
-360 passed and 16 skipped (42 files passed, 1 skipped; CI run 43580613973 of `c69e998`, 2026-11-14):
+381 passed and 16 skipped (46 files passed, 1 skipped; CI run 43887458541 of `f25d889`, 2026-11-16):
 the media/speech tests skip when ffmpeg/ffprobe are not installed; that is
 environment-guarded, not a pass.
 
