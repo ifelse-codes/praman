@@ -2,8 +2,7 @@
 
 **Status:** final copy for the Kiroween submission. No Devpost submission has been
 made; the assistant never operated the Devpost form, so verify the saved form state
-before publishing. The repository URL is filled in. One placeholder remains:
-`<DEMO_VIDEO_URL>`.
+before publishing. The repository URL and the demo video URL are filled in.
 
 Repo references for maintainers: [Kiro usage write-up](kiro-usage.md),
 [video storyboard](video-script.md), [project status](STATUS.md),
@@ -23,7 +22,7 @@ public URL placeholder for anything readers must open.
 | Public repository | https://github.com/ifelse-codes/praman (MIT license) |
 | Judge access / testing | https://github.com/ifelse-codes/praman/blob/main/TESTING.md (test build, Codespaces, expected 12/12) |
 | Project page | https://ifelse-codes.github.io/praman/ (static, no hosted execution) |
-| Demo video (≤3:00, public) | <DEMO_VIDEO_URL> |
+| Demo video (≤3:00, public) | https://youtu.be/k_zNuEZwQM8 |
 | Kiro usage write-up | `docs/kiro-usage.md` in the public repository |
 
 ## Official rules alignment (captured 2026-11-05)
@@ -136,6 +135,7 @@ Verified on the recorded host and in Ubuntu/macOS CI:
 - Authored command verification with trusted executables, explicit exit/stdout/artifact expectations, bounded repeats and resolved executable/input identities.
 - Three declared modes: `acceptance` (current only), `repair` (declared historical baseline with a named regression) and `comparison` (explicit baseline attribution).
 - Honest verdicts and exits: `passed` / `failed` / `insufficient_evidence`; CLI exits 0/1/2; MCP sets `isError` on non-pass.
+- Honest coverage (added 2026-11-16, after an outside agent run said `passed` on a thin check): a declaration may list its requirements and the app version under test. A requirement with no check turns a would-be pass into not proven; summaries and reports print `Requirements: X of Y have a check` and `App under test`; a rerun with the same declaration and inputs is flagged as proving nothing new. The agent still writes the requirement list, so this is only as honest as that list, and a weak agent can skip it.
 - A public first-use runner that exercises **12 expected CLI and MCP outcomes** — pass, intentional mismatch and unavailable execution for both the browser and command routes — with matching proof verdicts. All twelve behaved as documented; the deliberate negative controls stayed red.
 - The Kiro integration, also usable by any MCP client: a custom agent, an installable Kiro Power and an opt-in `Stop`-hook finish gate that re-runs declared checks when the agent says it is done.
 - Failure diagnosis that names what went wrong (for example `locator_ambiguous (3 elements)`) with a next action, while keeping selectors and values private; a pass/fail table at the top of every report.
@@ -173,7 +173,7 @@ The north star is bolder. You can't take a coding agent's word for it. One day y
 ## Maintainer checklist (do not paste into Devpost)
 
 - [x] Repository URL is the real public repository (`https://github.com/ifelse-codes/praman`); confirm it still opens without authentication.
-- [ ] Replace `<DEMO_VIDEO_URL>` with the public YouTube URL; confirm the video is ≤3:00 and public.
+- [x] Demo video URL set to https://youtu.be/k_zNuEZwQM8 (2026-11-25; 2:46; YouTube returned its title for the link). Re-check that it is still public on submission day.
 - [ ] Confirm `docs/kiro-usage.md` and `docs/video-script.md` are committed in the public repository and their internal links resolve.
 - [ ] Re-check this copy against [STATUS.md](STATUS.md): verified capabilities, limits and “no submission made” status.
 - [ ] Confirm no personal email, home path, session ID, credential or private infrastructure detail is visible in the repository, video or screenshots.

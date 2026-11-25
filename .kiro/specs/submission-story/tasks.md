@@ -31,7 +31,7 @@ Target: weeks 3–4 (Nov 23 – Dec 2, 2026); submit by Nov 27, buffer to Dec 4 
   - _Requirements: 1.1–1.6_
 
 - [ ] 5. Publish and submit (owner)
-  - [ ] 5.1 Upload to YouTube (public); set `<DEMO_VIDEO_URL>` in `docs/devpost-draft.md`
+  - [x] 5.1 Upload to YouTube (public); set the URL in `docs/devpost-draft.md` (2026-11-25, https://youtu.be/k_zNuEZwQM8)
   - [x] 5.2 Update Devpost copy (2026-11-09: Kiro section and verified list match the evidence); [ ] save the submission by Nov 27
   - [ ] 5.3 Optional bonus: blog and `#KiroweenHackathon26` social post (drafts updated 2026-11-09)
   - _Requirements: 3.1, 3.3, 3.4_

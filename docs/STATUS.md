@@ -522,10 +522,13 @@ The shipped/frozen/deferred view is in [ROADMAP.md](ROADMAP.md).
    closeout left no known product bug open (open items by choice: ROADMAP.md, "Still
   open, on purpose"). Feature freeze from 2026-11-19; no new
    features before the submission.
-2. **Video and submission (owner):** the script update and dry run are done
-   (2026-11-13, `docs/video-script.md`); decide whether the `REPORT.html` frames may be
-   public; then record the takes, edit to under 3 minutes, upload publicly to YouTube; replace `<DEMO_VIDEO_URL>` in the Devpost
-   draft and social post; save and submit. Target Nov 25–27, deadline Dec 4, 2026.
+2. **Video and submission (owner):** the demo video is uploaded (https://youtu.be/k_zNuEZwQM8, 2:46, a
+   launch-style film "PRAMAN: Build the Trust" with a synthetic narrator voice; locked
+   private package `.praman/launch-v6/`, 2026-11-25) and its URL is set in the Devpost
+   draft and social post. The film has no `REPORT.html` frame; it shows Headlamp and
+   Shiori screenshots and a frame of a PRAMAN-made Headlamp demo, so confirm the video is
+   Public. Left: save and submit the Devpost form (target Nov 27, deadline Dec 4, 2026
+   2:00 pm PT) and the fresh-clone judge check (12/12) on the day.
 3. **Kiro:** done: specs `kiro-evidence-gate`, `power-path-resolution`,
    `verify-cancellation`, `agent-diagnostics`, `scenario-actions`, `named-steps`,
    `environment-recheck`, `worlds`, `network-faults`, `many-users`, `recorded-apis`,

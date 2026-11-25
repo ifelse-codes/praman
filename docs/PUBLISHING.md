@@ -65,9 +65,11 @@ data before sharing it.
 
 ## 5. Submission artifacts
 
-1. Record and upload the 3-minute video using [the script](video-script.md); the
-   official requirement is a public YouTube link on the submission form.
-2. Replace the remaining `<DEMO_VIDEO_URL>` in [the Devpost draft](devpost-draft.md).
+1. Record and upload the 3-minute video; the official requirement is a public YouTube
+   link on the submission form. Done 2026-11-25: https://youtu.be/k_zNuEZwQM8 (2:46, launch-style film; the
+   take-by-take plan is [the script](video-script.md)).
+2. Done 2026-11-25: the video URL is set in [the Devpost draft](devpost-draft.md) and the
+   social post.
 3. Include the Kiro usage account ([kiro-usage.md](kiro-usage.md)).
 4. Save the Devpost form and keep a screenshot; target submission by Nov 26–27.
 5. Confirm the submission against the captured official rules

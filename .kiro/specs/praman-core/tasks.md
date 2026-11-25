@@ -29,7 +29,7 @@
 - [x] Spec `named-steps`: step ids that checks and stories can reference (PR #12)
 
 ## Remaining (owner-executed)
-- [ ] Spec `submission-story`: record and upload the <=3 min demo video; replace <DEMO_VIDEO_URL> in the Devpost draft
+- [x] Spec `submission-story`: record and upload the <=3 min demo video; URL set in the Devpost draft (2026-11-25, https://youtu.be/k_zNuEZwQM8)
 - [ ] Save and submit the Devpost form (target Nov 26-27; deadline Dec 4, 2026 2:00 pm PT)
 - [ ] Independent-human first-use validation (CI covers two operating systems)
 - [ ] Private-archive retention decision after the submission is final

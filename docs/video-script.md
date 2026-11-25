@@ -1,8 +1,11 @@
 # PRAMAN submission video — storyboard (≤3:00)
 
-**Status:** recording plan, not a recording. No video has been recorded or uploaded;
-`<DEMO_VIDEO_URL>` is a placeholder for the Devpost field. Recording and upload need
-the owner's explicit yes (spec `submission-story`, requirement 1.6).
+**Status (2026-11-25):** the published demo video is a different, launch-style film,
+"PRAMAN: Build the Trust" (https://youtu.be/k_zNuEZwQM8, 2:46, synthetic narrator voice). It is not
+recorded from this storyboard. It shows real Headlamp and Shiori results and screenshots,
+one frame of a demo video that PRAMAN itself made (not Kiro), and scenes labeled
+ILLUSTRATION. This file stays as the take-by-take plan of recorded Kiro CLI work for any
+longer walkthrough.
 
 Rewritten 2026-11-09 (spec `submission-story` task 3) and updated 2026-11-13 (plan step
 5) for the work since then: a new one-page report scene (`REPORT.html`, plan steps 1, 3
@@ -306,7 +309,7 @@ a dry run with `command-preview` first and the owner's approval.
   whole-application claim.
 - [ ] Encoded duration under 180 s, audio present, captions accurate, 1080p, no
   private data in any frame.
-- [ ] Upload as public on YouTube, then set `<DEMO_VIDEO_URL>` in
+- [x] (done 2026-11-25 for the launch film) Upload as public on YouTube, then set `<DEMO_VIDEO_URL>` in
   [the Devpost copy](devpost-draft.md) and [the social post](social-post.md).
 
 ## Claims: keep, label, avoid

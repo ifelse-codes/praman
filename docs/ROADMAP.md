@@ -4,8 +4,8 @@
 (owner decision 2026-11-10; steps 0 to 4d done; step 5, the video and blog: script and dry run done 2026-11-13, recording is the owner's).** Public repository
 https://github.com/ifelse-codes/praman (MIT), CI green on Ubuntu and macOS, judge
 access via [TESTING.md](../TESTING.md) and Codespaces, project page
-https://ifelse-codes.github.io/praman/. Not submitted: the demo video and the Devpost
-form are the remaining release blockers. New on 2026-11-15: an OpenCode run showed
+https://ifelse-codes.github.io/praman/. Not submitted: the demo video is uploaded
+(2026-11-25, https://youtu.be/k_zNuEZwQM8); the Devpost form is the remaining release blocker. New on 2026-11-15: an OpenCode run showed
 PRAMAN saying `passed` on a broken app; findings and the fix plan are in
 ["Found 2026-11-15"](#found-2026-11-15-praman-said-passed-on-a-broken-app-opencode-run).
 Items 1 to 5 of that plan were done on 2026-11-16 (requirement coverage in the verdict,
